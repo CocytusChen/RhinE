@@ -3,6 +3,13 @@
 Newest version first. Download any version from [Releases](https://github.com/ericzhang12111-cell/RhinE/releases).
 最新版本在最上面；各版本可在 Releases 页面下载。
 
+## Unreleased
+
+**Added · 新增**
+- `HEARTH`, a warm colour scheme of walnut and candlelight in light and dark, made for `REAL STYLE` (and fine with any
+  floor). With `REAL STYLE` chosen, the `05 STYLE` view offers it next to the floor. 新增暖色配色 `HEARTH`（胡桃木与烛光，
+  浅色与深色），为写实风格而配，也可用于其他地面；选择写实风格时，`05 外观` 视图会在地面旁提示使用。
+
 ## 1.4.0 — 2026-10-09
 
 **Added · 新增**

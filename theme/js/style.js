@@ -35,6 +35,7 @@ const SCHEME_ABOUT = {
     flare: "Vibrant orange: the light page itself is orange",
     field: "Fresh green on green-tinted paper",
     front: "Cold front blue",
+    hearth: "Walnut and candlelight, made for REAL STYLE",
 };
 const STY = { img: new Map(), hover: null, gen: 0, shown: false };   // img: skin id -> { array, hero }
 
@@ -100,7 +101,7 @@ function drawMock(gr, x, y, w, h, t) {
 // card size: as large as the width allows and the height still fits every skin row plus the scheme row
 function styleGeom(nSkins = 10, nSchemes = 5) {
     const m = dp(48), top = dp(62), gap = dp(16), lx1 = Math.round(W * .62), lw = lx1 - m;
-    const cols = Math.max(5, Math.min(7, Math.ceil(Math.max(nSkins, nSchemes) / 2)));
+    const cols = Math.max(5, Math.min(7, Math.max(Math.ceil(nSkins / 2), nSchemes)));   // the schemes in one row
     const rows = Math.ceil(nSkins / cols), srows = Math.ceil(nSchemes / cols);
     const byW = (lw - (cols - 1) * gap) / cols;
     const avail = H - top - dp(24) - dp(30) * 3 - dp(10) * 2 - dp(30) - dp(30);   // three section heads, the DISPLAY row
@@ -232,6 +233,16 @@ function drawScaleRow(gr, x, y, x1) {
         segToggle(gr, xl + need, y, title, items, cur, id);
         xl += need + dp(28);
     }
+    // REAL STYLE has its own colour scheme: offered next to the floor until it is in use
+    if (STATE.floor === "real" && SCHEME !== "hearth" && TOKENS.schemes.hearth) {
+        const t = tr("USE HEARTH, MADE FOR REAL STYLE"), s = st(GRID_ST.count, C.fg, C.bg), h = dp(22), w = dp(26) + labelWidth(t, s) + dp(10);
+        if (xl + w > x1) { xl = x; y += dp(34); }
+        gr.FillSolidRect(xl, y, w, h, C.bg);
+        box(gr, xl, y, w, h, C.accent);
+        gr.FillSolidRect(xl + dp(9), y + Math.round((h - dp(6)) / 2), dp(6), dp(6), C.accent);
+        label(gr, t, s, xl + dp(22), y + Math.round((h - labelHeight(GRID_ST.count)) / 2));
+        hits.add("sty-hearth", xl, y, w, h);
+    }
 }
 
 // the preview of the card under the mouse, else of the skin and scheme in use
@@ -301,4 +312,5 @@ function styleClick(a) {
     else if (a.id === "sty-array" && a.data !== STATE.arrayScale) send("array-scale", a.data);
     else if (a.id === "sty-inspect" && a.data !== STATE.inspectScale) send("inspect-scale", a.data);
     else if (a.id === "sty-floor" && a.data !== STATE.floor) send("floor", a.data);
+    else if (a.id === "sty-hearth") send("scheme", "hearth");
 }

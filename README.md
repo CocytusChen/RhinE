@@ -9,7 +9,7 @@
 
 An archive terminal for listening: Swiss typography, a monochrome palette with one accent colour, and a sci-fi layer —
 your albums as rendered specimen cases on shelves, a Möbius signal ring that pulses with the music, synced lyrics
-(fetched online when your files have none), ten case skins and five colour schemes in light and dark. Windows,
+(fetched online when your files have none), ten case skins and six colour schemes in light and dark. Windows,
 foobar2000 v2 with Columns UI and JSplitter.
 
 [![YouTube Video](https://img.shields.io/badge/YouTube-Watch_Video-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/playlist?list=PLYhA3n8CTLnA&si=daRU0tDz3rFgFB_9)
@@ -57,7 +57,7 @@ Five views: **Archive** (every album, or every track, as a rendered specimen cas
 **Playlists** (playlist manager, track rail, the native playlist in two presets, a profile card with the queue),
 **Lyrics** (synced lyrics from your files or fetched online, with a translation when they are in another language),
 **Signal** (a rendered ∞ ring, spectrum and the whole-track waveform, or a Classic player screen) and **Style** (ten
-case skins and five colour schemes, each in light and dark). A pre-rendered intro film, scan transitions, grain and a
+case skins and six colour schemes, each in light and dark). A pre-rendered intro film, scan transitions, grain and a
 Reduce motion option. The interface is in English, Simplified Chinese or Japanese.
 
 ## Requirements
@@ -160,7 +160,7 @@ Running it again keeps the foobar2000 folder and installs the theme again.
 | Archive grid: select / play / open | click a cover / double-click / `OPEN ALBUM` | arrows, `PgUp` `PgDn` `Home` `End`; `Space` plays, `Enter` opens |
 | Archive grid: scroll | the wheel, or drag the scroll bar at its right edge (a click on the bar jumps there) | `PgUp` `PgDn` |
 | Case skin | `MENU › Audio Archive › Case skin`, or right-click the Archive | — |
-| Colour scheme (ARCHIVE, HAZARD, FLARE, FIELD, COLD FRONT) | `MENU › Audio Archive › Colour scheme` | — |
+| Colour scheme (ARCHIVE, HAZARD, FLARE, FIELD, COLD FRONT, HEARTH) | `MENU › Audio Archive › Colour scheme`, or the `05 STYLE` view | — |
 | Style: see and switch skins and schemes | the `05 STYLE` view: hover a card for its preview, click to apply | `5` |
 | Text size (90 – 150 %), Archive array scale (80 – 130 %), inspection size (100 – 150 %) | `TEXT`, `ARRAY` and `INSPECT` at the top of the `05 STYLE` view, or `MENU › Audio Archive › Text size` / `Archive array scale` / `Inspection size` | — |
 | Archive floor: the page colour, a rendered lab deck under the shelves, or REAL STYLE (the Archive as one rendered scene on a walnut desk, always with the FROST case) | `FLOOR` at the top of the `05 STYLE` view, or `MENU › Audio Archive › Archive floor` | — |
