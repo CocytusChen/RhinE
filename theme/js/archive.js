@@ -977,11 +977,14 @@ function drawInfo(gr, w, h) {
     }
     y += dp(24 + 18);
     // ▶ PLAY ALBUM / PLAY TRACK (inverse) · OPEN ALBUM ↗ (orange focus frame)
+    // the key that does the same (Space) is printed on the button, dimmed
     const bh = dp(40), bs = st(AR_ST.btn, C.bg, C.fg), playTxt = tr(isTrack ? "PLAY TRACK" : "PLAY ALBUM");
-    const pw = dp(14) + dp(10) + dp(10) + labelWidth(playTxt, bs) + dp(16);
+    const ks = st(AR_ST.key, mix(C.bg, C.fg, .45), C.fg), kt = tr("SPACE"), kw = labelWidth(kt, ks);
+    const pw = dp(14) + dp(10) + dp(10) + labelWidth(playTxt, bs) + dp(14) + kw + dp(14);
     gr.FillSolidRect(x, y, pw, bh, C.fg);
     icon(gr, "play", x + dp(19), y + bh / 2, 9, C.bg);
     label(gr, playTxt, bs, x + dp(34), y + Math.round((bh - labelHeight(AR_ST.btn)) / 2));
+    label(gr, kt, ks, x + pw - dp(14) - kw, y + Math.round((bh - labelHeight(AR_ST.key)) / 2));
     INFO_HITS.push(["ar-play", x, y, pw, bh]);
     const ox2 = x + pw + dp(10), os = st(AR_ST.btn, C.fg), ow = dp(14) + labelWidth(tr("OPEN ALBUM"), os) + dp(40) + dp(26);
     box(gr, ox2, y, ow, bh, C.fg);

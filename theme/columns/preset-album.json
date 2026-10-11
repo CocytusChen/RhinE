@@ -14,7 +14,7 @@
    "width": 46,
    "resize": 0,
    "align": "left",
-   "sort": ""
+   "sort": "%album artist%|%album%|%discnumber%|%tracknumber%"
   },
   {
    "title": "TITLE",
