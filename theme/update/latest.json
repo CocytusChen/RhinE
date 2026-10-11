@@ -1,21 +1,13 @@
 {
- "version": "1.5.0",
- "tag": "v1.5.0",
- "date": "2026-10-10",
+ "version": "1.5.1",
+ "tag": "v1.5.1",
+ "date": "2026-10-11",
  "notes": {
   "en": [
-   "HEARTH, a warm colour scheme of walnut and candlelight in light and dark, made for REAL STYLE (and fine with any floor). With REAL STYLE chosen, the 05 STYLE view offers it next to the floor.",
-   "Ultrawide screens: when the Archive is more than twice as wide as it is tall, more shelves stand side by side to fill it (up to 24), each case at its usual size (thanks to @Xuduxiu, #2).",
-   "PLAY ALBUM in the Archive shows its key, SPACE (it plays the selected album, or pauses it while it plays).",
-   "The titles on the cases' top edges and the floors' shadows cost less to draw, so a screen full of shelves stays smooth.",
-   "Playlists (ALBUM layout): clicking NO. puts a sorted playlist back in album order (disc and track). Until now, after sorting by title there was no way back."
+   "RANDOM PICK across many shelves no longer draws two shelves on top of each other, and a shelf leaving towards you no longer vanishes on its way out: the shelves move as one row of rows (thanks to @sm-steel for the report)."
   ],
   "zh": [
-   "新增暖色配色 HEARTH（胡桃木与烛光，浅色与深色），为写实风格而配，也可用于其他地面；选择写实风格时，05 外观 视图会在地面旁提示使用。",
-   "超宽屏：档案区域宽度超过高度两倍时，更多货架并排填满画面（最多 24 排），外壳保持原来的大小（感谢 @Xuduxiu，#2）。",
-   "档案中的 播放专辑 按钮标出了快捷键 空格（播放选中的专辑，正在播放时暂停）。",
-   "外壳顶边标题与地面阴影的绘制开销更小，满屏货架时依然流畅。",
-   "播放列表（专辑 布局）：点击 序号 即可恢复专辑顺序（按碟号、音轨号）；此前按标题排序后无法恢复。"
+   "随机抽取跨越多个货架时不再出现两排货架叠在一起，朝你移出的货架也不再中途消失：所有货架作为一个整体移动（感谢 @sm-steel 的反馈）。"
   ]
  }
 }

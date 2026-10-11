@@ -8,7 +8,7 @@ Newest version first. Download any version from [Releases](https://github.com/er
 **Fixed · 修复**
 - `RANDOM PICK` across many shelves no longer draws two shelves on top of each other, and a shelf leaving towards
   you no longer vanishes on its way out: the shelves move as one row of rows (thanks to @sm-steel for the report).
-  `随机抽取` 跨越多个货架时不再出现两排货架叠在一起，朝你移出的货架也不再中途消失：所有货架作为一个整体移动（感谢 @sm-steel 的反馈）。
+  随机抽取跨越多个货架时不再出现两排货架叠在一起，朝你移出的货架也不再中途消失：所有货架作为一个整体移动（感谢 @sm-steel 的反馈）。
 
 ## 1.5.0 — 2026-10-10
 
