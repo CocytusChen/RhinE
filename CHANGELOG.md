@@ -9,10 +9,15 @@ Newest version first. Download any version from [Releases](https://github.com/er
 - `HEARTH`, a warm colour scheme of walnut and candlelight in light and dark, made for `REAL STYLE` (and fine with any
   floor). With `REAL STYLE` chosen, the `05 STYLE` view offers it next to the floor. 新增暖色配色 `HEARTH`（胡桃木与烛光，
   浅色与深色），为写实风格而配，也可用于其他地面；选择写实风格时，`05 外观` 视图会在地面旁提示使用。
+- Ultrawide screens: when the Archive is more than twice as wide as it is tall, more shelves stand side by side to
+  fill it (up to 24), each case at its usual size (thanks to @Xuduxiu, #2). 超宽屏：档案区域宽度超过高度两倍时，更多货架并排填满
+  画面（最多 24 排），外壳保持原来的大小（感谢 @Xuduxiu，#2）。
 
 **Changed · 改进**
 - `PLAY ALBUM` in the Archive shows its key, `SPACE` (it plays the selected album, or pauses it while it plays).
   档案中的 `播放专辑` 按钮标出了快捷键 `空格`（播放选中的专辑，正在播放时暂停）。
+- The titles on the cases' top edges and the floors' shadows cost less to draw, so a screen full of shelves stays
+  smooth. 外壳顶边标题与地面阴影的绘制开销更小，满屏货架时依然流畅。
 
 **Fixed · 修复**
 - Playlists (`ALBUM` layout): clicking `NO.` puts a sorted playlist back in album order (disc and track). Until now,

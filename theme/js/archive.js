@@ -152,7 +152,7 @@ function slotsInView() {
     let n = 0;
     while (n < 400) {
         const ox = Ox + n * ax.y[0] * k - m.origin[0] * k, oy = Oy + n * ax.y[1] * k - m.origin[1] * k;
-        if (ox + S * .7 > aw || oy < dp(56) - S * .05) break;   // a lifted case's top stays under the bar
+        if (ox + S * .7 > aw || oy < dp(84) - S * .05) break;   // a lifted case's top stays under the two-row bar
         n++;
     }
     SLOTS_IN_VIEW = { key, n: Math.max(6, n) };
@@ -477,14 +477,23 @@ function floorImages() {
     if (FLOOR.meta && !FLOOR.img) {
         FLOOR.img = { plate: d2d.Image(dir + "plate.jpg") };
         for (const k of ["mid", "front", "back"]) for (const part of ["", "-far"]) {
-            FLOOR.img[`shade-${k}${part}`] = d2d.Image(dir + `shade-${k}${part}.png`);
-            if (FLOOR.meta.glow !== false) FLOOR.img[`glow-${k}${part}`] = d2d.Image(dir + `glow-${k}${part}.png`);
+            FLOOR.img[`shade-${k}${part}`] = halfImage(d2d.Image(dir + `shade-${k}${part}.png`));
+            if (FLOOR.meta.glow !== false) FLOOR.img[`glow-${k}${part}`] = halfImage(d2d.Image(dir + `glow-${k}${part}.png`));
         }
     }
     // an image that could not be read leaves the floor plain (rather than failing the whole paint)
     return FLOOR.meta && Object.values(FLOOR.img).every(Boolean) ? FLOOR : null;
 }
 TOKEN_LISTENERS.push(() => { FLOOR.key = null; });
+// The shade and glow sprites are soft: kept at half their size, a quarter of the pixels to draw for every row (an
+// ultrawide array draws a dozen rows); drawn at their full size, their source rect is the image's own.
+function halfImage(src) {
+    if (!src) return src;
+    const w = Math.ceil(src.Width / 2), h = Math.ceil(src.Height / 2), img = d2d.CreateImage(w, h), g = img.GetGraphics();
+    g.DrawImage(src, 0, 0, w, h, 0, 0, src.Width, src.Height);
+    img.ReleaseGraphics(g);
+    return img;
+}
 // the floor, then every row's shade and glow; false when the floor is plain
 function drawFloor(gr, rows, G, Ox, Oy, k, toScreen) {
     const F = floorImages();
@@ -502,7 +511,8 @@ function drawFloor(gr, rows, G, Ox, Oy, k, toScreen) {
         if (alpha <= 0) continue;
         for (const end of ["front", "back"]) {
             const [sx, sy] = toScreen({ x, y: ((end === "front" ? -1 : n) - r.scroll.x) * PITCH, z: 0 });
-            gr.DrawImage(F.img[layer + end + part], sx - so0 * k, sy - so1 * k, rw * k, rh * k, 0, 0, rw, rh, 0, alpha);
+            const img = F.img[layer + end + part];
+            gr.DrawImage(img, sx - so0 * k, sy - so1 * k, rw * k, rh * k, 0, 0, img.Width, img.Height, 0, alpha);
         }
         if (n < 1) continue;
         // A = B diag(1, n) B^-1, B = [ax ay]: n times longer along the row, unchanged across it
@@ -511,7 +521,8 @@ function drawFloor(gr, rows, G, Ox, Oy, k, toScreen) {
         QM[0] = k * A[0]; QM[1] = k * A[2]; QM[2] = k * A[1]; QM[3] = k * A[3];
         QM[4] = ox + k * (A[0] * ux + A[1] * uy - zx); QM[5] = oy + k * (A[2] * ux + A[3] * uy - zy);
         gr.SetTransform(QM);
-        gr.DrawImage(F.img[layer + "mid" + part], 0, 0, rw, rh, 0, 0, rw, rh, 0, alpha);
+        const mid = F.img[layer + "mid" + part];
+        gr.DrawImage(mid, 0, 0, rw, rh, 0, 0, mid.Width, mid.Height, 0, alpha);
         gr.ResetTransform();
     }
     return true;
@@ -557,7 +568,7 @@ function inspectImages() {
     return null;
 }
 // the archive's big images are kept only while it is shown
-function archiveHidden() { pickStop(); AR.inspOn = false; AR.insp = 0; ARIMG.inspect = null; ARIMG.gen++; ARIMG.inspectLoading = false; ARIMG.faded.clear(); ARIMG.clear = ARIMG.frost = ARIMG.rail = null; AR.info = null; FLOOR.key = null; FLOOR.img = null; }
+function archiveHidden() { pickStop(); TOP_IMG.clear(); AR.inspOn = false; AR.insp = 0; ARIMG.inspect = null; ARIMG.gen++; ARIMG.inspectLoading = false; ARIMG.faded.clear(); ARIMG.clear = ARIMG.frost = ARIMG.rail = null; AR.info = null; FLOOR.key = null; FLOOR.img = null; }
 
 // covers of what is on screen, nearest first: the current row around the selection, then the rows behind
 function requestVisibleThumbs() {
@@ -634,15 +645,33 @@ function drawTopTitle(gr, a, ox, oy, k, alpha, f) {
     const o = at(T.x0, T.y), u = at(T.x0 + 1, T.y), v = at(T.x0, T.y - 1);
     if (Math.hypot(v[0] - o[0], v[1] - o[1]) * T.y * 2 < 5) return;   // too small to read
     QM[0] = (u[0] - o[0]) / 100; QM[1] = (u[1] - o[1]) / 100; QM[2] = (v[0] - o[0]) / 100; QM[3] = (v[1] - o[1]) / 100; QM[4] = o[0]; QM[5] = o[1];
-    if (!LABEL_FONTS.top) { LABEL_FONTS.top = d2d.Font("Geist Mono SemiBold", 17, 0); LABEL_FONTS.topC = d2d.Font("Microsoft YaHei UI", 18, 1); }
-    const tone = c => withAlpha(f > 0 ? mix(c, fadeBg(), f) : c, alpha / 255), w = (T.x1 - T.x0) * 100, h = T.y * 200;
-    const t = (a.title || tr("UNTITLED")).toUpperCase();
+    const img = topStrip((a.title || tr("UNTITLED")).toUpperCase()), w = (T.x1 - T.x0) * 100, h = T.y * 200;
     gr.SetTransform(QM);
-    gr.FillSolidRect(0, 0, w, h, tone(TOP_PAPER));
-    gr.FillSolidRect(0, 0, 4, h, tone(C.accent));
-    gr.DrawText(t, isCJK(t) ? LABEL_FONTS.topC : LABEL_FONTS.top, tone(TOP_INK), 12, 0, w - 20, h, DT_SINGLE | DT_ELLIPSIS);
+    gr.DrawImage(img, 0, 0, w, h, 0, 0, img.Width, img.Height, 0, alpha);
+    if (f > 0) gr.FillSolidRect(0, 0, w, h, withAlpha(fadeBg(), f * alpha / 255));   // tinted like the row
     gr.ResetTransform();
 }
+// Each title is drawn once into a small bitmap (the strip at TOP_RES px per unit) and that is mapped onto the case: a
+// screen of shelves (a dozen on an ultrawide array) lays out no text while it moves. Kept for the most recent titles.
+const TOP_RES = 1.5, TOP_KEEP = 320, TOP_IMG = new Map();
+function topStrip(t) {
+    let img = TOP_IMG.get(t);
+    if (img) { TOP_IMG.delete(t); TOP_IMG.set(t, img); return img; }
+    const T = TOP_STRIP, w = (T.x1 - T.x0) * 100, h = T.y * 200;
+    if (!LABEL_FONTS.top) { LABEL_FONTS.top = d2d.Font("Geist Mono SemiBold", 17, 0); LABEL_FONTS.topC = d2d.Font("Microsoft YaHei UI", 18, 1); }
+    img = d2d.CreateImage(Math.ceil(w * TOP_RES), Math.ceil(h * TOP_RES));
+    const g = img.GetGraphics();
+    g.SetTransform(new Float32Array([TOP_RES, 0, 0, TOP_RES, 0, 0]));
+    g.FillSolidRect(0, 0, w, h, TOP_PAPER);
+    g.FillSolidRect(0, 0, 4, h, C.accent);
+    g.DrawText(t, isCJK(t) ? LABEL_FONTS.topC : LABEL_FONTS.top, TOP_INK, 12, 0, w - 20, h, DT_SINGLE | DT_ELLIPSIS);
+    g.ResetTransform();
+    img.ReleaseGraphics(g);
+    TOP_IMG.set(t, img);
+    if (TOP_IMG.size > TOP_KEEP) TOP_IMG.delete(TOP_IMG.keys().next().value);
+    return img;
+}
+TOKEN_LISTENERS.push(() => TOP_IMG.clear());   // the accent tab follows the scheme
 
 function drawArchive(gr) {
     THUMB_KEEP.clear();
