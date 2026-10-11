@@ -3,6 +3,13 @@
 Newest version first. Download any version from [Releases](https://github.com/ericzhang12111-cell/RhinE/releases).
 最新版本在最上面；各版本可在 Releases 页面下载。
 
+## 1.5.1 — 2026-10-11
+
+**Fixed · 修复**
+- `RANDOM PICK` across many shelves no longer draws two shelves on top of each other, and a shelf leaving towards
+  you no longer vanishes on its way out: the shelves move as one row of rows (thanks to @sm-steel for the report).
+  `随机抽取` 跨越多个货架时不再出现两排货架叠在一起，朝你移出的货架也不再中途消失：所有货架作为一个整体移动（感谢 @sm-steel 的反馈）。
+
 ## 1.5.0 — 2026-10-10
 
 **Added · 新增**
