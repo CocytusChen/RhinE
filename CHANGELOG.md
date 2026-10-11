@@ -3,6 +3,14 @@
 Newest version first. Download any version from [Releases](https://github.com/ericzhang12111-cell/RhinE/releases).
 最新版本在最上面；各版本可在 Releases 页面下载。
 
+## Unreleased
+
+**Added · 新增**
+- Open a track's folder: `F` (or click `FILE` on the signal profile card) opens the folder of the playing track, with
+  the file selected; in the Archive, `F` or right-click › `Open containing folder` opens the selected album's.
+  打开所在文件夹：按 `F`（或点击信号资料卡片上的 `文件`）打开正在播放曲目所在的文件夹并选中该文件；在档案中，按 `F` 或右键 ›
+  `打开所在文件夹` 打开选中专辑的文件夹。
+
 ## 1.5.1 — 2026-10-11
 
 **Fixed · 修复**

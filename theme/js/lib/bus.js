@@ -42,8 +42,16 @@ function on_notify_data(name, info) {
     (BUS_HANDLERS[m.type] || []).forEach(fn => fn(m.data));
 }
 
+// Explorer at the folder of `h`'s file, with the file selected (local files only: nothing for a stream)
+function openFolder(h) {
+    const p = h && h.Path;
+    if (!p || !/^([a-z]:\\|\\\\)/i.test(p) || !utils.IsFile(p)) return false;
+    utils.Run("explorer.exe", `/select,"${p}"`, "", "", 1, false);
+    return true;
+}
+
 // Keys shared by every scripted panel (the focused panel receives them): 1 – 5 views, T light/dark, P playlist preset,
-// B intro film, S shuffle the library, / search. A panel calls globalKey(vk) for keys it does not use itself.
+// B intro film, S shuffle the library, F the playing (else focused) track's folder, / search. A panel calls globalKey(vk) for keys it does not use itself.
 function globalKey(vk) {
     if (vk === 0xBF) { startSearchFwd(); return true; }   // "/"
     if (vk >= 0x31 && vk <= 0x35) send("view", ["archive", "playlists", "lyrics", "signal", "style"][vk - 0x31]);
@@ -51,6 +59,7 @@ function globalKey(vk) {
     else if (vk === 0x50) send("preset");
     else if (vk === 0x42) send("boot-play");   // B
     else if (vk === 0x53) shuffleLibrary();    // S
+    else if (vk === 0x46) openFolder(fb.GetNowPlaying() || fb.GetFocusItem());   // F
     else return false;
     return true;
 }

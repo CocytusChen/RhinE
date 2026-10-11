@@ -95,6 +95,7 @@ I18N["zh-CN"] = {
     "STYLE  ·  05": "外观  ·  05", "CASE SKIN": "外壳", "COLOUR SCHEME": "配色方案", "DISPLAY  ·  04": "显示  ·  04",
     "IN USE": "使用中", "MODE": "模式", "PLAY INTRO": "播放开场", "PREVIEW": "预览", "TEXT": "文字", "INSPECT": "查看",
     "FLOOR": "地面", "PLAIN": "纯色", "LAB DECK": "实验甲板", "Archive floor": "档案地面", "Plain": "纯色", "Lab deck": "实验甲板", "REAL STYLE": "写实风格", "Real style": "写实风格",
+    "Open containing folder": "打开所在文件夹",
     "SPACE": "空格",
     "Walnut and candlelight, made for REAL STYLE": "胡桃木与烛光，为写实风格而配", "USE HEARTH, MADE FOR REAL STYLE": "使用为写实风格配的 HEARTH 配色",
     "RANDOM PICK": "随机抽取", "PICKING …": "抽取中 …", "Random pick": "随机抽取", "Titles on the cases' top edges": "在外壳顶边显示标题",

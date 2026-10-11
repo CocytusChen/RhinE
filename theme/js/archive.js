@@ -1210,6 +1210,7 @@ function archiveClick(x, y, a) {
 function archiveWheel(step) { pickStop(); if (AR.layout === "grid") gridWheel(step); else moveAlbum(step > 0 ? -1 : 1); }
 function archiveKey(vk) {
     if (vk === 0x52) { randomPick(); return true; }   // R
+    if (vk === 0x46 && curAlbum()) { openFolder(itemTrack(curAlbum()) || albumFirst(curAlbum())); return true; }   // F: the selected item's folder
     if (PICK.steps && (vk === 0x1B || vk === 0x0D || vk === 0x20 || vk === 0x47 || (vk >= 0x21 && vk <= 0x28))) {
         pickStop();
         if (vk === 0x1B) return true;
@@ -1260,6 +1261,7 @@ function archiveMenu(x, y) {
     m.AppendMenuSeparator();
     m.AppendMenuItem(curAlbum() ? 0 : 1, 9, tr("Play album"));
     m.AppendMenuItem(curAlbum() ? 0 : 1, 5, tr("Open album in playlist"));
+    m.AppendMenuItem(curAlbum() ? 0 : 1, 13, tr("Open containing folder") + "\tF");
     m.AppendMenuItem(curAlbum() ? 0 : 1, 11, tr("Random pick") + "	R");
     m.AppendMenuItem(AR.topTitles ? 0x8 : 0, 12, tr("Titles on the cases' top edges"));
     m.AppendMenuSeparator();
@@ -1270,6 +1272,7 @@ function archiveMenu(x, y) {
     else if (id >= 400 && sorts[id - 400]) setSortBy(sorts[id - 400]);
     else if (id === 9) playAlbum();
     else if (id === 11) randomPick();
+    else if (id === 13) openFolder(itemTrack(curAlbum()) || albumFirst(curAlbum()));
     else if (id === 12) { AR.topTitles = !AR.topTitles; setSetting("caseTopTitles", AR.topTitles); window.Repaint(); }
     else if (id === 10) setUnit(showTracks() ? "albums" : "tracks");
     else if (id === 5) openAlbum();

@@ -36,7 +36,7 @@ function on_paint(gr) {
     gr.PopTransform();
     hitsCard(x, y);
     if (hover && hover.id === "queue") gr.FillSolidRect(hover.x, hover.y + dp(4), dp(2), hover.h - dp(8), C.accent);
-    if (hover && hover.id === "profile") box(gr, hover.x, hover.y, hover.w, hover.h, C.accent);
+    if (hover && (hover.id === "profile" || hover.id === "folder")) box(gr, hover.x, hover.y, hover.w, hover.h, C.accent);
     drawGrain(gr, 0, 0, W, H);
 }
 
@@ -50,6 +50,7 @@ function on_mouse_lbtn_up(x, y) {
     const a = hits.at(x, y);
     if (a && a.id === "queue") plman.ExecutePlaylistDefaultAction(a.data.pl, a.data.index);
     else if (a && a.id === "profile") send("inspect");
+    else if (a && a.id === "folder") openFolder(T.handle);
 }
 function on_char(code) { searchChar(code); }
 function on_key_down(vk) { if (searchKey(vk)) return; if (vk === 0x20) fb.PlayOrPause(); else globalKey(vk); }

@@ -181,7 +181,7 @@ function drawLyricsView(gr) {
     }
     gr.DrawImage(layers.card.img, cardX(), dp(24), layers.card.w, layers.card.h, 0, 0, layers.card.w, layers.card.h);
     hitsCard(cardX(), dp(24));
-    if (hover && hover.id === "profile") box(gr, hover.x, hover.y, hover.w, hover.h, C.accent);
+    if (hover && (hover.id === "profile" || hover.id === "folder")) box(gr, hover.x, hover.y, hover.w, hover.h, C.accent);
     // centre
     const g = lyricsGeom();
     drawLyricsFrame(gr, g);
@@ -478,6 +478,7 @@ function on_mouse_lbtn_up(x, y) {
     if (a.id === "vis") visMenu(a.x, a.y + a.h);
     else if (a.id === "model" && a.data !== Ring.mode) { Ring.mode = a.data; setSetting("ringMode", a.data); window.Repaint(); }
     else if (a.id === "profile") inspectRequest();
+    else if (a.id === "folder") openFolder(T.handle);
     else if (a.id === "pager") { if (a.data === 0) fb.Prev(); else if (a.data === 2) fb.Next(); }
     else if (a.id === "queue") plman.ExecutePlaylistDefaultAction(a.data.pl, a.data.index);
     else if (a.id === "lyric" && T.lyrics && T.lyrics.lines[a.data] && T.lyrics.lines[a.data].t != null && fb.IsPlaying) { LYR_SCROLL.n = 0; fb.PlaybackTime = T.lyrics.lines[a.data].t; }

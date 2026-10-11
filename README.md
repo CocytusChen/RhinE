@@ -127,6 +127,7 @@ Running it again keeps the foobar2000 folder and installs the theme again.
 | Volume | click or drag the volume line; wheel over it | — |
 | Playback order | click `ORDER` | — |
 | Shuffle the whole library | `SHUFFLE ALL` beside `ORDER`, or `ORDER › Shuffle entire library`, or `MENU` | `S` |
+| Open the folder of the playing track (in the Archive: of the selected album), the file selected | `FILE` on the signal profile card, or right-click the Archive | `F` |
 | Inspect the playing album (else the focused track's) | click the cover at the left of the transport, or the *Signal profile* card (Playlists and Lyrics views); right-click the cover to show the track in its playlist | — |
 | Search | click `SEARCH ARCHIVE` and type: in the Archive it filters the albums in place (click the `FILTER` chip's × to clear), elsewhere it fills the *Search* playlist | `/`, then type; `Enter` now, `Esc` back |
 | foobar2000's main menu | `MENU` (top right) | — |

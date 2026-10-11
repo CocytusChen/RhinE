@@ -72,9 +72,11 @@ function nextTitle() {
 const CARD_TOP = 14 + 16 + 6 + 250 + 18 + 10 + 54 + 10 + 32 + 12 + 18 + 70;
 function cardHeight() { return dp(CARD_TOP + 14 + 10 + 16); }
 // profile: the card from its top to the end of the profile table (a click inspects the album in the Archive)
-const CARD_HITS = { pager: [], queue: [], profile: null };
+const CARD_HITS = { pager: [], queue: [], profile: null, folder: null };
 function hitsCard(ox, oy) {
     if (CARD_HITS.profile && T.handle) { const [x, y, w, h] = CARD_HITS.profile; hits.add("profile", ox + x, oy + y, w, h); }
+    // the FILE chip opens the track's folder (on top of the profile card, which inspects the album)
+    if (CARD_HITS.folder && T.handle) { const [x, y, w, h] = CARD_HITS.folder; hits.add("folder", ox + x, oy + y, w, h); }
     for (const [i, x, y, w, h] of CARD_HITS.pager) hits.add("pager", ox + x, oy + y, w, h, i);
     for (const [q, x, y, w, h] of CARD_HITS.queue) hits.add("queue", ox + x, oy + y, w, h, q);
 }
@@ -93,6 +95,7 @@ function drawCard(gr, w, h, kind = "pager", ghost = "INFO") {
     const chipText = `${tr("FILE")} ${T.file ? pad(T.file, 3) : "—"}`;
     const cw = labelWidth(chipText, { size: 8, weight: 600, track: .1, colour: 0, bg: 0 }) + dp(16);
     chip(gr, chipText, w - px - cw, y, dp(16), "inv", 8);
+    CARD_HITS.folder = [w - px - cw, y, cw, dp(16)];
     hline(gr, px + dp(15) + lw + dp(10), y + dp(8), w - px - cw - dp(10) - (px + dp(15) + lw + dp(10)));
     y += dp(16 + 6);
     // hero case
