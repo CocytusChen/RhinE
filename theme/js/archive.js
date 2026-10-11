@@ -136,7 +136,7 @@ function rowState(gi) {
     let r = AR.rows.get(gi);
     if (!r) {
         const sel = selIndexOf(gi);
-        r = { sel, scroll: Spring(scrollTarget(sel, arRows()[gi]), 9), pos: Spring(gi - AR.group, 9), cases: new Map() };
+        r = { sel, scroll: Spring(scrollTarget(sel, arRows()[gi]), 9), pos: Spring(gi - arrayStart(), 9), cases: new Map() };
         AR.rows.set(gi, r);
     }
     return r;
@@ -157,13 +157,6 @@ function slotsInView() {
     }
     SLOTS_IN_VIEW = { key, n: Math.max(6, n) };
     return SLOTS_IN_VIEW.n;
-}
-
-// a new size shows a different number of slots: each row scrolls again to keep its selection in view
-function archiveResized() {
-    const R = arRows();
-    for (const [gi, r] of AR.rows) if (R[gi]) r.scroll.to = scrollTarget(r.sel, R[gi]);
-    if (ARCHIVE_ON) clock.wake();
 }
 
 function selectionChanged(animate = true) {
@@ -297,9 +290,10 @@ function archiveUpdate(dt) {
     if (!G.length) return false;
     let more = stepInspection(dt);
     more = pickUpdate(dt) || more;
-    // rows: the current one, three behind it, one more fading in at the back and the one leaving towards the viewer
-    for (let gi = AR.group - 1; gi <= AR.group + 4; gi++) if (gi >= 0 && gi < G.length) rowState(gi).pos.to = gi - AR.group;
-    for (const gi of [...AR.rows.keys()]) if (gi < AR.group - 1 || gi > AR.group + 4) AR.rows.delete(gi);
+    // Keep a full viewport near the end of the library, plus a row at each edge for animation.
+    const start = arrayStart(), count = arrayGeom().count;
+    for (let gi = start - 1; gi <= start + count; gi++) if (gi >= 0 && gi < G.length) rowState(gi).pos.to = gi - start;
+    for (const gi of [...AR.rows.keys()]) if (gi < start - 1 || gi > start + count) AR.rows.delete(gi);
     for (const [gi, r] of AR.rows) {
         more = stepSpring(r.pos, dt) || more;
         more = stepSpring(r.scroll, dt) || more;
@@ -342,12 +336,12 @@ function caseWindow(r, row, pos = r.pos.x, scroll = r.scroll.x) {
     const n = row ? row.albums.length : 0;
     if (!n || W <= 0) return [0, -1];
     const k = arK(), ax = CASE_META.axes, m = CASE_META.array, S = CASE_META.array_res[0] * k, [Ox, Oy] = origin();
-    const aw = arrayW(), margin = dp(160), x = -pos * ROWP;
+    const aw = arrayW(), margin = dp(160), x = -pos * ROWP, g = arrayGeom();
     let i0 = -1, i1 = -1;
     for (let i = 0; i < n; i++) {
         const y = slotOf(row, i) - scroll;
         if (y < -30 || y > 60) continue;
-        const ox = Ox + (x * ax.x[0] + y * ax.y[0]) * k - m.origin[0] * k, oy = Oy + (x * ax.x[1] + y * ax.y[1]) * k - m.origin[1] * k;
+        const ox = Ox + (x * ax.x[0] * g.sx + y * ax.y[0]) * k - m.origin[0] * k, oy = Oy + (x * ax.x[1] * g.sy + y * ax.y[1]) * k - m.origin[1] * k;
         if (ox < aw + margin && ox + S > -margin && oy < H + margin && oy + S > -margin * 2) { if (i0 < 0) i0 = i; i1 = i; }
     }
     return i0 < 0 ? [0, -1] : [i0, i1];
@@ -380,7 +374,47 @@ function caseTargets(i, r, active, row) {
 // ------------------------------------------------------------------------------------------------------ layout
 const infoX = () => W - dp(24 + INFO_W);
 const arrayW = () => Math.max(dp(300), infoX() - dp(24));
-const origin = () => [Math.round(arrayW() * .37), H - dp(87)];
+// Preserve case size on ultrawide views; fit additional shelves across the available width.
+let ARRAY_GEOM = null;
+function arrayGeom() {
+    const aw = arrayW(), total = arRows().length;
+    const key = [W, H, CASE_DIR, STATE.arrayScale, total].join("|");
+    if (ARRAY_GEOM && ARRAY_GEOM.key === key) return ARRAY_GEOM;
+    const g = { key, wide: aw > H * 2, count: 4, x: Math.round(aw * .37), y: H - dp(87), sx: 1, sy: 1 };
+    if (g.wide) {
+        const k = arK(), ax = CASE_META.axes, meta = CASE_META.array, sz = CASE_META.array_res[0];
+        const pad = dp(48), along = (SHELF_SLOTS - 1) * PITCH;
+        const span = (along * ax.y[0] + sz) * k, pitch = ROWP * ax.x[0] * k;
+        const capacity = clamp(Math.floor((aw - pad * 2 - span) / pitch) + 1, 4, 24);
+        g.count = Math.max(1, Math.min(total || 1, capacity));
+        const used = Math.min(aw - pad * 2, span + (g.count - 1) * pitch);
+        const fill = total >= capacity, width = fill ? aw - pad * 2 : used;
+        const dx = g.count > 1 ? (width - span) / (g.count - 1) : pitch;
+        g.x = Math.round((aw + width) / 2 - (along * ax.y[0] + sz - meta.origin[0]) * k);
+        g.sx = Math.max(.1, dx / pitch);
+        // Extra shelves run across the panorama instead of disappearing above its short edge.
+        // Keep the actual case/rail sprites unchanged; only their row-to-row offset changes.
+        const top = Math.min(...meta.cover.map(p => p[1]));
+        const rise = (-along * ax.y[1] + meta.origin[1] - top + 2.6 * Math.abs(ax.z[1])) * k;
+        const room = Math.max(0, g.y - dp(92) - rise);
+        const dy = Math.min(ROWP * ax.x[1] * k, room / Math.max(1, g.count - 1));
+        g.sy = dy / (ROWP * ax.x[1] * k);
+    }
+    ARRAY_GEOM = g;
+    return g;
+}
+const arrayStart = () => arrayGeom().wide ? Math.min(AR.group, Math.max(0, arRows().length - arrayGeom().count)) : AR.group;
+const origin = () => { const g = arrayGeom(); return [g.x, g.y]; };
+function archiveResize() {
+    ARRAY_GEOM = null;
+    if (AR.layout === "grid" || !arRows().length) return;
+    const start = arrayStart();
+    for (const [gi, r] of AR.rows) {
+        r.pos.x = r.pos.to = gi - start;
+        r.scroll.x = r.scroll.to = scrollTarget(r.sel, arRows()[gi]);
+    }
+    if (ARCHIVE_ON) { requestVisibleThumbs(); clock.wake(); }
+}
 // the array grows with the view: 1 at the design's 1440 × 900 window (array 936 × 731 dp), up to 1.6 on large screens,
 // so a maximised window on a big display is filled instead of showing the same small cases in a sea of black
 const AR_REF = [936, 731];
@@ -529,14 +563,18 @@ function archiveHidden() { pickStop(); AR.inspOn = false; AR.insp = 0; ARIMG.ins
 function requestVisibleThumbs() {
     if (AR.layout === "grid") { gridThumbs(); return; }
     const G = arRows(), list = [];
-    for (let gi = AR.group; gi <= Math.min(G.length - 1, AR.group + 3); gi++) {
-        const r = rowState(gi), albums = G[gi].albums, [i0, i1] = caseWindow(r, G[gi], gi - AR.group, r.scroll.to);
+    const start = arrayStart(), count = arrayGeom().count;
+    const order = Array.from({ length: Math.min(count, G.length - start) }, (_, i) => start + i);
+    order.sort((a, b) => Math.abs(a - AR.group) - Math.abs(b - AR.group));
+    for (const gi of order) {
+        const r = rowState(gi), albums = G[gi].albums, [i0, i1] = caseWindow(r, G[gi], gi - start, r.scroll.to);
         const idx = [];
         for (let i = i0; i <= i1; i++) idx.push(i);
         idx.sort((p, q) => Math.abs(p - r.sel) - Math.abs(q - r.sel));
         idx.forEach(i => list.push(albums[i]));
     }
-    requestThumbs(list);
+    setThumbBudget(Math.max(160, list.length));
+    requestThumbs(list, Math.max(48, list.length));
 }
 
 // ------------------------------------------------------------------------------------------------------ drawing
@@ -612,12 +650,13 @@ function drawArchive(gr) {
     if (!G.length) { drawArchiveEmpty(gr); return; }
     const aw = arrayW(), [Ox, Oy] = origin(), k = arK(), meta = CASE_META.array, sz = CASE_META.array_res[0];
     const ax = CASE_META.axes, I = arrayImages();
-    const lift = inspLift(), turn = inspTurn();
-    const toScreen = it => [Ox + (it.x * ax.x[0] + it.y * ax.y[0] + it.z * ax.z[0]) * k, Oy + (it.x * ax.x[1] + it.y * ax.y[1] + it.z * ax.z[1]) * k];
+    const lift = inspLift(), turn = inspTurn(), g = arrayGeom();
+    // on an ultrawide array the rows stand further apart (sx, sy: see arrayGeom); the sprites keep their size
+    const toScreen = it => [Ox + (it.x * ax.x[0] * g.sx + it.y * ax.y[0] + it.z * ax.z[0]) * k, Oy + (it.x * ax.x[1] * g.sy + it.y * ax.y[1] + it.z * ax.z[1]) * k];
     gr.PushClip(0, 0, aw, H);
     // Shelf by shelf, back to front: a shelf stands wholly behind the shelves in front of it (the camera looks along
     // +x), so each is drawn as one layer: its rail slots and cases back to front, then its front lip if the rail has one.
-    const R = railImages(), rows = [...AR.rows].filter(([, r]) => r.pos.x > -1 && r.pos.x < 4).sort((p, q) => q[1].pos.x - p[1].pos.x);
+    const R = railImages(), rows = [...AR.rows].filter(([, r]) => r.pos.x > -1 && r.pos.x < g.count).sort((p, q) => q[1].pos.x - p[1].pos.x);
     AR.hits = [];
     let selItem = null;
     drawFloor(gr, rows, G, Ox, Oy, k, toScreen);
@@ -684,7 +723,7 @@ function drawArrayCase(gr, it, sx, sy, k, aw, I) {
         if (it.active) drawSpineLabel(gr, meta.label, ox, oy, k, it.a.no, alpha);
     }
     if (AR.topTitles && f < .5) drawTopTitle(gr, it.a, ox, oy, k, alpha, f);
-    if (it.active && it.pos < .5) AR.hits.push({ i: it.i, quad: meta.cover.map(([px, py]) => [ox + px * k, oy + py * k]) });
+    if (it.active) AR.hits.push({ i: it.i, quad: meta.cover.map(([px, py]) => [ox + px * k, oy + py * k]) });
     if (it.isSel && it.c.clear.x > .6 && AR.insp === 0) {
         const top = meta.cover[1], x1 = ox + top[0] * k + dp(4), y1 = oy + top[1] * k - dp(4), lx = x1 + dp(26), ly = y1 - dp(30);
         gr.DrawLine(x1, y1, lx, ly, HAIR, C.fg);
@@ -698,9 +737,15 @@ function drawArrayCase(gr, it, sx, sy, k, aw, I) {
 }
 
 // rows fade out towards the viewer and in at the back; rows behind are tinted towards the page (0.1 steps)
-const rowAlpha = pos => Math.round(255 * clamp(1 + pos, 0, 1) * clamp((4 - pos) / .8, 0, 1));
-// how far a row behind is tinted towards the background (0.1 steps; the floor may fade them less)
-const rowTint = pos => Math.round(clamp(.38 * clamp(pos, 0, 1) + .14 * Math.max(0, pos), 0, .8) * (FLOOR.meta && FLOOR.meta.tint != null ? FLOOR.meta.tint : 1) * 10) / 10;
+const rowAlpha = pos => Math.round(255 * clamp(1 + pos, 0, 1) * clamp((arrayGeom().count - pos) / .8, 0, 1));
+// how far a row is tinted towards the background (0.1 steps): by its place behind the front row, or on an ultrawide
+// array by its distance from the selected row; the floor may fade them less (floor.json "tint")
+const rowTint = pos => {
+    const g = arrayGeom(), floor = FLOOR.meta && FLOOR.meta.tint != null ? FLOOR.meta.tint : 1;
+    if (!g.wide) return Math.round(clamp(.38 * clamp(pos, 0, 1) + .14 * Math.max(0, pos), 0, .8) * floor * 10) / 10;
+    const distance = Math.abs(pos - (AR.group - arrayStart()));
+    return Math.round(clamp(.32 * Math.min(distance, 1) + .24 * distance / Math.max(1, g.count - 1), 0, .6) * floor * 10) / 10;
+};
 
 // The shelf's front lip, an optional look (lip-*.png, described by rail.json → lip; the shipped rail has none, so this
 // draws nothing), drawn after everything standing on the shelf, then its print on the pale face panel, mapped like the spine label (100 units per world unit along the row,
