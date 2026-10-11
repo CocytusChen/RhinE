@@ -3,7 +3,7 @@
 Newest version first. Download any version from [Releases](https://github.com/ericzhang12111-cell/RhinE/releases).
 最新版本在最上面；各版本可在 Releases 页面下载。
 
-## Unreleased
+## 1.5.0 — 2026-10-10
 
 **Added · 新增**
 - `HEARTH`, a warm colour scheme of walnut and candlelight in light and dark, made for `REAL STYLE` (and fine with any
