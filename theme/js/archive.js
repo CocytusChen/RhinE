@@ -137,6 +137,12 @@ function rowState(gi) {
     if (!r) {
         const sel = selIndexOf(gi);
         r = { sel, scroll: Spring(scrollTarget(sel, arRows()[gi]), 9), pos: Spring(gi - arrayStart(), 9), cases: new Map() };
+        // The rows move as one strip: a new row joins it where the strip is now, one row on from its nearest
+        // neighbour (and at its speed), so it slides in with the others rather than standing at its place while they
+        // are still on their way there (a RANDOM PICK crosses several shelves at a time).
+        let near = null;
+        for (const [g, o] of AR.rows) if (!near || Math.abs(g - gi) < Math.abs(near[0] - gi)) near = [g, o];
+        if (near) { r.pos.x = near[1].pos.x + (gi - near[0]); r.pos.v = near[1].pos.v; }
         AR.rows.set(gi, r);
     }
     return r;
@@ -293,7 +299,13 @@ function archiveUpdate(dt) {
     // Keep a full viewport near the end of the library, plus a row at each edge for animation.
     const start = arrayStart(), count = arrayGeom().count;
     for (let gi = start - 1; gi <= start + count; gi++) if (gi >= 0 && gi < G.length) rowState(gi).pos.to = gi - start;
-    for (const gi of [...AR.rows.keys()]) if (gi < start - 1 || gi > start + count) AR.rows.delete(gi);
+    // a row out of that range goes on with the strip and is let go once it has left the view (not while it is still
+    // on its way out, where it would vanish)
+    for (const [gi, r] of [...AR.rows]) {
+        if (gi >= start - 1 && gi <= start + count) continue;
+        r.pos.to = gi - start;
+        if (r.pos.x <= -1 || r.pos.x >= count) AR.rows.delete(gi);
+    }
     for (const [gi, r] of AR.rows) {
         more = stepSpring(r.pos, dt) || more;
         more = stepSpring(r.scroll, dt) || more;
