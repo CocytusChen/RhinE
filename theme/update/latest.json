@@ -1,29 +1,21 @@
 {
- "version": "1.4.0",
- "tag": "v1.4.0",
- "date": "2026-10-09",
+ "version": "1.5.0",
+ "tag": "v1.5.0",
+ "date": "2026-10-10",
  "notes": {
   "en": [
-   "A floor under the Archive array: FLOOR › LAB DECK in the 05 STYLE view (or MENU › Audio Archive › Archive floor) stands the shelves on a rendered lab deck, with their shadows on it, in light and dark. PLAIN keeps the page colour.",
-   "FLOOR › REAL STYLE: the Archive as one rendered scene, frosted cases in their rails on a walnut desk in warm light, each case shaded by its neighbours. It always uses the FROST case.",
-   "RANDOM PICK in the Archive (or R): the selection runs through the shelves and slows down on a random album, which is lifted out and plays (in the grid it is selected and plays).",
-   "Each case's title is printed on a strip along its top edge, so the shelves can be read from above like records in a crate (right-click the Archive to turn it off).",
-   "The case skins are lit from the right: in the Archive the cases' tops and spine sides catch the light and the gaps between them are no longer in shade, so every case stands out and the covers behind the front one stay visible (array and inspection; the profile card is unchanged).",
-   "The intro film plays every time foobar2000 starts (it is on by default; MENU › Audio Archive turns it off). Until now it was usually seen only on the first start after installing: on later starts it began before the window had a size and played unseen.",
-   "Lyrics written into the file are read in every common form: plain lyrics (without time stamps) are shown, unsynced, and scroll with the wheel; MP3 lyrics (shown by foobar2000 as UNSYNCED LYRICS) are found, timed or not. Synced lyrics online still take precedence over plain ones.",
-   "On smaller windows (such as 1366 × 768) the selected case near the end of a shelf could sit under the Archive's top bar, cut off; a shelf now scrolls far enough, and again when the window is resized.",
-   "The update check's jsDelivr fallback (for when GitHub cannot be reached) asks for the latest release rather than the main branch, which jsDelivr can serve hours out of date."
+   "HEARTH, a warm colour scheme of walnut and candlelight in light and dark, made for REAL STYLE (and fine with any floor). With REAL STYLE chosen, the 05 STYLE view offers it next to the floor.",
+   "Ultrawide screens: when the Archive is more than twice as wide as it is tall, more shelves stand side by side to fill it (up to 24), each case at its usual size (thanks to @Xuduxiu, #2).",
+   "PLAY ALBUM in the Archive shows its key, SPACE (it plays the selected album, or pauses it while it plays).",
+   "The titles on the cases' top edges and the floors' shadows cost less to draw, so a screen full of shelves stays smooth.",
+   "Playlists (ALBUM layout): clicking NO. puts a sorted playlist back in album order (disc and track). Until now, after sorting by title there was no way back."
   ],
   "zh": [
-   "档案阵列可选地面：在 05 外观 视图中选择 地面 › 实验甲板（或 菜单 › Audio Archive › 档案地面），货架立在渲染的实验甲板上并投下阴影，浅色与深色均可；纯色 保持原来的背景色。",
-   "新增写实风格（地面 › 写实风格）：档案呈现为一个渲染场景，磨砂外壳立在胡桃木桌面上的导轨里，暖光照明，每个外壳都带有相邻外壳的阴影；此模式固定使用 FROST 外壳。",
-   "档案新增 随机抽取（或按 R）：选择框在货架间跑动，逐渐减速停在一张随机专辑上，将其取出并播放（网格中则选中并播放）。",
-   "每个外壳的顶边贴有标题条，可以像翻唱片箱一样从上方读出货架上的专辑（可在档案中右键关闭）。",
-   "外壳改为从右侧打光：档案中外壳的顶面和书脊侧被照亮，外壳之间的空隙不再处于阴影中，每个外壳更立体，前排之后的封面也更清楚（阵列与查看动画；资料卡不变）。",
-   "开场动画现在每次启动 foobar2000 都会播放（默认开启，可在 菜单 › Audio Archive 中关闭）。此前通常只在安装后第一次启动时看得到：之后的启动中，动画在窗口尚无尺寸时就开始播放，因此看不到。",
-   "内嵌歌词的常见写法都能读取：不带时间轴的纯文本歌词会显示（未同步，可用滚轮浏览）；MP3 内嵌歌词（foobar2000 显示为 UNSYNCED LYRICS）无论是否带时间轴都能读到；在线有同步歌词时仍优先使用同步歌词。",
-   "在较小的窗口（如 1366 × 768）中，货架末尾附近选中的外壳可能被档案顶栏遮住；现在货架会滚动到位，窗口改变大小时也会重新滚动。",
-   "检查更新时的 jsDelivr 备用地址改为读取最新发布版本，而不是 main 分支（jsDelivr 对分支的缓存可能滞后数小时）。"
+   "新增暖色配色 HEARTH（胡桃木与烛光，浅色与深色），为写实风格而配，也可用于其他地面；选择写实风格时，05 外观 视图会在地面旁提示使用。",
+   "超宽屏：档案区域宽度超过高度两倍时，更多货架并排填满画面（最多 24 排），外壳保持原来的大小（感谢 @Xuduxiu，#2）。",
+   "档案中的 播放专辑 按钮标出了快捷键 空格（播放选中的专辑，正在播放时暂停）。",
+   "外壳顶边标题与地面阴影的绘制开销更小，满屏货架时依然流畅。",
+   "播放列表（专辑 布局）：点击 序号 即可恢复专辑顺序（按碟号、音轨号）；此前按标题排序后无法恢复。"
   ]
  }
 }
