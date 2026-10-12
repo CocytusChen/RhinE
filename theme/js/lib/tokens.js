@@ -7,6 +7,7 @@
 
 const THEME_ROOT = fb.ProfilePath + "themes\\audio-archive\\";
 const TOKENS = JSON.parse(utils.ReadTextFile(THEME_ROOT + "tokens\\tokens.json", 65001));
+TOKENS.schemes.custom = customScheme(TOKENS);   // the user's own (lib/custom.js)
 const SCALE = window.DPI / 96;
 const dp = v => Math.round(v * SCALE);
 const HAIR = Math.max(1, Math.floor(SCALE));     // 1 dp hairline in whole device pixels

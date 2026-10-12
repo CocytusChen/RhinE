@@ -8,6 +8,9 @@ Newest version first. Download any version from [Releases](https://github.com/er
 **Added · 新增**
 - `BLACKOUT`, a black case skin: black anodised aluminium, black-on-black etching, topographic lines on the spine
   and one white light (#22). 新外壳 BLACKOUT：黑色阳极氧化铝、黑色蚀刻，侧脊上有等高线纹样，一盏白色指示灯（#22）。
+- Your own colour scheme: the `CUSTOM` card in `05 STYLE` lets you pick the page, text and accent colour for light and
+  for dark; every other colour follows, and the contrast of text and accent is shown (#21). 自定义配色：在 `05 外观` 的
+  CUSTOM 卡片中分别为浅色、深色选择背景、文字与强调色，其余颜色自动推算，并显示文字与强调色的对比度（#21）。
 - `LIVEWIRE`, a colour scheme of lime signal and steel cyan: lime pages in light mode, lime type on near-black in dark.
   新配色 LIVEWIRE：荧光黄绿与钢青；浅色模式为黄绿底色，深色模式为近黑底配黄绿文字。
 

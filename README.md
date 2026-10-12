@@ -164,6 +164,7 @@ Running it again keeps the foobar2000 folder and installs the theme again.
 | Archive grid: scroll | the wheel, or drag the scroll bar at its right edge (a click on the bar jumps there) | `PgUp` `PgDn` |
 | Case skin | `MENU › Audio Archive › Case skin`, or right-click the Archive | — |
 | Colour scheme (ARCHIVE, HAZARD, FLARE, FIELD, COLD FRONT, HEARTH, LIVEWIRE) | `MENU › Audio Archive › Colour scheme`, or the `05 STYLE` view | — |
+| Your own colour scheme | the `CUSTOM` card in `05 STYLE`: pick the page, text and accent for light and dark; the rest follows, with a warning when text is hard to read | — |
 | Style: see and switch skins and schemes | the `05 STYLE` view: hover a card for its preview, click to apply | `5` |
 | Text size (90 – 150 %), Archive array scale (80 – 130 %), inspection size (100 – 150 %) | `TEXT`, `ARRAY` and `INSPECT` at the top of the `05 STYLE` view, or `MENU › Audio Archive › Text size` / `Archive array scale` / `Inspection size` | — |
 | Archive floor: the page colour, a rendered lab deck under the shelves, or REAL STYLE (the Archive as one rendered scene on a walnut desk, always with the FROST case) | `FLOOR` at the top of the `05 STYLE` view, or `MENU › Audio Archive › Archive floor` | — |

@@ -86,6 +86,8 @@ if (-not $item) {
     Write-Host "removed $target"
     $settings = Join-Path $profileDir "$Name-settings.json"
     if (Test-Path $settings) { Remove-Item $settings -Force; Write-Host "removed $settings" }
+    $custom = Join-Path $profileDir "$Name-custom"   # the custom colour scheme's presets (js/lib/custom.js)
+    if (Test-Path $custom) { Remove-Item $custom -Recurse -Force; Write-Host "removed $custom" }
 } else {
     Write-Host "'$target' does not look like this theme, left in place"
 }

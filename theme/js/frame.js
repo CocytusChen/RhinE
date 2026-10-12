@@ -174,8 +174,17 @@ function toggleMode() {
 // presets are partial layout files (columns, groups, style script) imported into Columns UI, one per colour scheme and
 // mode: each also carries the scheme's light and dark colour sets with the mode in use (so an import never changes the
 // mode), and has its accent in the style scripts
-const importLayout = (preset, scheme) =>
-    utils.Run(fb.FoobarPath + "foobar2000.exe", `/columnsui:import-quiet "${THEME_ROOT}columns\\preset-${preset}-${scheme}-${MODE}.fcl"`, "", "", 0, false);
+// The custom scheme's presets are written into the profile from templates first (lib/custom.js).
+function importLayout(preset, scheme) {
+    let dir = THEME_ROOT + "columns\\";
+    if (scheme === "custom") {
+        if (!writeCustomPresets(TOKENS.schemes.custom)) return;
+        dir = CUSTOM_DIR;
+    }
+    utils.Run(fb.FoobarPath + "foobar2000.exe", `/columnsui:import-quiet "${dir}preset-${preset}-${scheme}-${MODE}.fcl"`, "", "", 0, false);
+}
+// an edit of the custom scheme in use: its colours go to Columns UI straight away (lib/bus.js has re-derived it)
+onMessage("custom-scheme", () => { if (SCHEME === "custom") importLayout(STATE.preset, "custom"); });
 function setPreset(name) {
     STATE.preset = name;
     setSetting("preset", name);
@@ -254,7 +263,12 @@ function saveLook() {
     setSetting("mode", MODE);
 }
 function restoreLook() {
-    if (window.GetProperty("layoutSeen", false)) { saveLook(); return; }
+    if (window.GetProperty("layoutSeen", false)) {
+        // the custom scheme was edited but its colours never reached Columns UI (closed in between): import them now
+        if (readSettings().scheme === "custom" && SCHEME !== "custom") { importLayout(STATE.preset, "custom"); return; }
+        saveLook();
+        return;
+    }
     window.SetProperty("layoutSeen", true);
     const s = readSettings();
     const scheme = TOKENS.schemes[s.scheme] ? s.scheme : SCHEME, mode = s.mode === "light" || s.mode === "dark" ? s.mode : MODE;

@@ -28,6 +28,10 @@ function onMessage(type, fn) { (BUS_HANDLERS[type] = BUS_HANDLERS[type] || []).p
 // panel (frame.js) has no text of its own on screen and stays, so the layout and the intro are not restarted.
 let RELOAD_ON_LANG = true;
 onMessage("ui-lang", () => { if (RELOAD_ON_LANG) window.Reload(); });
+// the custom colour scheme was edited (05 STYLE): work it out again; frame.js imports it when it is in use. The scheme in
+// use is not looked up again here: Columns UI still has the old colours, which no longer match (on_colours_changed does
+// it once the import has landed).
+onMessage("custom-scheme", () => { TOKENS.schemes.custom = customScheme(TOKENS); window.Repaint(); });
 
 function on_notify_data(name, info) {
     if (name !== BUS) return;

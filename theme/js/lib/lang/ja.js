@@ -101,6 +101,7 @@ I18N["ja"] = {
     "SPACE": "スペース",
     "Walnut and candlelight, made for REAL STYLE": "ウォールナットとキャンドルの灯り、リアルスタイル向け", "USE HEARTH, MADE FOR REAL STYLE": "リアルスタイル向けの HEARTH を使う",
     "Lime signal and steel cyan": "ライムのシグナルとスチールシアン",
+    "Your own: pick the page, the text and the accent": "カスタム：背景・文字・アクセントを自分で選ぶ", "CUSTOM SCHEME": "カスタム配色", "Pick the page, the text and the accent; the rest follows.": "背景・文字・アクセントを選ぶと、残りの色は自動で決まります。", "PAGE": "背景", "ACCENT": "アクセント", "GOOD": "良好", "READABLE": "読める", "HARD TO READ": "読みにくい", "TEXT ON PAGE": "文字のコントラスト", "ACCENT ON PAGE": "アクセントのコントラスト", "RESET TO ARCHIVE COLOURS": "ARCHIVE の配色に戻す",
     "Black anodised aluminium, black-on-black etching, topographic lines, one white light": "黒いアルマイト仕上げのアルミ、黒の刻印、等高線の模様、白いランプがひとつ",
     "RANDOM PICK": "ランダムピック", "PICKING …": "選んでいます …", "Random pick": "ランダムピック", "Titles on the cases' top edges": "ケースの上端にタイトルを表示",
     "Case under the mouse": "マウスの下のケース", "Outline it": "枠線を表示", "Show its title": "タイトルを表示", "Nothing": "表示しない",

@@ -100,6 +100,7 @@ I18N["zh-CN"] = {
     "SPACE": "空格",
     "Walnut and candlelight, made for REAL STYLE": "胡桃木与烛光，为写实风格而配", "USE HEARTH, MADE FOR REAL STYLE": "使用为写实风格配的 HEARTH 配色",
     "Lime signal and steel cyan": "荧光黄绿与钢青",
+    "Your own: pick the page, the text and the accent": "自定义：自选背景、文字与强调色", "CUSTOM SCHEME": "自定义配色", "Pick the page, the text and the accent; the rest follows.": "选好背景、文字与强调色，其余颜色自动推算。", "PAGE": "背景", "ACCENT": "强调色", "GOOD": "良好", "READABLE": "可读", "HARD TO READ": "难以阅读", "TEXT ON PAGE": "文字对比度", "ACCENT ON PAGE": "强调色对比度", "RESET TO ARCHIVE COLOURS": "恢复为 ARCHIVE 配色",
     "Black anodised aluminium, black-on-black etching, topographic lines, one white light": "黑色阳极氧化铝、黑色蚀刻、等高线纹样、一盏白色指示灯",
     "RANDOM PICK": "随机抽取", "PICKING …": "抽取中 …", "Random pick": "随机抽取", "Titles on the cases' top edges": "在外壳顶边显示标题",
     "Case under the mouse": "鼠标下的外壳", "Outline it": "显示描边", "Show its title": "显示标题", "Nothing": "不显示",

@@ -38,6 +38,7 @@ const SCHEME_ABOUT = {
     front: "Cold front blue",
     hearth: "Walnut and candlelight, made for REAL STYLE",
     livewire: "Lime signal and steel cyan",
+    custom: "Your own: pick the page, the text and the accent",
 };
 const STY = { img: new Map(), hover: null, gen: 0, shown: false };   // img: skin id -> { array, hero }
 
@@ -103,7 +104,7 @@ function drawMock(gr, x, y, w, h, t) {
 // card size: as large as the width allows and the height still fits every skin row plus the scheme row
 function styleGeom(nSkins = 10, nSchemes = 5) {
     const m = dp(48), top = dp(62), gap = dp(16), lx1 = Math.round(W * .62), lw = lx1 - m;
-    const cols = Math.max(5, Math.min(7, Math.max(Math.ceil(nSkins / 2), nSchemes)));   // the schemes in one row
+    const cols = Math.max(5, Math.min(8, Math.max(Math.ceil(nSkins / 2), nSchemes)));   // the schemes in one row
     const rows = Math.ceil(nSkins / cols), srows = Math.ceil(nSchemes / cols);
     const byW = (lw - (cols - 1) * gap) / cols;
     const avail = H - top - dp(24) - dp(30) * 3 - dp(10) * 2 - dp(30) - dp(30);   // three section heads, the DISPLAY row
@@ -275,6 +276,7 @@ function drawStylePreview(gr, g, skins) {
         }
         return;
     }
+    if (!hv && SCHEME === "custom") { drawCustomEditor(gr, x0, y0 + dp(30), w, y1); return; }
     const s = hv ? skins.find(k => k.id === hv.id) : skins.find(k => k.id === STATE.skin);
     if (!s) return;
     const e = skinImages(s), ph = y1 - y0 - dp(150);
@@ -297,8 +299,58 @@ function drawStylePreview(gr, g, skins) {
     label(gr, `${tr("CASE SKIN")}  ${pad(skins.indexOf(s) + 1, 2)} / ${pad(skins.length, 2)}`, st(STY_ST.tiny, C["text-muted"]), x0, ay + Math.round(dp(26) * TEXT_SCALE));
 }
 
+// The custom scheme's editor: for light and for dark, a preview and the three colours to pick (Windows' colour
+// dialog); text and accent are measured against the page (WCAG contrast; text wants 7 : 1, 4.5 at the least).
+function drawCustomEditor(gr, x0, y, w, y1) {
+    const sc = TOKENS.schemes.custom, u = customChoice();
+    label(gr, tr("CUSTOM SCHEME"), st(STY_ST.big, C.fg), x0, y);
+    y += labelHeight(STY_ST.big) + dp(6);
+    text(gr, tr("Pick the page, the text and the accent; the rest follows."), 10, 500, C["fg-soft"], x0, y, w, dp(18));
+    y += dp(30);
+    const names = [["bg", "PAGE"], ["fg", "TEXT"], ["accent", "ACCENT"]], mh = Math.max(dp(60), Math.min(Math.round(w * .3), Math.round((y1 - y - dp(260)) / 2)));
+    for (const m of ["light", "dark"]) {
+        label(gr, tr(m.toUpperCase()), st(STY_ST.sec, C.fg), x0, y);
+        y += dp(24);
+        gr.PushClip(x0, y, w, mh);   // the mock is drawn for a card's proportions: a wide one runs past its foot
+        drawMock(gr, x0, y, w, mh, sc[m]);
+        gr.PopClip();
+        box(gr, x0, y, w, mh, C["line-faint"]);
+        y += mh + dp(10);
+        const cw = Math.floor((w - dp(16)) / 3);
+        names.forEach(([k, t], i) => {
+            const x = x0 + i * (cw + dp(8)), h = dp(30), hov = STY.cpick === m + "|" + k;
+            gr.FillSolidRect(x, y, cw, h, C.panel);
+            gr.FillSolidRect(x + dp(6), y + dp(6), h - dp(12), h - dp(12), argb(u[m][k]));
+            box(gr, x + dp(6), y + dp(6), h - dp(12), h - dp(12), C["line-dim"]);
+            label(gr, tr(t), st(STY_ST.tiny, C["text-muted"], C.panel), x + h, y + dp(4));
+            label(gr, u[m][k].toUpperCase(), st(STY_ST.tiny, C.fg, C.panel), x + h, y + dp(16));
+            box(gr, x, y, cw, h, hov ? C.accent : C["line-faint"]);
+            hits.add("sty-cpick", x, y, cw, h, m + "|" + k);
+        });
+        y += dp(38);
+        const tc = contrast(sc[m].fg, sc[m].bg), ac = contrast(sc[m].accent, sc[m].bg);
+        const verdict = tc >= 7 ? tr("GOOD") : tc >= 4.5 ? tr("READABLE") : tr("HARD TO READ");
+        label(gr, `${tr("TEXT ON PAGE")}  ${tc.toFixed(1)} : 1  ·  ${verdict}`, st(STY_ST.tiny, tc >= 4.5 ? C["fg-soft"] : C.accent), x0, y);
+        label(gr, `${tr("ACCENT ON PAGE")}  ${ac.toFixed(1)} : 1`, st(STY_ST.tiny, C["text-muted"]), x0 + Math.round(w / 2), y);
+        y += dp(30);
+    }
+    const t = tr("RESET TO ARCHIVE COLOURS"), s = st(STY_ST.tog, C.fg), bw = labelWidth(t, s) + dp(24), bh = dp(22);
+    box(gr, x0, y, bw, bh, C["line-dim"]);
+    label(gr, t, s, x0 + dp(12), y + Math.round((bh - labelHeight(STY_ST.tog)) / 2));
+    hits.add("sty-creset", x0, y, bw, bh);
+}
+// a new custom colour: saved, worked out here and in every other panel (lib/bus.js), imported by frame.js
+function setCustom(u) {
+    setSetting("customScheme", u, true);
+    TOKENS.schemes.custom = customScheme(TOKENS);
+    send("custom-scheme");
+    window.Repaint();
+}
+
 // ------------------------------------------------------------------------------------------------------- input
 function styleMouseMove(a) {
+    const cp = a && a.id === "sty-cpick" ? a.data : null;
+    if (cp !== (STY.cpick || null)) { STY.cpick = cp; window.Repaint(); }
     const h = a && (a.id === "sty-skin" || a.id === "sty-scheme") ? { kind: a.id === "sty-skin" ? "skin" : "scheme", id: a.data }
         : a && a.id === "sty-intro" ? { kind: "intro", id: "" } : null;
     const o = STY.hover;
@@ -315,4 +367,13 @@ function styleClick(a) {
     else if (a.id === "sty-inspect" && a.data !== STATE.inspectScale) send("inspect-scale", a.data);
     else if (a.id === "sty-floor" && a.data !== STATE.floor) send("floor", a.data);
     else if (a.id === "sty-hearth") send("scheme", "hearth");
+    else if (a.id === "sty-cpick") {
+        const [m, k] = a.data.split("|"), u = customChoice(), c = utils.ColourPicker(window.ID, argb(u[m][k]));
+        if (typeof c !== "number" || c === -1) return;
+        const hex = "#" + (c & 0xFFFFFF).toString(16).padStart(6, "0");
+        if (hex === u[m][k]) return;
+        u[m][k] = hex;
+        setCustom(u);
+    }
+    else if (a.id === "sty-creset") setCustom(JSON.parse(JSON.stringify(CUSTOM_START)));
 }
