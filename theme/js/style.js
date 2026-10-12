@@ -36,6 +36,7 @@ const SCHEME_ABOUT = {
     field: "Fresh green on green-tinted paper",
     front: "Cold front blue",
     hearth: "Walnut and candlelight, made for REAL STYLE",
+    livewire: "Lime signal and steel cyan",
 };
 const STY = { img: new Map(), hover: null, gen: 0, shown: false };   // img: skin id -> { array, hero }
 
