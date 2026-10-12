@@ -205,9 +205,11 @@ function readDsp() {
     return true;
 }
 readDsp();
-// updates: a check a day at most, a few seconds after the start; MENU › Audio Archive › Check for updates asks now and
-// says what it found
-window.SetTimeout(() => { if (updateDue()) checkUpdate(j => { if (j) window.Repaint(); }); }, 8000);
+// updates: a check a day at most, a few seconds after the start and then while foobar2000 stays open (looked at every
+// hour); MENU › Audio Archive › Check for updates asks now and says what it found
+const autoCheck = () => { if (updateDue()) checkUpdate(j => { if (j) window.Repaint(); }); };
+window.SetTimeout(autoCheck, 8000);
+window.SetInterval(autoCheck, 3600 * 1000);
 onMessage("update-state", () => { refreshUpdate(); window.Repaint(); });
 onMessage("update-check", () => checkUpdate(j => {
     if (!j) { fb.ShowPopupMessage(tr("Could not check for updates: GitHub and jsDelivr did not answer. The releases are at {0}", releasePage()), "Audio Archive"); return; }

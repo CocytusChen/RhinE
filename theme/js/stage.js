@@ -323,6 +323,33 @@ function analysisLines() {
 }
 
 // ------------------------------------------------------------------------------------------------------ lyrics
+// A lyric line in the column: on one line, shrunk (by `step`) down to `min` dp if need be; still too wide, it wraps onto
+// up to `most` lines, shrinking further down to `floor` if it needs more (the last line ends in … when even that is not
+// enough). { lines, f, lh }
+function lyricFit(gr, text, size, min, step, weight, w, most = 2, floor = min) {
+    let f = fontFor(text, size, weight);
+    while (size > min && gr.CalcTextWidth(text, f) > w) f = fontFor(text, size = Math.max(min, size - step), weight);
+    if (gr.CalcTextWidth(text, f) <= w) return { lines: [text], f, lh: Math.ceil(f.Height) };
+    let lines = wrapLines(gr, text, f, w);
+    while (lines.length > most && size > floor) { f = fontFor(text, size = Math.max(floor, size - step), weight); lines = wrapLines(gr, text, f, w); }
+    if (lines.length > most) lines = [...lines.slice(0, most - 1), lines.slice(most - 1).join(isCJK(text) ? "" : " ")];
+    return { lines, f, lh: Math.ceil(f.Height) };
+}
+// the lines `text` wraps into; none starts with closing punctuation (it stays at the end of the line before)
+function wrapLines(gr, text, f, w) {
+    const out = gr.EstimateLineWrap(text, f, w).filter((_, j) => j % 2 === 0);
+    for (let j = 1; j < out.length; j++) {
+        const m = out[j].match(/^[，。、！？：；）」』,.!?:;)]+/);
+        if (m) { out[j - 1] += m[0]; out[j] = out[j].slice(m[0].length).trimStart(); }
+    }
+    return out.filter(Boolean);
+}
+function drawFit(gr, fit, colour, x, cy, w) {
+    const n = fit.lines.length, y0 = Math.round(cy - n * fit.lh / 2);
+    // only the last line may end in … (a line before it keeps the punctuation it was given, hanging at the edge)
+    fit.lines.forEach((t, j) => gr.DrawText(t, fit.f, colour, x - dp(8), y0 + j * fit.lh, w + dp(16), fit.lh, j === n - 1 ? DT_CENTER_SINGLE | DT_ELLIPSIS : DT_CENTER_SINGLE));
+}
+
 // the current line large in the middle with its translation under it; earlier lines above and later ones below, fading
 // with distance; the block slides up by one line when the next line starts
 function drawLyrics(gr, g) {
@@ -336,12 +363,14 @@ function drawLyrics(gr, g) {
         lyrIdx = i;
     }
     const o = lyrOff.x, cx = g.cx, cy = g.cy, cur = L[i], hasTr = !!(cur && cur.a && cur.b), left = cx - g.cw / 2;
+    // the current line on two lines pushes the ones after it down
+    const curFit = cur ? lyricFit(gr, cur.a || cur.b, 30, 22, 2, 700, g.cw, 3, 18) : null, extra = curFit ? (curFit.lines.length - 1) * curFit.lh : 0;
     lyrBar = null;
-    gr.PushClip(g.x0 + HAIR, 0, g.x1 - g.x0 - HAIR, H - dp(70));
+    gr.PushClip(g.x0 + HAIR, dp(52), g.x1 - g.x0 - HAIR, H - dp(122));   // under the LYRICS MONITOR head
     for (let k = -4; k <= 5; k++) {
         const line = L[i + k];
         if (!line) continue;
-        const off = k * pitch + (k > 0 ? dp(hasTr ? 34 : 8) : 0), y = cy + off + o, a = line.a || line.b;
+        const off = k * pitch + (k > 0 ? dp(hasTr ? 34 : 8) + extra : 0), y = cy + off + o, a = line.a || line.b;
         if (y > dp(60) && y < H - dp(90)) hits.add("lyric", left, Math.round(y - pitch / 2), g.cw, pitch, i + k);   // a whole row each
         // the sung line, when scrolled away from the middle: an orange mark to its left
         if (scrolled && i + k === sung && k !== 0) {
@@ -349,16 +378,15 @@ function drawLyrics(gr, g) {
             gr.FillSolidRect(Math.round(cx - tw / 2 - dp(22)), Math.round(y - dp(3)), dp(6), dp(6), C.accent);
         }
         if (k === 0) {
-            // the line shrinks (down to 18 dp) rather than being cut short when it is wider than the column
-            let size = 30, fa = fontFor(a, size, 700);
-            while (size > 18 && gr.CalcTextWidth(a, fa) > g.cw) fa = fontFor(a, size -= 2, 700);
-            gr.DrawText(a, fa, scrolled ? C["fg-soft"] : C.fg, left, y - dp(24), g.cw, dp(46), DT_CENTER_SINGLE | DT_ELLIPSIS);
-            if (hasTr) gr.DrawText(line.b.toUpperCase(), fontFor(line.b, 13, 500), C["fg-soft"], left, y + dp(22), g.cw, dp(22), DT_CENTER_SINGLE | DT_ELLIPSIS);
-            const wa = Math.min(g.cw, gr.CalcTextWidth(a, fa));
+            // the line shrinks (down to 22 dp) when it is wider than the column, then wraps onto a second line
+            const fa = curFit.f;
+            drawFit(gr, curFit, scrolled ? C["fg-soft"] : C.fg, left, y - dp(1) + extra / 2, g.cw);
+            if (hasTr) gr.DrawText(line.b.toUpperCase(), fontFor(line.b, 13, 500), C["fg-soft"], left, y + dp(22) + extra, g.cw, dp(22), DT_CENTER_SINGLE | DT_ELLIPSIS);
+            const wa = Math.min(g.cw, Math.max(...curFit.lines.map(t => gr.CalcTextWidth(t, fa))));
             if (!synced) continue;
             // karaoke rule under the line (and its translation): a hairline, filled in orange through the line's time
             const ftr = hasTr ? fontFor(line.b, 13, 500) : null, wb = ftr ? gr.CalcTextWidth(line.b.toUpperCase(), ftr) : 0;
-            const rw = Math.min(g.cw - dp(40), Math.max(wa, wb)), ry = Math.round(y + dp(hasTr ? 52 : 30));
+            const rw = Math.min(g.cw - dp(40), Math.max(wa, wb)), ry = Math.round(y + dp(hasTr ? 52 : 30) + extra);
             const next = L[i + 1] ? L[i + 1].t : line.t + 8, prog = clamp((el - line.t) / Math.max(.1, next - line.t), 0, 1);
             gr.FillSolidRect(cx - rw / 2, ry, rw, HAIR, C.hair);
             if (!scrolled) {
@@ -371,10 +399,7 @@ function drawLyrics(gr, g) {
                 gr.DrawText(`${fmtTime(line.t)}.${pad(Math.floor(line.t % 1 * 100), 2)}`, font(9, 500), C["text-muted"], cx - wa / 2 - dp(170), y - dp(9), dp(118), dp(16), DT_RIGHT_SINGLE);
         } else {
             const d = Math.abs(off + o) / pitch;
-            let size = k < 0 ? 17 : 18, fo = fontFor(a, size, 500);
-            while (size > 12 && gr.CalcTextWidth(a, fo) > g.cw) fo = fontFor(a, --size, 500);
-            gr.DrawText(a, fo, withAlpha(k < 0 ? C["text-muted"] : C["fg-soft"], clamp(1.05 - d * .19, .1, .85)),
-                left, y - dp(16), g.cw, dp(32), DT_CENTER_SINGLE | DT_ELLIPSIS);
+            drawFit(gr, lyricFit(gr, a, k < 0 ? 17 : 18, 14, 1, 500, g.cw, 2, 12), withAlpha(k < 0 ? C["text-muted"] : C["fg-soft"], clamp(1.05 - d * .19, .1, .85)), left, y, g.cw);
         }
     }
     gr.PopClip();

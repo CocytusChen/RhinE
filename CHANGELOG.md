@@ -11,6 +11,14 @@ Newest version first. Download any version from [Releases](https://github.com/er
   打开所在文件夹：按 `F`（或点击信号资料卡片上的 `文件`）打开正在播放曲目所在的文件夹并选中该文件；在档案中，按 `F` 或右键 ›
   `打开所在文件夹` 打开选中专辑的文件夹。
 
+**Changed · 改进**
+- The update check also runs while foobar2000 stays open (once a day, as at start), so the `UPDATE` chip appears without
+  a restart (#14). 检查更新在 foobar2000 一直开着时也会进行（与启动时一样每天一次），无需重启即可看到 `更新` 标签（#14）。
+
+**Fixed · 修复**
+- Lyrics: a line too long for the column wraps onto a second (the current line onto up to three) instead of ending in
+  `…` (#15). 歌词：过长的歌词行会换行显示（当前行最多三行），不再以 `…` 截断（#15）。
+
 ## 1.5.1 — 2026-10-11
 
 **Fixed · 修复**
