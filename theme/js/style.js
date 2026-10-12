@@ -18,6 +18,7 @@ const STY_ST = {
 };
 // one line about each built-in skin (a hand-installed skin shows its folder name only)
 const SKIN_ABOUT = {
+    blackout: "Black anodised aluminium, black-on-black etching, topographic lines, one white light",
     marble: "White marble specimen case, frosted polymer edges, orange index tab",
     hazard: "Carbon body, black rubber edges, yellow-and-black stripe band, signal yellow tab",
     white: "Soft matte white plastics and white metal, frosted silver tab",

@@ -642,13 +642,15 @@ function drawRailSlot(gr, it, sx, sy, k, aw) {
 
 // "ARC / 0269" printed on the spine label (a 100 × 60 box mapped onto the label quad)
 const LABEL_FONTS = { a: null, b: null };
+// a skin may print its labels in its own colours (case.json "skin": labelInk, topPaper, topInk), as a black case does
+const skinInk = (key, def) => CASE_META.skin && CASE_META.skin[key] ? argb(CASE_META.skin[key]) : def;
 function drawSpineLabel(gr, q, ox, oy, k, no, alpha = 255) {
     if (!LABEL_FONTS.a) { LABEL_FONTS.a = d2d.Font("Geist Mono SemiBold", 15, 0); LABEL_FONTS.b = d2d.Font("Geist Mono", 22, 1); }
     QM[0] = (q[1][0] - q[0][0]) * k / 100; QM[1] = (q[1][1] - q[0][1]) * k / 100;
     QM[2] = (q[3][0] - q[0][0]) * k / 60; QM[3] = (q[3][1] - q[0][1]) * k / 60;
     QM[4] = ox + q[0][0] * k; QM[5] = oy + q[0][1] * k;
     gr.SetTransform(QM);
-    const ink = withAlpha(0xFF1B1C18, alpha / 255);
+    const ink = withAlpha(skinInk("labelInk", 0xFF1B1C18), alpha / 255);
     gr.DrawText("ARC", LABEL_FONTS.a, ink, 8, 6, 90, 20, DT_SINGLE);
     gr.DrawText(pad(no, 4), LABEL_FONTS.b, ink, 8, 28, 92, 28, DT_SINGLE);
     gr.ResetTransform();
@@ -665,7 +667,7 @@ function drawTopTitle(gr, a, ox, oy, k, alpha, f) {
     const o = at(T.x0, T.y), u = at(T.x0 + 1, T.y), v = at(T.x0, T.y - 1);
     if (Math.hypot(v[0] - o[0], v[1] - o[1]) * T.y * 2 < 5) return;   // too small to read
     QM[0] = (u[0] - o[0]) / 100; QM[1] = (u[1] - o[1]) / 100; QM[2] = (v[0] - o[0]) / 100; QM[3] = (v[1] - o[1]) / 100; QM[4] = o[0]; QM[5] = o[1];
-    const img = topStrip((a.title || tr("UNTITLED")).toUpperCase()), w = (T.x1 - T.x0) * 100, h = T.y * 200;
+    const img = topStrip((a.title || tr("UNTITLED")).toUpperCase(), skinInk("topPaper", TOP_PAPER), skinInk("topInk", TOP_INK)), w = (T.x1 - T.x0) * 100, h = T.y * 200;
     gr.SetTransform(QM);
     gr.DrawImage(img, 0, 0, w, h, 0, 0, img.Width, img.Height, 0, alpha);
     if (f > 0) gr.FillSolidRect(0, 0, w, h, withAlpha(fadeBg(), f * alpha / 255));   // tinted like the row
@@ -674,20 +676,21 @@ function drawTopTitle(gr, a, ox, oy, k, alpha, f) {
 // Each title is drawn once into a small bitmap (the strip at TOP_RES px per unit) and that is mapped onto the case: a
 // screen of shelves (a dozen on an ultrawide array) lays out no text while it moves. Kept for the most recent titles.
 const TOP_RES = 1.5, TOP_KEEP = 320, TOP_IMG = new Map();
-function topStrip(t) {
-    let img = TOP_IMG.get(t);
-    if (img) { TOP_IMG.delete(t); TOP_IMG.set(t, img); return img; }
+function topStrip(t, paper = TOP_PAPER, ink = TOP_INK) {
+    const key = `${t}|${paper}|${ink}`;
+    let img = TOP_IMG.get(key);
+    if (img) { TOP_IMG.delete(key); TOP_IMG.set(key, img); return img; }
     const T = TOP_STRIP, w = (T.x1 - T.x0) * 100, h = T.y * 200;
     if (!LABEL_FONTS.top) { LABEL_FONTS.top = d2d.Font("Geist Mono SemiBold", 17, 0); LABEL_FONTS.topC = d2d.Font("Microsoft YaHei UI", 18, 1); }
     img = d2d.CreateImage(Math.ceil(w * TOP_RES), Math.ceil(h * TOP_RES));
     const g = img.GetGraphics();
     g.SetTransform(new Float32Array([TOP_RES, 0, 0, TOP_RES, 0, 0]));
-    g.FillSolidRect(0, 0, w, h, TOP_PAPER);
+    g.FillSolidRect(0, 0, w, h, paper);
     g.FillSolidRect(0, 0, 4, h, C.accent);
-    g.DrawText(t, isCJK(t) ? LABEL_FONTS.topC : LABEL_FONTS.top, TOP_INK, 12, 0, w - 20, h, DT_SINGLE | DT_ELLIPSIS);
+    g.DrawText(t, isCJK(t) ? LABEL_FONTS.topC : LABEL_FONTS.top, ink, 12, 0, w - 20, h, DT_SINGLE | DT_ELLIPSIS);
     g.ResetTransform();
     img.ReleaseGraphics(g);
-    TOP_IMG.set(t, img);
+    TOP_IMG.set(key, img);
     if (TOP_IMG.size > TOP_KEEP) TOP_IMG.delete(TOP_IMG.keys().next().value);
     return img;
 }

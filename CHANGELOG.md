@@ -6,6 +6,8 @@ Newest version first. Download any version from [Releases](https://github.com/er
 ## Unreleased
 
 **Added · 新增**
+- `BLACKOUT`, a black case skin: black anodised aluminium, black-on-black etching, topographic lines on the spine
+  and one white light (#22). 新外壳 BLACKOUT：黑色阳极氧化铝、黑色蚀刻，侧脊上有等高线纹样，一盏白色指示灯（#22）。
 - `LIVEWIRE`, a colour scheme of lime signal and steel cyan: lime pages in light mode, lime type on near-black in dark.
   新配色 LIVEWIRE：荧光黄绿与钢青；浅色模式为黄绿底色，深色模式为近黑底配黄绿文字。
 

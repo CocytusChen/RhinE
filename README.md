@@ -9,7 +9,7 @@
 
 An archive terminal for listening: Swiss typography, a monochrome palette with one accent colour, and a sci-fi layer —
 your albums as rendered specimen cases on shelves, a Möbius signal ring that pulses with the music, synced lyrics
-(fetched online when your files have none), ten case skins and six colour schemes in light and dark. Windows,
+(fetched online when your files have none), eleven case skins and seven colour schemes in light and dark. Windows,
 foobar2000 v2 with Columns UI and JSplitter.
 
 [![YouTube Video](https://img.shields.io/badge/YouTube-Watch_Video-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/playlist?list=PLYhA3n8CTLnA&si=daRU0tDz3rFgFB_9)
@@ -56,8 +56,8 @@ What changed in each version: [CHANGELOG.md](CHANGELOG.md).
 Five views: **Archive** (every album, or every track, as a rendered specimen case on shelves, or a cover grid),
 **Playlists** (playlist manager, track rail, the native playlist in two presets, a profile card with the queue),
 **Lyrics** (synced lyrics from your files or fetched online, with a translation when they are in another language),
-**Signal** (a rendered ∞ ring, spectrum and the whole-track waveform, or a Classic player screen) and **Style** (ten
-case skins and six colour schemes, each in light and dark). A pre-rendered intro film, scan transitions, grain and a
+**Signal** (a rendered ∞ ring, spectrum and the whole-track waveform, or a Classic player screen) and **Style** (eleven
+case skins and seven colour schemes, each in light and dark). A pre-rendered intro film, scan transitions, grain and a
 Reduce motion option. The interface is in English, Simplified Chinese or Japanese.
 
 ## Requirements
@@ -230,7 +230,7 @@ in `<profile>\audio-archive-cache\library.db`, so the view appears at once on th
 changes by itself; cover thumbnails are extracted once in the background and cached in
 `<profile>\audio-archive-cache\covers\`. Without media library folders the Archive shows the contents of all
 playlists instead (it says so under the buttons). `PLAY ALBUM` and `OPEN ALBUM` fill one playlist, *Archive · Album*,
-which they reuse. **Case skins** change the look of the specimen cases (Archive and profile cards): the theme ships ten
+which they reuse. **Case skins** change the look of the specimen cases (Archive and profile cards): the theme ships eleven
 (the `05 STYLE` view shows them all). The Archive keys work when the Archive has keyboard focus (click it once).
 
 **Search** updates an autoplaylist called *Search* 300 ms after you stop typing: every word must appear in the title,
