@@ -3,6 +3,12 @@
 Newest version first. Download any version from [Releases](https://github.com/ericzhang12111-cell/RhinE/releases).
 最新版本在最上面；各版本可在 Releases 页面下载。
 
+## Unreleased
+
+**Added · 新增**
+- `LIVEWIRE`, a colour scheme of lime signal and steel cyan: lime pages in light mode, lime type on near-black in dark.
+  新配色 LIVEWIRE：荧光黄绿与钢青；浅色模式为黄绿底色，深色模式为近黑底配黄绿文字。
+
 ## 1.6.1 — 2026-10-12
 
 **Changed · 改进**

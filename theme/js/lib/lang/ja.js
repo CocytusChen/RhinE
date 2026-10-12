@@ -100,6 +100,7 @@ I18N["ja"] = {
     "Open containing folder": "フォルダーを開く",
     "SPACE": "スペース",
     "Walnut and candlelight, made for REAL STYLE": "ウォールナットとキャンドルの灯り、リアルスタイル向け", "USE HEARTH, MADE FOR REAL STYLE": "リアルスタイル向けの HEARTH を使う",
+    "Lime signal and steel cyan": "ライムのシグナルとスチールシアン",
     "RANDOM PICK": "ランダムピック", "PICKING …": "選んでいます …", "Random pick": "ランダムピック", "Titles on the cases' top edges": "ケースの上端にタイトルを表示",
     "Case under the mouse": "マウスの下のケース", "Outline it": "枠線を表示", "Show its title": "タイトルを表示", "Nothing": "表示しない",
     "White marble specimen case, frosted polymer edges, orange index tab": "白い大理石の標本ケース、すりガラス調の縁、オレンジのインデックスタブ",
