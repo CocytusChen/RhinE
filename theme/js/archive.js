@@ -173,10 +173,12 @@ function selectionChanged(animate = true) {
     setSetting("archiveSel", JSON.stringify({ key: AR.selAlbum }));
     const r = AR.rows.get(AR.group), n = g ? g.albums.length : 0, w = Math.max(2, String(n).length);
     const sel = pad(r ? r.sel + 1 : 0, w), gno = pad(AR.group + 1, 2), no = pad(a ? a.no : 0, 4);
-    if (animate) { setRoll(AR.selRoll, sel); setRoll(AR.groupRoll, gno); setRoll(AR.noRoll, no); }
+    // during a RANDOM PICK run the file panel stays as it is (redrawing it on every hop and every frame of its rolling
+    // number cost 20 - 35 ms a frame); it shows the pick once it lands
+    const run = !!PICK.steps;
+    if (animate) { setRoll(AR.selRoll, sel); setRoll(AR.groupRoll, gno); if (!run) setRoll(AR.noRoll, no); }
     else { AR.selRoll = Roll(sel); AR.groupRoll = Roll(gno); AR.noRoll = Roll(no); }
-    AR.title = a && animate ? Scramble(a.title || tr("UNTITLED")) : null;
-    AR.dirtyInfo = true;
+    if (!run) { AR.title = a && animate ? Scramble(a.title || tr("UNTITLED")) : null; AR.dirtyInfo = true; }
     if (AR.layout === "grid") GRID.reveal = true;   // the grid scrolls to a selection made elsewhere (keys, catalog)
     if (ARCHIVE_ON) { requestVisibleThumbs(); clock.wake(); }
 }
@@ -238,6 +240,7 @@ function pickStep(s) {
     if (s.done) {
         PICK.steps = null;
         if (!curAlbum()) return;
+        selectionChanged();   // the file panel catches up
         if (AR.layout !== "grid") { AR.inspOn = true; inspectImages(); }
         playAlbum();
         clock.wake(); window.Repaint();
