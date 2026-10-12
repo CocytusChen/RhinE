@@ -10,6 +10,9 @@ Newest version first. Download any version from [Releases](https://github.com/er
   the file selected; in the Archive, `F` or right-click › `Open containing folder` opens the selected album's.
   打开所在文件夹：按 `F`（或点击信号资料卡片上的 `文件`）打开正在播放曲目所在的文件夹并选中该文件；在档案中，按 `F` 或右键 ›
   `打开所在文件夹` 打开选中专辑的文件夹。
+- Archive: hold the album index under the shelf and drag along it; the album under the mouse is named as you go and
+  releasing selects it. Hovering the index names the album too (#8). 档案：在货架下方的专辑索引上按住拖动，实时显示经过的专辑名，
+  松开即选中；鼠标悬停在索引上也会显示专辑名（#8）。
 
 **Changed · 改进**
 - The update check also runs while foobar2000 stays open (once a day, as at start), so the `UPDATE` chip appears without

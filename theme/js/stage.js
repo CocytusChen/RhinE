@@ -465,10 +465,12 @@ function drawAlert(gr, g, a) {
 function on_mouse_lbtn_down(x, y) {
     const a = hits.at(x, y);
     if (STATE.view === "archive" && AR.layout === "grid" && a && a.id === "grid-bar") gridBarDown(y, a);
+    if (STATE.view === "archive" && AR.layout !== "grid" && a && a.id === "ar-ruler") rulerDown(x);
 }
 function on_mouse_move(x, y, mask) {
     // (a drag whose button went up outside the panel ends at the next move)
     if (GRID.drag) { if (mask & 0x0001) gridBarMove(y); else gridBarUp(); return; }
+    if (AR.rulerDrag) { if (mask & 0x0001) rulerMove(x); else rulerUp(); return; }
     const a = hits.at(x, y), onCase = STATE.view === "archive" && archiveMouseMove(x, y, a);
     if (STATE.view === "style") styleMouseMove(a);
     window.SetCursor(a || onCase ? 32649 : 32512);
@@ -496,6 +498,7 @@ function on_mouse_rbtn_up(x, y, mask) {
 }
 function on_mouse_lbtn_up(x, y) {
     if (GRID.drag) { gridBarUp(); return; }
+    if (AR.rulerDrag) { rulerUp(); return; }
     const a = hits.at(x, y);
     if (STATE.view === "archive") { archiveClick(x, y, a); return; }
     if (STATE.view === "style") { styleClick(a); return; }

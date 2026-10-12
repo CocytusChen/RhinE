@@ -43,6 +43,7 @@ const AR = {
     selAlbum: "",                  // key of the selected album (survives re-indexing, regrouping and the layout switch)
     wantKey: "",                   // a selection waiting for its item to be listed (see placeSelection)
     hover: -1, hoverTick: -1, hits: [], from: [0, 0], infoHover: -1,
+    rulerDrag: false,              // the album index held down: the album under the mouse is named, a release selects it
     insp: 0, inspOn: false,        // inspection timeline: 0 in the row · 1 lifted out · 2 square-on in front
     selRoll: Roll("01"), groupRoll: Roll("01"), noRoll: Roll("0000"),
     title: null, tracks: { key: "", rows: [], total: 0 },
@@ -923,6 +924,25 @@ function drawRuler(gr) {
     gr.PopClip();
     AR.rulerGeom = { x0, y0, step, s0, n, M };
     hits.add("ar-ruler", x0 - dp(4), y0 - dp(24), Math.min(n, M) * step + dp(4), dp(40));
+    // the album under the mouse (or under a drag along the index), named on a plate above its mark (#8)
+    const ht = AR.hoverTick, a = ht >= 0 ? curGroup().albums[ht] : null;
+    if (a) {
+        const s = st(AR_ST.plate, C.bg, C.fg), t = fitLabel(`${pad(ht + 1, 2)}  ${a.title || tr("UNTITLED")}`, s, dp(280)), w = labelWidth(t, s) + dp(16), h = dp(20);
+        const mx = Math.round(x0 + (ht - s0) * step), px = clamp(mx - Math.round(w / 2), dp(8), arrayW() - w - dp(8)), py = y0 - dp(46);
+        gr.FillSolidRect(mx, py + h, HAIR, dp(10), C.fg);
+        gr.FillSolidRect(px, py, w, h, C.fg);
+        label(gr, t, s, px + dp(8), py + Math.round((h - labelHeight(AR_ST.plate)) / 2));
+    }
+}
+// a drag along the album index (#8): from a press on it until the release, wherever the mouse goes
+function rulerTickAt(x) { const R = AR.rulerGeom; return R ? clamp(Math.round((x - R.x0) / R.step + R.s0), 0, R.n - 1) : -1; }
+function rulerDown(x) { if (!AR.rulerGeom || AR.inspOn) return; pickStop(); AR.rulerDrag = true; AR.hoverTick = rulerTickAt(x); clock.wake(); }
+function rulerMove(x) { const t = rulerTickAt(x); if (t !== AR.hoverTick) { AR.hoverTick = t; clock.wake(); } }
+function rulerUp() {
+    AR.rulerDrag = false;
+    const r = AR.rows.get(AR.group);
+    if (r && AR.hoverTick >= 0) moveAlbum(AR.hoverTick - r.sel);
+    clock.wake();
 }
 
 // ← SHELF 01 / 08  AMBIENT →
@@ -1199,6 +1219,7 @@ function archiveMouseMove(x, y, a) {
 function archiveMouseLeave() {
     if (AR.infoHover >= 0) { AR.infoHover = -1; AR.dirtyInfo = true; window.Repaint(); }
     if (GRID.hover) { GRID.hover = null; window.Repaint(); }
+    if (AR.rulerDrag) return;   // a drag along the album index goes on outside the panel
     if (AR.hover >= 0 || AR.hoverTick >= 0) { AR.hover = -1; AR.hoverTick = -1; clock.wake(); }
 }
 function archiveClick(x, y, a) {
