@@ -3,6 +3,13 @@
 Newest version first. Download any version from [Releases](https://github.com/ericzhang12111-cell/RhinE/releases).
 最新版本在最上面；各版本可在 Releases 页面下载。
 
+## 1.6.1 — 2026-10-12
+
+**Changed · 改进**
+- Archive: choose what the case under the mouse shows, in right-click › `Case under the mouse`: an outline (as in 1.6.0),
+  its title (the album's, or the song's when every track is shown) or nothing. 档案：可在右键 › `鼠标下的外壳` 中选择鼠标下
+  外壳的提示方式：描边（与 1.6.0 相同）、标题（专辑名；逐曲显示时为歌曲名）或不显示。
+
 ## 1.6.0 — 2026-10-12
 
 **Added · 新增**
