@@ -376,9 +376,10 @@ function stepInspection(dt) {
     AR.insp = dir > 0 ? Math.min(next, target) : Math.max(next, target);
     return true;
 }
-function caseTargets(i, r, active, row) {
-    const d = slotOf(row, i) - slotOf(row, r.sel), bell = Math.exp(-d * d / 4.5) - .32 * Math.exp(-d * d / 18), hd = i - AR.hover;
-    const hov = active && AR.hover >= 0 ? .5 * Math.exp(-hd * hd / 2.2) : 0, isSel = active && i === r.sel;
+// hover: the case under the mouse, which lifts its neighbours a little (-1: none, as for the cases' resting places)
+function caseTargets(i, r, active, row, hover = AR.hover) {
+    const d = slotOf(row, i) - slotOf(row, r.sel), bell = Math.exp(-d * d / 4.5) - .32 * Math.exp(-d * d / 18), hd = i - hover;
+    const hov = active && hover >= 0 ? .5 * Math.exp(-hd * hd / 2.2) : 0, isSel = active && i === r.sel;
     return {
         lift: (active ? 1.1 : .65) * bell + hov + (isSel ? 1.35 : 0),
         clear: isSel ? 1 : 0,
@@ -718,12 +719,16 @@ function drawArchive(gr) {
             if (!c) continue;
             const isSel = active && i === r.sel;
             const y = (slotOf(row, i) - r.scroll.x) * PITCH + c.gap.x, z = c.lift.x + (isSel ? LIFT_OUT * lift : 0);
-            items.push({ gi, i, c, a: albums[i], active, isSel, pos, x, y, z, close: CLOSE[1] * y + CLOSE[2] * z * .2 });
+            // where the case rests without the hover lift: its click area (#7), so the lift under the mouse does not
+            // move the case being aimed at
+            const yr = (slotOf(row, i) - r.scroll.x) * PITCH + c.gap.to, zr = caseTargets(i, r, active, row, -1).lift + (isSel ? LIFT_OUT * lift : 0);
+            items.push({ gi, i, c, a: albums[i], active, isSel, pos, x, y, z, yr, zr, close: CLOSE[1] * y + CLOSE[2] * z * .2 });
         }
         items.sort((p, q) => p.close - q.close);
         for (const it of items) {
             const [sx, sy] = toScreen(it);
             if (it.rail) { drawRailSlot(gr, it, sx, sy, k, aw); continue; }
+            if (it.active) it.rest = toScreen({ x: it.x, y: it.yr, z: it.zr });
             selItem = drawArrayCase(gr, it, sx, sy, k, aw, I) || selItem;
         }
         drawLip(gr, row, gi, r, x, toScreen, k);
@@ -767,7 +772,12 @@ function drawArrayCase(gr, it, sx, sy, k, aw, I) {
         if (it.active) drawSpineLabel(gr, meta.label, ox, oy, k, it.a.no, alpha);
     }
     if (AR.topTitles && f < .5) drawTopTitle(gr, it.a, ox, oy, k, alpha, f);
-    if (it.active) AR.hits.push({ i: it.i, quad: meta.cover.map(([px, py]) => [ox + px * k, oy + py * k]) });
+    // the whole case (front face and top edge) at its resting place answers the mouse; the one under it is outlined
+    if (it.active) {
+        const P = casePoly(), rx = it.rest[0] - meta.origin[0] * k, ry = it.rest[1] - meta.origin[1] * k;
+        AR.hits.push({ i: it.i, quad: P.map(([px, py]) => [rx + px * k, ry + py * k]) });
+        if (it.i === AR.hover && !it.isSel && AR.insp === 0) gr.DrawPolygon(withAlpha(C.accent, alpha / 255), Math.max(HAIR, dp(1.5)), P.flatMap(([px, py]) => [ox + px * k, oy + py * k]));
+    }
     if (it.isSel && it.c.clear.x > .6 && AR.insp === 0) {
         const top = meta.cover[1], x1 = ox + top[0] * k + dp(4), y1 = oy + top[1] * k - dp(4), lx = x1 + dp(26), ly = y1 - dp(30);
         gr.DrawLine(x1, y1, lx, ly, HAIR, C.fg);
@@ -778,6 +788,16 @@ function drawArrayCase(gr, it, sx, sy, k, aw, I) {
         for (const [px, py] of meta.cover) gr.FillSolidRect(Math.round(ox + px * k - dp(3)), Math.round(oy + py * k - dp(3)), dp(6), dp(6), C.accent);
     }
     return selItem;
+}
+
+// a case's outline in sprite px: its front face and top edge (case model units: 4 wide, 3.5 high, 0.46 deep)
+let CASE_POLY = null;
+function casePoly() {
+    if (CASE_POLY && CASE_POLY.meta === CASE_META) return CASE_POLY;   // made again for another skin's case.json
+    const m = CASE_META.array.origin, ax = CASE_META.axes, at = (x, y, z) => [m[0] + x * ax.x[0] + y * ax.y[0] + z * ax.z[0], m[1] + x * ax.x[1] + y * ax.y[1] + z * ax.z[1]];
+    CASE_POLY = [at(-2, -.23, 0), at(2, -.23, 0), at(2, -.23, 3.5), at(2, .23, 3.5), at(-2, .23, 3.5), at(-2, -.23, 3.5)];
+    CASE_POLY.meta = CASE_META;
+    return CASE_POLY;
 }
 
 // rows fade out towards the viewer and in at the back; rows behind are tinted towards the page (0.1 steps)
@@ -1157,9 +1177,9 @@ function openAlbum() {
 }
 
 // ------------------------------------------------------------------------------------------------------- input
-function inQuad(x, y, q) {
+function inQuad(x, y, q) {   // any polygon
     let inside = false;
-    for (let i = 0, j = 3; i < 4; j = i++) {
+    for (let i = 0, j = q.length - 1; i < q.length; j = i++) {
         const [xi, yi] = q[i], [xj, yj] = q[j];
         if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
     }
