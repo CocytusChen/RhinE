@@ -8,6 +8,9 @@ Newest version first. Download any version from [Releases](https://github.com/er
 **Added · 新增**
 - `BLACKOUT`, a black case skin: black anodised aluminium, black-on-black etching, topographic lines on the spine
   and one white light (#22). 新外壳 BLACKOUT：黑色阳极氧化铝、黑色蚀刻，侧脊上有等高线纹样，一盏白色指示灯（#22）。
+- Your own case: the `CUSTOM` card under the case skins in `05 STYLE` takes a base colour and an accent from curated
+  matte plastics and a pattern (stripes, blocks or an edge band), and makes the case from them (#9). 自定义外壳：在 `05 外观`
+  外壳皮肤中的 CUSTOM 卡片里，从精选的哑光塑料色中选择底色与点缀色，再选花纹（斜纹、色块或边条），即可生成外壳（#9）。
 - Your own colour scheme: the `CUSTOM` card in `05 STYLE` lets you pick the page, text and accent colour for light and
   for dark; every other colour follows, and the contrast of text and accent is shown (#21). 自定义配色：在 `05 外观` 的
   CUSTOM 卡片中分别为浅色、深色选择背景、文字与强调色，其余颜色自动推算，并显示文字与强调色的对比度（#21）。

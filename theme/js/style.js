@@ -113,8 +113,10 @@ function styleGeom(nSkins = 10, nSchemes = 5) {
     return { m, top, gap, lx1, cols, cw, skinH: Math.round(cw * 1.02), schemeH: Math.round(cw * .86) };
 }
 
+// the skin cards: every skin, and the custom case's card while it has not been made yet
+const styleSkins = () => listSkins().some(s => s.id === "custom") ? listSkins() : listSkins().concat([{ id: "custom", dir: null, name: "CUSTOM" }]);
 function drawStyle(gr) {
-    const skins = listSkins(), ids = Object.keys(TOKENS.schemes), g = styleGeom(skins.length, ids.length);
+    const skins = styleSkins(), ids = Object.keys(TOKENS.schemes), g = styleGeom(skins.length, ids.length);
     for (const [x, y] of [[dp(16), dp(16)], [W - dp(27), dp(16)], [dp(16), H - dp(27)], [W - dp(27), H - dp(27)]]) regCross(gr, x, y);
     // ■ STYLE · 05   [MARBLE · ARCHIVE]          TEXT [90% … 120%]   ARRAY [80% … 130%]   ▶ PLAY INTRO   MODE [LIGHT | DARK]
     gr.FillSolidRect(g.m, dp(32), dp(5), dp(5), C.fg);
@@ -159,7 +161,7 @@ function cardNameX(name, w) {
     return { x: dp(10), st: STY_ST.nameS, num: false };
 }
 function drawSkinCard(gr, s, i, x, y, w, h) {
-    const e = skinImages(s), ih = h - dp(40), inUse = s.id === STATE.skin, hov = STY.hover && STY.hover.kind === "skin" && STY.hover.id === s.id;
+    const e = s.dir ? skinImages(s) : { array: null, hero: null }, ih = h - dp(40), inUse = s.id === STATE.skin, hov = STY.hover && STY.hover.kind === "skin" && STY.hover.id === s.id;
     gr.FillSolidRect(x, y, w, h, C.panel);
     if (e.array) {
         const k = Math.min((w - dp(16)) / e.array.Width, (ih - dp(8)) / e.array.Height) * 1.35;   // the sprite has empty margins
@@ -167,6 +169,11 @@ function drawSkinCard(gr, s, i, x, y, w, h) {
         gr.PushClip(x, y, w, ih);
         gr.DrawImage(e.array, x + (w - dw) / 2, y + (ih - dh) / 2 + dp(6), dw, dh, 0, 0, e.array.Width, e.array.Height);
         gr.PopClip();
+    }
+    if (!s.dir) {   // the custom case, not made yet: a plus to start one
+        const c = Math.round(Math.min(w, ih) * .18), cx = x + w / 2, cy = y + ih / 2;
+        gr.FillSolidRect(Math.round(cx - c), Math.round(cy - HAIR), 2 * c, 2 * HAIR, C["text-muted"]);
+        gr.FillSolidRect(Math.round(cx - HAIR), Math.round(cy - c), 2 * HAIR, 2 * c, C["text-muted"]);
     }
     gr.FillSolidRect(x, y + ih, w, HAIR, C["line-faint"]);
     // a narrow card (small window, large text) drops the index and sets the name smaller so it stays whole
@@ -276,9 +283,10 @@ function drawStylePreview(gr, g, skins) {
         }
         return;
     }
+    if (!hv && (STY.making || (STATE.skin === "custom" && STY.edit !== "scheme"))) { drawCaseEditor(gr, x0, y0 + dp(30), w, y1); return; }
     if (!hv && SCHEME === "custom") { drawCustomEditor(gr, x0, y0 + dp(30), w, y1); return; }
     const s = hv ? skins.find(k => k.id === hv.id) : skins.find(k => k.id === STATE.skin);
-    if (!s) return;
+    if (!s || !s.dir) return;
     const e = skinImages(s), ph = y1 - y0 - dp(150);
     if (e.hero) {
         const k = Math.min(w / e.hero.Width, (ph * .62) / e.hero.Height), dw = e.hero.Width * k, dh = e.hero.Height * k;
@@ -339,6 +347,59 @@ function drawCustomEditor(gr, x0, y, w, y1) {
     label(gr, t, s, x0 + dp(12), y + Math.round((bh - labelHeight(STY_ST.tog)) / 2));
     hits.add("sty-creset", x0, y, bw, bh);
 }
+// The custom case's editor: base colour, accent and pattern from the curated plastics, then MAKE (the renders are made
+// again: customcase.js). The choice waits in STY.cc until it is made.
+function drawCaseEditor(gr, x0, y, w, y1) {
+    const cc = STY.cc || (STY.cc = customCase()), made = customCaseMade() ? customCase() : null;
+    label(gr, tr("CUSTOM CASE"), st(STY_ST.big, C.fg), x0, y);
+    y += labelHeight(STY_ST.big) + dp(6);
+    text(gr, tr("A base colour, an accent and a pattern, in matte plastics."), 10, 500, C["fg-soft"], x0, y, w, dp(18));
+    y += dp(30);
+    const e = made ? skinImages({ id: "custom", dir: CC_DIR }) : { hero: null }, ph = Math.max(dp(120), Math.min(Math.round(w * .55), y1 - y - dp(250)));
+    if (e.hero) {
+        const k = Math.min(w / e.hero.Width, ph / e.hero.Height), dw = e.hero.Width * k, dh = e.hero.Height * k;
+        gr.DrawImage(e.hero, x0 + (w - dw) / 2, y + (ph - dh) / 2, dw, dh, 0, 0, e.hero.Width, e.hero.Height);
+    } else box(gr, x0, y, w, ph, C["line-faint"]);
+    y += ph + dp(16);
+    for (const [key, t] of [["base", "BASE"], ["accent", "ACCENT"]]) {
+        label(gr, tr(t), st(STY_ST.tiny, C["text-muted"]), x0, y + dp(5));
+        const n = CC_PALETTE.length, sw = Math.min(dp(22), Math.floor((w - dp(70)) / n) - dp(4));
+        CC_PALETTE.forEach((c, i) => {
+            const sx = x0 + dp(70) + i * (sw + dp(4));
+            gr.FillSolidRect(sx, y, sw, sw, argb(c));
+            box(gr, sx, y, sw, sw, cc[key] === c ? C.fg : C["line-faint"], cc[key] === c ? Math.max(HAIR, dp(2)) : HAIR);
+            hits.add("sty-cc", sx, y, sw, sw, key + "|" + c);
+        });
+        y += sw + dp(12);
+    }
+    const pat = CC_PATTERNS.map(([id, t]) => [id, t]);
+    segToggle(gr, x0 + dp(70) + CC_PATTERNS.reduce((n, [, t]) => n + dp(18) + labelWidth(tr(t), st(GRID_ST.count, 0)), 0) + dp(12) + labelWidth(tr("PATTERN"), st(GRID_ST.count, 0)) - dp(70), y, "PATTERN", pat, cc.pattern, "sty-ccpat");
+    y += dp(40);
+    const same = made && made.base === cc.base && made.accent === cc.accent && made.pattern === cc.pattern;
+    const t = STY.making ? tr("MAKING THE CASE …  {0} / {1}", STY.making[0], STY.making[1]) : tr(same ? "IN USE" : "MAKE THIS CASE");
+    const s = st(STY_ST.tog, same || STY.making ? C["text-muted"] : C.bg, same || STY.making ? C.bg : C.fg), bw = labelWidth(t, s) + dp(24), bh = dp(24);
+    if (!same && !STY.making) gr.FillSolidRect(x0, y, bw, bh, C.fg);
+    box(gr, x0, y, bw, bh, C["line-dim"]);
+    label(gr, t, s, x0 + dp(12), y + Math.round((bh - labelHeight(STY_ST.tog)) / 2));
+    if (!same && !STY.making) hits.add("sty-ccmake", x0, y, bw, bh);
+}
+// makes the custom case from the editor's choice, then uses it (or loads it again where it is in use)
+function makeCase() {
+    const cc = Object.assign({}, STY.cc || customCase());
+    const ok = makeCustomCase(cc, (i, n) => { STY.making = [i, n]; window.Repaint(); }, done => {
+        STY.making = null;
+        if (done) {
+            setSetting("customCase", cc, true);
+            listSkins(true);
+            STY.img.delete("custom");
+            if (STATE.skin === "custom") { reloadSkin("custom"); send("skin-reload", "custom"); }
+            else send("skin", "custom");
+        }
+        window.Repaint();
+    });
+    if (ok) { STY.making = [0, 1]; STY.edit = "case"; window.Repaint(); }
+}
+
 // a new custom colour: saved, worked out here and in every other panel (lib/bus.js), imported by frame.js
 function setCustom(u) {
     setSetting("customScheme", u, true);
@@ -358,8 +419,18 @@ function styleMouseMove(a) {
 }
 function styleClick(a) {
     if (!a) return;
-    if (a.id === "sty-skin" && a.data !== STATE.skin) send("skin", a.data);
+    if (a.id === "sty-skin" && a.data === "custom") {
+        STY.edit = "case";
+        if (!customCaseMade()) makeCase();
+        else if (STATE.skin !== "custom") send("skin", "custom");
+        window.Repaint();
+    }
+    else if (a.id === "sty-skin" && a.data !== STATE.skin) send("skin", a.data);
+    else if (a.id === "sty-scheme" && a.data === "custom") { STY.edit = "scheme"; if (SCHEME !== "custom") send("scheme", "custom"); window.Repaint(); }
     else if (a.id === "sty-scheme" && a.data !== SCHEME) send("scheme", a.data);
+    else if (a.id === "sty-cc") { const [k, c] = a.data.split("|"); STY.cc = Object.assign({}, STY.cc || customCase(), { [k]: c }); window.Repaint(); }
+    else if (a.id === "sty-ccpat") { STY.cc = Object.assign({}, STY.cc || customCase(), { pattern: a.data }); window.Repaint(); }
+    else if (a.id === "sty-ccmake") makeCase();
     else if (a.id === "sty-mode" && a.data !== MODE) send("mode");
     else if (a.id === "sty-intro") send("boot-play");
     else if (a.id === "sty-text" && a.data !== STATE.textScale) send("text-scale", a.data);

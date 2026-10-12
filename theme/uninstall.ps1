@@ -88,6 +88,8 @@ if (-not $item) {
     if (Test-Path $settings) { Remove-Item $settings -Force; Write-Host "removed $settings" }
     $custom = Join-Path $profileDir "$Name-custom"   # the custom colour scheme's presets (js/lib/custom.js)
     if (Test-Path $custom) { Remove-Item $custom -Recurse -Force; Write-Host "removed $custom" }
+    $case = Join-Path $profileDir "$Name-skins\custom"   # the custom case the theme made (js/customcase.js)
+    if (Test-Path $case) { Remove-Item $case -Recurse -Force; Write-Host "removed $case" }
 } else {
     Write-Host "'$target' does not look like this theme, left in place"
 }

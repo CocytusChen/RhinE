@@ -15,6 +15,9 @@ function loadSkin(id) {
     CASE_LISTENERS.forEach(f => f());
     return true;
 }
+// a skin whose renders were made again (the custom case, 05 STYLE): load them anew where it is in use
+function reloadSkin(id) { if (CASE_SKIN === id) { CASE_DIR = ""; loadSkin(id); window.Repaint(); } }
+onMessage("skin-reload", reloadSkin);
 // An album is the tracks with the same album tag in the same folder, a disc folder ("CD2", "Disc 1") counting as its
 // parent: tracks with a guest artist stay on their album (no album artist tag needed), and two albums with the same
 // name do not merge. Tracks without an album tag form one album per folder. js/workers/library.js has the same rule.

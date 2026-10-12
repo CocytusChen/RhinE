@@ -16,6 +16,7 @@ include(fb.ProfilePath + "themes\\audio-archive\\js\\lib\\core.js");
 for (const f of ["emblem", "audio", "ring", "lyrics", "translate", "waveform", "album", "playlists", "nowplaying", "library"]) include(fb.ProfilePath + `themes\\audio-archive\\js\\lib\\${f}.js`);
 include(fb.ProfilePath + "themes\\audio-archive\\js\\archive.js");
 include(fb.ProfilePath + "themes\\audio-archive\\js\\grid.js");
+include(fb.ProfilePath + "themes\\audio-archive\\js\\customcase.js");
 include(fb.ProfilePath + "themes\\audio-archive\\js\\style.js");
 include(fb.ProfilePath + "themes\\audio-archive\\js\\signal.js");
 
