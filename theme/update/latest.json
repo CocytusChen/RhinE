@@ -1,13 +1,27 @@
 {
- "version": "1.5.1",
- "tag": "v1.5.1",
- "date": "2026-10-11",
+ "version": "1.6.0",
+ "tag": "v1.6.0",
+ "date": "2026-10-12",
  "notes": {
   "en": [
-   "RANDOM PICK across many shelves no longer draws two shelves on top of each other, and a shelf leaving towards you no longer vanishes on its way out: the shelves move as one row of rows (thanks to @sm-steel for the report)."
+   "Open a track's folder: F (or click FILE on the signal profile card) opens the folder of the playing track, with the file selected; in the Archive, F or right-click › Open containing folder opens the selected album's.",
+   "Archive: hold the album index under the shelf and drag along it; the album under the mouse is named as you go and releasing selects it. Hovering the index names the album too (#8).",
+   "The update check also runs while foobar2000 stays open (once a day, as at start), so the UPDATE chip appears without a restart (#14).",
+   "Archive: ← goes to the next shelf, which stands behind on the left, and → back to the one in front; the arrows around the shelf name match (#16).",
+   "Archive: the case under the mouse is outlined, and a click lands on the case you aim at. A click counts the whole case (its face and top edge) where it stands, so the lift under the mouse no longer moves the target (#7).",
+   "The intro film says CLICK TO SKIP (a click ends it; MENU › Audio Archive turns it off).",
+   "RANDOM PICK stays smooth: the album panel waits until the pick lands.",
+   "Lyrics: a line too long for the column wraps onto a second (the current line onto up to three) instead of ending in … (#15)."
   ],
   "zh": [
-   "随机抽取跨越多个货架时不再出现两排货架叠在一起，朝你移出的货架也不再中途消失：所有货架作为一个整体移动（感谢 @sm-steel 的反馈）。"
+   "打开所在文件夹：按 F（或点击信号资料卡片上的 文件）打开正在播放曲目所在的文件夹并选中该文件；在档案中，按 F 或右键 › 打开所在文件夹 打开选中专辑的文件夹。",
+   "档案：在货架下方的专辑索引上按住拖动，实时显示经过的专辑名，松开即选中；鼠标悬停在索引上也会显示专辑名（#8）。",
+   "检查更新在 foobar2000 一直开着时也会进行（与启动时一样每天一次），无需重启即可看到 更新 标签（#14）。",
+   "档案：← 切换到下一个货架（位于后方左侧），→ 回到前一个；货架名两侧的箭头同样对应（#16）。",
+   "档案：鼠标下的外壳会显示描边，点击总能选中所指的外壳；整个外壳（正面与顶边）都可点击，并按其原位判定，鼠标悬停引起的抬升不再让目标移动（#7）。",
+   "开场动画显示 点击跳过 （点击即可结束；可在 菜单 › Audio Archive 中关闭）。",
+   "随机抽取更流畅：右侧专辑信息在抽取落定后才更新。",
+   "歌词：过长的歌词行会换行显示（当前行最多三行），不再以 … 截断（#15）。"
   ]
  }
 }
