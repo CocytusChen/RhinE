@@ -3,7 +3,7 @@
 Newest version first. Download any version from [Releases](https://github.com/ericzhang12111-cell/RhinE/releases).
 最新版本在最上面；各版本可在 Releases 页面下载。
 
-## Unreleased
+## 1.6.0 — 2026-10-12
 
 **Added · 新增**
 - Open a track's folder: `F` (or click `FILE` on the signal profile card) opens the folder of the playing track, with
@@ -19,13 +19,12 @@ Newest version first. Download any version from [Releases](https://github.com/er
   a restart (#14). 检查更新在 foobar2000 一直开着时也会进行（与启动时一样每天一次），无需重启即可看到 `更新` 标签（#14）。
 - Archive: `←` goes to the next shelf, which stands behind on the left, and `→` back to the one in front; the arrows
   around the shelf name match (#16). 档案：`←` 切换到下一个货架（位于后方左侧），`→` 回到前一个；货架名两侧的箭头同样对应（#16）。
-
 - Archive: the case under the mouse is outlined, and a click lands on the case you aim at. A click counts the whole
   case (its face and top edge) where it stands, so the lift under the mouse no longer moves the target (#7). 档案：鼠标下的
   外壳会显示描边，点击总能选中所指的外壳；整个外壳（正面与顶边）都可点击，并按其原位判定，鼠标悬停引起的抬升不再让目标移动（#7）。
 - The intro film says `CLICK TO SKIP` (a click ends it; `MENU › Audio Archive` turns it off). 开场动画显示 `点击跳过`
   （点击即可结束；可在 `菜单 › Audio Archive` 中关闭）。
-- `RANDOM PICK` stays smooth: the album panel waits until the pick lands. `随机抽取` 更流畅：右侧专辑信息在抽取落定后才更新。
+- `RANDOM PICK` stays smooth: the album panel waits until the pick lands. 随机抽取更流畅：右侧专辑信息在抽取落定后才更新。
 
 **Fixed · 修复**
 - Lyrics: a line too long for the column wraps onto a second (the current line onto up to three) instead of ending in
