@@ -96,6 +96,7 @@ I18N["ja"] = {
     "STYLE  ·  05": "スタイル  ·  05", "CASE SKIN": "ケース", "COLOUR SCHEME": "カラースキーム", "DISPLAY  ·  04": "表示  ·  04",
     "IN USE": "使用中", "MODE": "モード", "PLAY INTRO": "イントロ再生", "PREVIEW": "プレビュー", "TEXT": "文字", "INSPECT": "詳細",
     "FLOOR": "床", "PLAIN": "無地", "LAB DECK": "ラボデッキ", "Archive floor": "アーカイブの床", "Plain": "無地", "Lab deck": "ラボデッキ", "REAL STYLE": "リアルスタイル", "Real style": "リアルスタイル",
+    "CLICK TO SKIP": "クリックでスキップ",
     "Open containing folder": "フォルダーを開く",
     "SPACE": "スペース",
     "Walnut and candlelight, made for REAL STYLE": "ウォールナットとキャンドルの灯り、リアルスタイル向け", "USE HEARTH, MADE FOR REAL STYLE": "リアルスタイル向けの HEARTH を使う",

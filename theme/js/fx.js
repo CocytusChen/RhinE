@@ -401,7 +401,8 @@ function drawChapters(gr, f, m, y0, bh) {
         bl(`${pad(i + 1, 2)}  ${name}`, BT.tiny, cur ? BK.fg : past ? BK["fg-soft"] : BK["text-muted"], BK.bg, cx + dp(8), ly - dp(16));
     });
     const px = Math.round(at(f + 1));
-    gr.FillSolidRect(px - dp(3), ly - dp(3), dp(6), dp(6), BK.accent);
+    gr.FillSolidRect(px - dp(3), ly - dp(3), dp(6), dp(6), BK.accent);    // the intro can be cut short (and is turned off in MENU › Audio Archive)
+    bl(tr("CLICK TO SKIP"), BT.tiny, BK["text-muted"], BK.bg, x1, ly + dp(8), 2);
 }
 
 // SESSION AUTHORIZED: an inverse plate sweeps across the centre while the case window glows

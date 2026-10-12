@@ -23,6 +23,8 @@ Newest version first. Download any version from [Releases](https://github.com/er
 - Archive: the case under the mouse is outlined, and a click lands on the case you aim at. A click counts the whole
   case (its face and top edge) where it stands, so the lift under the mouse no longer moves the target (#7). 档案：鼠标下的
   外壳会显示描边，点击总能选中所指的外壳；整个外壳（正面与顶边）都可点击，并按其原位判定，鼠标悬停引起的抬升不再让目标移动（#7）。
+- The intro film says `CLICK TO SKIP` (a click ends it; `MENU › Audio Archive` turns it off). 开场动画显示 `点击跳过`
+  （点击即可结束；可在 `菜单 › Audio Archive` 中关闭）。
 - `RANDOM PICK` stays smooth: the album panel waits until the pick lands. `随机抽取` 更流畅：右侧专辑信息在抽取落定后才更新。
 
 **Fixed · 修复**
