@@ -14,6 +14,8 @@ Newest version first. Download any version from [Releases](https://github.com/er
 **Changed · 改进**
 - The update check also runs while foobar2000 stays open (once a day, as at start), so the `UPDATE` chip appears without
   a restart (#14). 检查更新在 foobar2000 一直开着时也会进行（与启动时一样每天一次），无需重启即可看到 `更新` 标签（#14）。
+- Archive: `←` goes to the next shelf, which stands behind on the left, and `→` back to the one in front; the arrows
+  around the shelf name match (#16). 档案：`←` 切换到下一个货架（位于后方左侧），`→` 回到前一个；货架名两侧的箭头同样对应（#16）。
 
 **Fixed · 修复**
 - Lyrics: a line too long for the column wraps onto a second (the current line onto up to three) instead of ending in

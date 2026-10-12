@@ -913,10 +913,11 @@ function drawGroupSwitch(gr) {
     label(gr, tail, s, x + labelWidth(lbl, s) + cell * 2, y);
     label(gr, fitLabel(groupName(g.name), st(AR_ST.group, 0), dp(180)), st(AR_ST.group, C.fg), cx, y + dp(16), 1);
     const can = d => AR.group + d >= 0 && AR.group + d < arRows().length;
-    gr.DrawText("←", font(16, 400), can(-1) ? C.fg : C["line-dim"], cx - dp(110), y + dp(2), dp(24), dp(24), DT_CENTER_SINGLE);
-    gr.DrawText("→", font(16, 400), can(1) ? C.fg : C["line-dim"], cx + dp(86), y + dp(2), dp(24), dp(24), DT_CENTER_SINGLE);
-    hits.add("ar-gprev", cx - dp(116), y - dp(4), dp(36), dp(36));
-    hits.add("ar-gnext", cx + dp(80), y - dp(4), dp(36), dp(36));
+    // ← the next shelf (behind, to the left on screen) · → the one before (towards the front)
+    gr.DrawText("←", font(16, 400), can(1) ? C.fg : C["line-dim"], cx - dp(110), y + dp(2), dp(24), dp(24), DT_CENTER_SINGLE);
+    gr.DrawText("→", font(16, 400), can(-1) ? C.fg : C["line-dim"], cx + dp(86), y + dp(2), dp(24), dp(24), DT_CENTER_SINGLE);
+    hits.add("ar-gnext", cx - dp(116), y - dp(4), dp(36), dp(36));
+    hits.add("ar-gprev", cx + dp(80), y - dp(4), dp(36), dp(36));
 }
 
 // the inspected case's final scale: ×2 of its size in the row, × the inspection size (MENU › Audio Archive or the Style
@@ -1226,8 +1227,9 @@ function archiveKey(vk) {
     switch (vk) {
         case 0x26: moveAlbum(-1); return true;          // ↑
         case 0x28: moveAlbum(1); return true;           // ↓
-        case 0x25: moveGroup(-1); return true;          // ←
-        case 0x27: moveGroup(1); return true;           // →
+        // the next shelf stands behind, up and to the left: ← goes to it, → back towards the front (#16)
+        case 0x25: moveGroup(1); return true;           // ←
+        case 0x27: moveGroup(-1); return true;          // →
         case 0x21: moveAlbum(-10); return true;         // Page Up
         case 0x22: moveAlbum(10); return true;          // Page Down
         case 0x24: moveAlbum(-1e6); return true;        // Home

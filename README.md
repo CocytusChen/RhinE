@@ -150,7 +150,7 @@ Running it again keeps the foobar2000 folder and installs the theme again.
 | Archive: play / open the album | `PLAY ALBUM` / `OPEN ALBUM` | `Space` plays (or pauses it if it is playing); `Enter` while inspecting opens |
 | Archive: group by genre, decade, artist initial or none | `GROUP` in the Archive's top bar, or right-click | — |
 | Archive: sort albums by artist, title, year or date added | `SORT` in the Archive's top bar, or right-click | — |
-| Archive: next / previous shelf | `← SHELF 04 / 31 →` under the array | `←` `→` |
+| Archive: next shelf (behind, on the left) / previous shelf (in front) | `← SHELF 04 / 31 →` under the array | `←` `→` |
 | Archive: every track as its own case / tile (with its album's cover) | `SHOW [ALBUMS | TRACKS]` in the Archive's top bar, or right-click | — |
 | Archive: play a track | click it in the album file's track list (the album plays from there) | — |
 | Archive: random pick (the selection runs through the shelves to a random album, which is lifted out and plays) | `RANDOM PICK` at the top left of the Archive, or right-click | `R` |
