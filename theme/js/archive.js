@@ -36,6 +36,7 @@ const INFO_W = 456, ARCHIVE_PLAYLIST = "Archive · Album";
 const LIFT_OUT = 2.2;              // how far the inspected case rises out of its row, in case.json axis units
 const INSP_LIFT = .32, INSP_TURN = .72, INSPECT_ZOOM = 2.05;   // stage durations (s); size at the end of the turn
 
+const HOVER_MODES = ["outline", "label", "none"];
 const AR = {
     group: 0,
     rows: new Map(),               // row index -> { sel, scroll, pos, cases: Map(i -> { lift, clear, gap }) }
@@ -50,6 +51,8 @@ const AR = {
     rulerStart: Spring(0, 14), ticks: new Map(),
     dirtyInfo: true, info: null,
     topTitles: getSetting("caseTopTitles", true) !== false,   // the titles on the cases' top edges (the context menu)
+    hoverMode: HOVER_MODES.includes(getSetting("caseHover", "outline")) ? getSetting("caseHover", "outline") : "outline",   // the case under the mouse: outlined, titled or left as is (the context menu)
+    hoverPlate: null,   // the case to label this frame (hoverMode "label"): drawn after the shelf, over its neighbours
 };
 let ARCHIVE_ON = false;
 const PICK = { steps: null, t: 0, after: false };   // RANDOM PICK's run (see randomPick)
@@ -734,6 +737,11 @@ function drawArchive(gr) {
         }
         drawLip(gr, row, gi, r, x, toScreen, k);
     }
+    if (AR.hoverPlate) {
+        const h = AR.hoverPlate, t = [...(h.a.title || tr("UNTITLED"))];
+        drawCasePlate(gr, h.a, h.ox, h.oy, h.k, h.alpha, t.length > 40 ? t.slice(0, 39).join("") + "…" : t.join(""));
+        AR.hoverPlate = null;
+    }
     // the array dissolves into the background towards the file panel and the controls
     gr.FillGradRect(aw - dp(100), 0, dp(100) + 1, H, 0, withAlpha(C.bg, 0), C.bg);
     gr.FillGradRect(0, H - dp(139), aw, dp(80) + 1, 90, withAlpha(C.bg, 0), C.bg);
@@ -777,18 +785,26 @@ function drawArrayCase(gr, it, sx, sy, k, aw, I) {
     if (it.active) {
         const P = casePoly(), rx = it.rest[0] - meta.origin[0] * k, ry = it.rest[1] - meta.origin[1] * k;
         AR.hits.push({ i: it.i, quad: P.map(([px, py]) => [rx + px * k, ry + py * k]) });
-        if (it.i === AR.hover && !it.isSel && AR.insp === 0) gr.DrawPolygon(withAlpha(C.accent, alpha / 255), Math.max(HAIR, dp(1.5)), P.flatMap(([px, py]) => [ox + px * k, oy + py * k]));
+        const hovered = it.i === AR.hover && !it.isSel && AR.insp === 0;
+        if (hovered && AR.hoverMode === "label") AR.hoverPlate = { a: it.a, ox, oy, k, alpha };
+        if (hovered && AR.hoverMode === "outline") gr.DrawPolygon(withAlpha(C.accent, alpha / 255), Math.max(HAIR, dp(1.5)), P.flatMap(([px, py]) => [ox + px * k, oy + py * k]));
     }
     if (it.isSel && it.c.clear.x > .6 && AR.insp === 0) {
-        const top = meta.cover[1], x1 = ox + top[0] * k + dp(4), y1 = oy + top[1] * k - dp(4), lx = x1 + dp(26), ly = y1 - dp(30);
-        gr.DrawLine(x1, y1, lx, ly, HAIR, C.fg);
-        gr.DrawLine(lx, ly, lx + dp(60), ly, HAIR, C.fg);
-        const txt = `ARC-${pad(it.a.no, 4)}`, pw = labelWidth(txt, st(AR_ST.plate, C.bg, C.fg)) + dp(16);
-        gr.FillSolidRect(lx + dp(60), ly - dp(9), pw, dp(18), C.fg);
-        label(gr, txt, st(AR_ST.plate, C.bg, C.fg), lx + dp(68), ly - Math.round(labelHeight(AR_ST.plate) / 2));
+        drawCasePlate(gr, it.a, ox, oy, k);
         for (const [px, py] of meta.cover) gr.FillSolidRect(Math.round(ox + px * k - dp(3)), Math.round(oy + py * k - dp(3)), dp(6), dp(6), C.accent);
     }
     return selItem;
+}
+// a plate led out from the top corner of a case's cover: ARC-#### for the selected case, the title (the album's, or
+// the song's when every track is its own item) for the one under the mouse in "label" mode
+function drawCasePlate(gr, a, ox, oy, k, alpha = 255, txt = `ARC-${pad(a.no, 4)}`) {
+    const top = CASE_META.array.cover[1], x1 = ox + top[0] * k + dp(4), y1 = oy + top[1] * k - dp(4), lx = x1 + dp(26), ly = y1 - dp(30);
+    const fg = withAlpha(C.fg, alpha / 255), s = st(AR_ST.plate, C.bg, C.fg);
+    gr.DrawLine(x1, y1, lx, ly, HAIR, fg);
+    gr.DrawLine(lx, ly, lx + dp(60), ly, HAIR, fg);
+    const pw = labelWidth(txt, s) + dp(16);
+    gr.FillSolidRect(lx + dp(60), ly - dp(9), pw, dp(18), fg);
+    label(gr, txt, s, lx + dp(68), ly - Math.round(labelHeight(AR_ST.plate) / 2));
 }
 
 // a case's outline in sprite px: its front face and top edge (case model units: 4 wide, 3.5 high, 0.46 deep)
@@ -1310,6 +1326,10 @@ function archiveMenu(x, y) {
     m.AppendMenuItem(curAlbum() ? 0 : 1, 13, tr("Open containing folder") + "\tF");
     m.AppendMenuItem(curAlbum() ? 0 : 1, 11, tr("Random pick") + "	R");
     m.AppendMenuItem(AR.topTitles ? 0x8 : 0, 12, tr("Titles on the cases' top edges"));
+    const hv = window.CreatePopupMenu();
+    ["Outline it", "Show its title", "Nothing"].forEach((t, i) => hv.AppendMenuItem(0, 500 + i, tr(t)));
+    hv.CheckMenuRadioItem(500, 502, 500 + HOVER_MODES.indexOf(AR.hoverMode));
+    hv.AppendTo(m, 0, tr("Case under the mouse"));
     m.AppendMenuSeparator();
     const skins = appendSkinMenu(m, 100);
     m.AppendMenuItem(0, 6, tr("Re-index library"));
@@ -1319,6 +1339,7 @@ function archiveMenu(x, y) {
     else if (id === 9) playAlbum();
     else if (id === 11) randomPick();
     else if (id === 13) openFolder(itemTrack(curAlbum()) || albumFirst(curAlbum()));
+    else if (id >= 500 && HOVER_MODES[id - 500]) { AR.hoverMode = HOVER_MODES[id - 500]; setSetting("caseHover", AR.hoverMode); window.Repaint(); }
     else if (id === 12) { AR.topTitles = !AR.topTitles; setSetting("caseTopTitles", AR.topTitles); window.Repaint(); }
     else if (id === 10) setUnit(showTracks() ? "albums" : "tracks");
     else if (id === 5) openAlbum();

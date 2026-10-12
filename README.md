@@ -156,6 +156,7 @@ Running it again keeps the foobar2000 folder and installs the theme again.
 | Archive: play a track | click it in the album file's track list (the album plays from there) | — |
 | Archive: random pick (the selection runs through the shelves to a random album, which is lifted out and plays) | `RANDOM PICK` at the top left of the Archive, or right-click | `R` |
 | Archive: titles on the cases' top edges | on by default; right-click › `Titles on the cases' top edges` | — |
+| Archive: the case under the mouse | outlined by default; right-click › `Case under the mouse` › outline it, show its title (the album's, or the song's when every track is shown), or nothing | — |
 | Archive: case array or cover grid | `LAYOUT ARRAY / GRID` at the top right of the Archive, or right-click | `G` |
 | Archive grid: covers per page (10, 36, 50, 75, 100, 200) | `PER PAGE` in the grid's bar, or right-click | — |
 | Archive: look again for covers of albums without artwork | right-click › `Re-index library` | — |

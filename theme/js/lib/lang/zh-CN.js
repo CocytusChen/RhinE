@@ -100,6 +100,7 @@ I18N["zh-CN"] = {
     "SPACE": "空格",
     "Walnut and candlelight, made for REAL STYLE": "胡桃木与烛光，为写实风格而配", "USE HEARTH, MADE FOR REAL STYLE": "使用为写实风格配的 HEARTH 配色",
     "RANDOM PICK": "随机抽取", "PICKING …": "抽取中 …", "Random pick": "随机抽取", "Titles on the cases' top edges": "在外壳顶边显示标题",
+    "Case under the mouse": "鼠标下的外壳", "Outline it": "显示描边", "Show its title": "显示标题", "Nothing": "不显示",
     "White marble specimen case, frosted polymer edges, orange index tab": "白色大理石标本盒，磨砂聚合物边框，橙色索引标签",
     "Carbon body, black rubber edges, yellow-and-black stripe band, signal yellow tab": "碳纤维机身，黑色橡胶边框，黄黑警示条纹，信号黄标签",
     "Soft matte white plastics and white metal, frosted silver tab": "柔和的哑光白色塑料与白色金属，磨砂银色标签",
