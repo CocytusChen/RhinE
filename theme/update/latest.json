@@ -1,13 +1,23 @@
 {
- "version": "1.6.1",
- "tag": "v1.6.1",
+ "version": "1.7.0",
+ "tag": "v1.7.0",
  "date": "2026-10-12",
  "notes": {
   "en": [
-   "Archive: choose what the case under the mouse shows, in right-click › Case under the mouse: an outline (as in 1.6.0), its title (the album's, or the song's when every track is shown) or nothing."
+   "BLACKOUT, a black case skin: black anodised aluminium, black-on-black etching, topographic lines on the spine and one white light (#22).",
+   "Your own case: the CUSTOM card under the case skins in 05 STYLE takes a base colour and an accent from curated matte plastics and a pattern (stripes, blocks or an edge band), and makes the case from them (#9).",
+   "Your own colour scheme: the CUSTOM card in 05 STYLE lets you pick the page, text and accent colour for light and for dark; every other colour follows, and the contrast of text and accent is shown (#21).",
+   "Wallpaper: a picture of your own behind the views you pick (Archive, Playlists, Lyrics, Signal), in 05 STYLE › DISPLAY › WALLPAPER. Shown clear, frosted or as a halftone dot screen, under a light, medium or strong veil of the page colour so the text stays readable.",
+   "MATCHA, a colour scheme of creamy white and matcha green: cream pages in light mode, cream type on deep matcha in dark.",
+   "LIVEWIRE, a colour scheme of lime signal and steel cyan: lime pages in light mode, lime type on near-black in dark."
   ],
   "zh": [
-   "档案：可在右键 › 鼠标下的外壳 中选择鼠标下外壳的提示方式：描边（与 1.6.0 相同）、标题（专辑名；逐曲显示时为歌曲名）或不显示。"
+   "新外壳 BLACKOUT：黑色阳极氧化铝、黑色蚀刻，侧脊上有等高线纹样，一盏白色指示灯（#22）。",
+   "自定义外壳：在 05 外观 外壳皮肤中的 CUSTOM 卡片里，从精选的哑光塑料色中选择底色与点缀色，再选花纹（斜纹、色块或边条），即可生成外壳（#9）。",
+   "自定义配色：在 05 外观 的 CUSTOM 卡片中分别为浅色、深色选择背景、文字与强调色，其余颜色自动推算，并显示文字与强调色的对比度（#21）。",
+   "壁纸：在 05 外观 › 显示 › 壁纸 中，用你自己的图片作为所选视图（档案、播放列表、歌词、信号）的背景；可选清晰、磨砂或半调网点效果，并以低、中、高三档页面色遮罩保证文字清晰。",
+   "新配色 MATCHA：奶油白与抹茶绿；浅色模式为奶油白底色，深色模式为深抹茶底配奶油色文字。",
+   "新配色 LIVEWIRE：荧光黄绿与钢青；浅色模式为黄绿底色，深色模式为近黑底配黄绿文字。"
   ]
  }
 }
