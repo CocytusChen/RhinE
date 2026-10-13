@@ -1,23 +1,17 @@
 {
- "version": "1.7.0",
- "tag": "v1.7.0",
- "date": "2026-10-12",
+ "version": "1.7.1",
+ "tag": "v1.7.1",
+ "date": "2026-10-13",
  "notes": {
   "en": [
-   "BLACKOUT, a black case skin: black anodised aluminium, black-on-black etching, topographic lines on the spine and one white light (#22).",
-   "Your own case: the CUSTOM card under the case skins in 05 STYLE takes a base colour and an accent from curated matte plastics and a pattern (stripes, blocks or an edge band), and makes the case from them (#9).",
-   "Your own colour scheme: the CUSTOM card in 05 STYLE lets you pick the page, text and accent colour for light and for dark; every other colour follows, and the contrast of text and accent is shown (#21).",
-   "Wallpaper: a picture of your own behind the views you pick (Archive, Playlists, Lyrics, Signal), in 05 STYLE › DISPLAY › WALLPAPER. Shown clear, frosted or as a halftone dot screen, under a light, medium or strong veil of the page colour so the text stays readable.",
-   "MATCHA, a colour scheme of creamy white and matcha green: cream pages in light mode, cream type on deep matcha in dark.",
-   "LIVEWIRE, a colour scheme of lime signal and steel cyan: lime pages in light mode, lime type on near-black in dark."
+   "Lyrics and Signal: after a song at 44.1 or 48 kHz, a high-resolution one (88.2 to 192 kHz) froze the view's animation: the lyrics jumped once a second instead of scrolling, and the spectrum and read-outs stood still.",
+   "Lyrics: a track with no artist tag gets its lyrics online too, found by its title and length.",
+   "Archive: an album kept as one image file with a CUE sheet (WAV, FLAC or APE plus .cue) shows as its tracks, with the sheet's titles, artist and year, also when foobar2000's media library leaves the .cue files out."
   ],
   "zh": [
-   "新外壳 BLACKOUT：黑色阳极氧化铝、黑色蚀刻，侧脊上有等高线纹样，一盏白色指示灯（#22）。",
-   "自定义外壳：在 05 外观 外壳皮肤中的 CUSTOM 卡片里，从精选的哑光塑料色中选择底色与点缀色，再选花纹（斜纹、色块或边条），即可生成外壳（#9）。",
-   "自定义配色：在 05 外观 的 CUSTOM 卡片中分别为浅色、深色选择背景、文字与强调色，其余颜色自动推算，并显示文字与强调色的对比度（#21）。",
-   "壁纸：在 05 外观 › 显示 › 壁纸 中，用你自己的图片作为所选视图（档案、播放列表、歌词、信号）的背景；可选清晰、磨砂或半调网点效果，并以低、中、高三档页面色遮罩保证文字清晰。",
-   "新配色 MATCHA：奶油白与抹茶绿；浅色模式为奶油白底色，深色模式为深抹茶底配奶油色文字。",
-   "新配色 LIVEWIRE：荧光黄绿与钢青；浅色模式为黄绿底色，深色模式为近黑底配黄绿文字。"
+   "歌词与信号视图：在 44.1 或 48 kHz 的歌曲之后播放高解析度歌曲（88.2 至 192 kHz）时，视图动画会停住：歌词每秒跳一次而不是平滑滚动，频谱和读数也不再更新。",
+   "歌词：没有艺术家标签的曲目现在也会在线获取歌词，按标题与时长匹配。",
+   "档案：以整轨文件加 CUE 分轨保存的专辑（WAV、FLAC 或 APE 加 .cue）现在按 CUE 分轨显示，带有其中的标题、艺术家与年份，即使 foobar2000 媒体库没有收录 .cue 文件。"
   ]
  }
 }
