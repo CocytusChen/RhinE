@@ -21,7 +21,14 @@ const _meter = { peak: 0, rms: 0, corr: 0, t: 0 };
 
 function analyseAudio(dt) {
     const playing = fb.IsPlaying && !fb.IsPaused;
-    const got = playing ? fb.GetAudioChunkTo(_pcm, FFT_N / (_info.SampleRate || 44100), 0, _info) : 0;
+    // FFT_N frames at the stream's rate as last seen. A track at a higher rate (44.1 kHz, then 192 kHz) makes that more
+    // samples than _pcm holds: the call throws without reporting the new rate, every frame, and the panel's clock
+    // stopped (the Lyrics view froze). A short piece is asked for then, which fits and reports the rate.
+    let got = 0;
+    if (playing) {
+        try { got = fb.GetAudioChunkTo(_pcm, FFT_N / (_info.SampleRate || 44100), 0, _info); }
+        catch (e) { try { got = fb.GetAudioChunkTo(_pcm, FFT_N / 768000, 0, _info); } catch (e2) { got = 0; } }
+    }
     AUDIO.live = got > 0;
     const B = AUDIO.bands;
     if (!got) {
