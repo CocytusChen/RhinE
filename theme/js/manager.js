@@ -67,8 +67,9 @@ function on_size(w, h) { W = w; H = h; railDirty(); }
 function on_paint(gr) {
     hits.clear();
     gr.FillSolidRect(0, 0, W, H, C.bg);
-    drawManager(gr);
-    drawRail(gr);
+    // the wallpaper (lib/wallpaper.js) under the column, its labels then drawn live
+    LABEL_LIVE = wallpaperOn("playlists") && drawWallpaper(gr, "manager", 0, 0, W, H);
+    try { drawManager(gr); drawRail(gr); } finally { LABEL_LIVE = false; }
     drawGrain(gr, 0, 0, W, H);
 }
 

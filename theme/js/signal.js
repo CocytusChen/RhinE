@@ -149,8 +149,8 @@ function drawClassic(gr) {
     const el = playing ? fb.PlaybackTime : 0, prog = playing && len > 0 ? clamp(el / len, 0, 1) : 0;
     const m = dp(48), cx = Math.round(W / 2), muted = C["text-muted"];
     const tt = (str, s, colour, x, y, align) => trackedText(gr, str, Object.assign({ colour }, s), x, y, align);
-    // ground: the frosted cover toned towards the page colour
-    if (bd) {
+    // ground: the frosted cover toned towards the page colour (unless the wallpaper is under it: LABEL_LIVE, stage.js)
+    if (!LABEL_LIVE && bd) {
         const sz = Math.max(W, H), bx = (W - sz) / 2, by = (H - sz) / 2;
         gr.DrawImage(bd, bx, by, sz, sz, 2, 2, bd.Width - 4, bd.Height - 4);
         gr.FillSolidRect(0, 0, W, H, withAlpha(C.bg, dark ? .64 : .56));

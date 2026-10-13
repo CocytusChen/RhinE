@@ -161,16 +161,21 @@ TOKEN_LISTENERS.push(() => { dirty.left = dirty.card = true; });
 function on_paint(gr) {
     hits.clear();
     gr.FillSolidRect(0, 0, W, H, C.bg);
-    if (STATE.view === "archive") AR.layout === "grid" ? drawGrid(gr) : drawArchive(gr);
-    else if (STATE.view === "signal") drawSignal(gr);
-    else if (STATE.view === "lyrics") drawLyricsView(gr);
-    else if (STATE.view === "style") drawStyle(gr);
+    // the wallpaper (lib/wallpaper.js) where it is on: LABEL_LIVE then also tells the views they draw over it
+    LABEL_LIVE = STATE.view !== "style" && wallpaperOn(STATE.view) && drawWallpaper(gr, "stage", 0, 0, W, H);
+    try {
+        if (STATE.view === "archive") AR.layout === "grid" ? drawGrid(gr) : drawArchive(gr);
+        else if (STATE.view === "signal") drawSignal(gr);
+        else if (STATE.view === "lyrics") drawLyricsView(gr);
+        else if (STATE.view === "style") drawStyle(gr);
+    } finally { LABEL_LIVE = false; }
     drawGrain(gr, 0, 0, W, H);
 }
 
 function drawLyricsView(gr) {
     // left column
-    if (dirty.left || !layers.left) { layers.left = renderLayer(dp(LEFT_W), H, drawLeft, layers.left); dirty.left = false; }
+    const wp = LABEL_LIVE ? WP.comp : null;   // the wallpaper's bitmap under the column (it is part of the layer)
+    if (dirty.left || !layers.left || layers.left.wp !== wp) { layers.left = renderLayer(dp(LEFT_W), H, drawLeft, layers.left); layers.left.wp = wp; dirty.left = false; }
     gr.DrawImage(layers.left.img, 0, 0, layers.left.w, layers.left.h, 0, 0, layers.left.w, layers.left.h);
     gr.FillSolidRect(dp(LEFT_W), 0, HAIR, H, withAlpha(C["line-dim"], .6));
     drawSpectrumBox(gr);
@@ -242,6 +247,7 @@ function renderLayer(w, h, fn, prev = null) {
 // ------------------------------------------------------------------------------------------------ left column
 function drawLeft(gr, w, h) {
     gr.FillSolidRect(0, 0, w, h, C.bg);
+    if (LABEL_LIVE) drawWallpaper(gr, "stage", 0, 0, w, h);
     const x = dp(24);
     let y = dp(26);
     gr.FillSolidRect(x, y + dp(2.5), dp(22), dp(6), C.fg);
@@ -297,7 +303,7 @@ function drawSpectrumBox(gr) {
     label(gr, tr("SPECTRUM"), ts, R.x + dp(6), R.y + Math.round((th - labelHeight(ST.tag)) / 2));
     const by = R.y + th + dp(10), bh = R.h - th - dp(10), padX = dp(14);
     box(gr, R.x, by, R.w, bh, C["line-faint"]);
-    gr.FillSolidRect(R.x + 1, by + 1, R.w - 2, bh - 2, C.bg);
+    if (!LABEL_LIVE) gr.FillSolidRect(R.x + 1, by + 1, R.w - 2, bh - 2, C.bg);
     const n = 48, gw = (R.w - 2 * padX) / n, top = by + dp(16), base = by + bh - dp(30), live = fb.IsPlaying;
     for (let i = 0; i < n; i++) {
         const v = live ? clamp(AUDIO.bands[i] || 0, 0, 1) : 0, hb = Math.max(HAIR, Math.round((base - top) * v));

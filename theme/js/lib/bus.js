@@ -9,7 +9,7 @@
 const BUS = "audio-archive";
 const BUS_HANDLERS = {};
 const STATE = { view: "playlists", preset: "album", reduce: false, boot: true, skin: "white", grain: true, lyricsOnline: true,
-                textScale: 1, arrayScale: 1, inspectScale: 1.3 };
+                textScale: 1, arrayScale: 1, inspectScale: 1.3, wallpaper: null };
 
 // text size, Array scale and inspection size: the choices offered in MENU › Audio Archive and the Style view (frame.js keeps the value)
 const TEXT_SCALES = [.9, 1, 1.1, 1.2, 1.35, 1.5], ARRAY_SCALES = [.8, .9, 1, 1.15, 1.3], INSPECT_SCALES = [1, 1.15, 1.3, 1.5];

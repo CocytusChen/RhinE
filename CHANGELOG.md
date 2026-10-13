@@ -14,6 +14,12 @@ Newest version first. Download any version from [Releases](https://github.com/er
 - Your own colour scheme: the `CUSTOM` card in `05 STYLE` lets you pick the page, text and accent colour for light and
   for dark; every other colour follows, and the contrast of text and accent is shown (#21). 自定义配色：在 `05 外观` 的
   CUSTOM 卡片中分别为浅色、深色选择背景、文字与强调色，其余颜色自动推算，并显示文字与强调色的对比度（#21）。
+- Wallpaper: a picture of your own behind the views you pick (Archive, Playlists, Lyrics, Signal), in `05 STYLE` ›
+  `DISPLAY` › `WALLPAPER`. Shown clear, frosted or as a halftone dot screen, under a light, medium or strong veil of the
+  page colour so the text stays readable. 壁纸：在 `05 外观` › `显示` › `壁纸` 中，用你自己的图片作为所选视图（档案、播放列表、
+  歌词、信号）的背景；可选清晰、磨砂或半调网点效果，并以低、中、高三档页面色遮罩保证文字清晰。
+- `MATCHA`, a colour scheme of creamy white and matcha green: cream pages in light mode, cream type on deep matcha in
+  dark. 新配色 MATCHA：奶油白与抹茶绿；浅色模式为奶油白底色，深色模式为深抹茶底配奶油色文字。
 - `LIVEWIRE`, a colour scheme of lime signal and steel cyan: lime pages in light mode, lime type on near-black in dark.
   新配色 LIVEWIRE：荧光黄绿与钢青；浅色模式为黄绿底色，深色模式为近黑底配黄绿文字。
 

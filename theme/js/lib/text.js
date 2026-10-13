@@ -26,7 +26,10 @@ function advances(g, str, f) {
 // label(gr, "SIGNAL SECTION", { size: 10, weight: 600, track: .16, colour: C.fg, bg: C.bg }, x, y, align)
 // Draws a letter-spaced single line whose box top is y; align 0 left, 1 centre, 2 right (x is that edge).
 // `track` is in em, as in the spec (.14em = 0.14 × font size). Returns the drawn width in px.
+// LABEL_LIVE: over a picture (the wallpaper, lib/wallpaper.js), labels are drawn live instead (trackedText)
+let LABEL_LIVE = false;
 function label(gr, str, st, x, y, align = 0) {
+    if (LABEL_LIVE) return Math.round(trackedText(gr, str, st, x, y, align));
     const L = labelBitmap(str, st);
     if (!L) return 0;
     const lx = Math.round(align === 1 ? x - L.w / 2 : align === 2 ? x - L.w : x);
@@ -77,7 +80,7 @@ function text(gr, str, sizeDp, weight, colour, x, y, w, h, align = 0) {
 // st as for label() (bg unused); box top at y, align 0 left / 1 centre / 2 right. Returns the width in px.
 function trackedText(gr, str, st, x, y, align = 0) {
     str = String(str);
-    const f = fontFor(str, st.size, st.weight || 400), gap = (st.track || 0) * dp(st.size), adv = advances(gr, str, f);
+    const size = stSize(st), f = fontFor(str, size, st.weight || 400), gap = (st.track || 0) * dp(size * TEXT_SCALE), adv = advances(gr, str, f);
     const w = adv.reduce((a, b) => a + b, 0) + gap * Math.max(0, adv.length - 1), h = Math.ceil(f.Height);
     let cx = align === 1 ? x - w / 2 : align === 2 ? x - w : x, i = 0;
     for (const ch of str) {

@@ -711,7 +711,7 @@ function drawArchive(gr) {
     const R = railImages(), rows = [...AR.rows].filter(([, r]) => r.pos.x > -1 && r.pos.x < g.count).sort((p, q) => q[1].pos.x - p[1].pos.x);
     AR.hits = [];
     let selItem = null;
-    drawFloor(gr, rows, G, Ox, Oy, k, toScreen);
+    if (!LABEL_LIVE) drawFloor(gr, rows, G, Ox, Oy, k, toScreen);   // the wallpaper takes the floor's place
     for (const [gi, r] of rows) {
         const row = G[gi], albums = row.albums, pos = r.pos.x, x = -pos * ROWP, active = gi === AR.group, [i0, i1] = caseWindow(r, row);
         const nSlots = slotCount(row), items = [];
@@ -745,10 +745,11 @@ function drawArchive(gr) {
         drawCasePlate(gr, h.a, h.ox, h.oy, h.k, h.alpha, t.length > 40 ? t.slice(0, 39).join("") + "…" : t.join(""));
         AR.hoverPlate = null;
     }
-    // the array dissolves into the background towards the file panel and the controls
-    gr.FillGradRect(aw - dp(100), 0, dp(100) + 1, H, 0, withAlpha(C.bg, 0), C.bg);
-    gr.FillGradRect(0, H - dp(139), aw, dp(80) + 1, 90, withAlpha(C.bg, 0), C.bg);
-    gr.FillSolidRect(0, H - dp(60), aw, dp(60), C.bg);
+    // the array dissolves into the background towards the file panel and the controls (over the wallpaper, mostly)
+    const edge = LABEL_LIVE ? withAlpha(C.bg, .8) : C.bg;
+    gr.FillGradRect(aw - dp(100), 0, dp(100) + 1, H, 0, withAlpha(C.bg, 0), edge);
+    gr.FillGradRect(0, H - dp(139), aw, dp(80) + 1, 90, withAlpha(C.bg, 0), edge);
+    gr.FillSolidRect(0, H - dp(60), aw, dp(60), edge);
     drawSelectNumeral(gr);
     drawRuler(gr);
     drawGroupSwitch(gr);
@@ -756,7 +757,12 @@ function drawArchive(gr) {
     if (turn > 0) drawInspection(gr, turn);
     gr.PopClip();
     // album file
-    if (AR.dirtyInfo || !AR.info) { AR.info = renderLayer(W - infoX() + dp(20), H, drawInfo, AR.info); AR.dirtyInfo = false; }
+    drawInfoLayer(gr);
+}
+// the album file, cached as a layer (with the wallpaper under it, when there is one)
+function drawInfoLayer(gr) {
+    const wp = LABEL_LIVE ? WP.comp : null;
+    if (AR.dirtyInfo || !AR.info || AR.info.wp !== wp) { AR.info = renderLayer(W - infoX() + dp(20), H, drawInfo, AR.info); AR.info.wp = wp; AR.dirtyInfo = false; }
     gr.DrawImage(AR.info.img, infoX() - dp(20), 0, AR.info.w, AR.info.h, 0, 0, AR.info.w, AR.info.h);
     infoHits(infoX() - dp(20));
 }
@@ -1041,6 +1047,7 @@ function infoHits(ox) { for (const [id, x, y, w, h, data] of INFO_HITS) hits.add
 
 function drawInfo(gr, w, h) {
     gr.FillSolidRect(0, 0, w, h, C.bg);
+    if (LABEL_LIVE) drawWallpaper(gr, "stage", infoX() - dp(20), 0, w, h, 0, 0);
     INFO_HITS.length = 0;
     const a = curAlbum();
     if (!a) return;

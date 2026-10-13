@@ -27,13 +27,14 @@ STATE.arrayScale = pickScale(+getSetting("arrayScale", 1), ARRAY_SCALES);
 setTextScale(STATE.textScale);   // the root panel's own copy: the Playlists view's column widths follow it
 STATE.inspectScale = pickScale(+getSetting("inspectScale", 1.3), INSPECT_SCALES);
 STATE.floor = pickFloor(getSetting("floor", "plain"));
+STATE.wallpaper = pickWallpaper(getSetting("wallpaper", null));
 REDUCE_MOTION = STATE.reduce;
 RELOAD_ON_LANG = false;   // see lib/bus.js
 const P = {};          // child name -> PanelObject
 let ready = false;
 
 const broadcast = () => send("state", { view: STATE.view, preset: STATE.preset, reduce: STATE.reduce, boot: STATE.boot, skin: STATE.skin, grain: STATE.grain, lyricsOnline: STATE.lyricsOnline,
-                                   textScale: STATE.textScale, arrayScale: STATE.arrayScale, inspectScale: STATE.inspectScale, floor: STATE.floor });
+                                   textScale: STATE.textScale, arrayScale: STATE.arrayScale, inspectScale: STATE.inspectScale, floor: STATE.floor, wallpaper: STATE.wallpaper });
 
 // The layout creates the children in CHILDREN order and that is their z-order, so GetPanelByIndex(i) is CHILDREN[i].
 // They may not exist yet on the root's first on_size, so look again (briefly) until they are all there.
@@ -104,7 +105,10 @@ function layout() {
     // shown at no size at all and played unseen), so it is sized here once the window has one, and again on a resize
     if (fx && fx.kind === "boot") P.fx.Move(0, 0, W, H);
     sendPlaylistSize(r);
+    sendGeom(r);
 }
+// where each panel sits in the window, for the wallpaper's parts to line up (lib/wallpaper.js)
+function sendGeom(r = regions()) { send("geom", { w: W, h: H, r }); }
 // the playlist head lays out the column titles for the native playlist's size
 function sendPlaylistSize(r = regions()) { if (r.playlist) send("playlist-size", { w: r.playlist[2], h: r.playlist[3] }); }
 
@@ -205,7 +209,7 @@ function setReduce(on) {
     broadcast();
 }
 
-onMessage("hello", () => { if (ready) { broadcast(); sendPlaylistSize(); } });
+onMessage("hello", () => { if (ready) { broadcast(); sendPlaylistSize(); sendGeom(); } });
 // the rail's hover card: { x, y, w, h } in the manager panel's coordinates, or null to hide it
 onMessage("tip", t => {
     if (!ready) return;
@@ -227,6 +231,8 @@ onMessage("text-scale", v => { STATE.textScale = pickScale(+v, TEXT_SCALES); set
 onMessage("inspect-scale", v => { STATE.inspectScale = pickScale(+v, INSPECT_SCALES); setSetting("inspectScale", STATE.inspectScale); broadcast(); });
 onMessage("array-scale", v => { STATE.arrayScale = pickScale(+v, ARRAY_SCALES); setSetting("arrayScale", STATE.arrayScale); broadcast(); });
 onMessage("floor", v => { STATE.floor = pickFloor(v); setSetting("floor", STATE.floor); broadcast(); });
+// the wallpaper's settings, changed in part (05 STYLE)
+onMessage("wallpaper", w => { STATE.wallpaper = pickWallpaper(Object.assign({}, STATE.wallpaper, w)); setSetting("wallpaper", STATE.wallpaper, true); broadcast(); });
 onMessage("grain", on => { STATE.grain = !!on; setSetting("grain", STATE.grain); broadcast(); window.Repaint(); });
 
 const COMMANDS = [["Archive view", () => setView("archive")], ["Playlists view", () => setView("playlists")],

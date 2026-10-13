@@ -38,6 +38,7 @@ const SCHEME_ABOUT = {
     front: "Cold front blue",
     hearth: "Walnut and candlelight, made for REAL STYLE",
     livewire: "Lime signal and steel cyan",
+    matcha: "Creamy white and matcha green",
     custom: "Your own: pick the page, the text and the accent",
 };
 const STY = { img: new Map(), hover: null, gen: 0, shown: false };   // img: skin id -> { array, hero }
@@ -104,12 +105,13 @@ function drawMock(gr, x, y, w, h, t) {
 // card size: as large as the width allows and the height still fits every skin row plus the scheme row
 function styleGeom(nSkins = 10, nSchemes = 5) {
     const m = dp(48), top = dp(62), gap = dp(16), lx1 = Math.round(W * .62), lw = lx1 - m;
-    const cols = Math.max(5, Math.min(8, Math.max(Math.ceil(nSkins / 2), nSchemes)));   // the schemes in one row
+    const cols = Math.max(5, Math.min(9, Math.max(Math.ceil(nSkins / 2), nSchemes)));   // the schemes in one row
     const rows = Math.ceil(nSkins / cols), srows = Math.ceil(nSchemes / cols);
     const byW = (lw - (cols - 1) * gap) / cols;
-    const avail = H - top - dp(24) - dp(30) * 3 - dp(10) * 2 - dp(30) - dp(30);   // three section heads, the DISPLAY row
+    // three section heads, then the DISPLAY rows (as many as they wrap into)
+    const avail = H - top - dp(24) - dp(30) * 3 - dp(10) * 2 - drawScaleRow(null, 0, 0, lw) - dp(22) - dp(24);
     const byH = (avail - (rows + srows) * gap) / (rows * 1.02 + srows * .86);
-    const cw = Math.floor(Math.max(dp(70), Math.min(byW, byH)));
+    const cw = Math.floor(Math.max(dp(56), Math.min(byW, byH)));
     return { m, top, gap, lx1, cols, cw, skinH: Math.round(cw * 1.02), schemeH: Math.round(cw * .86) };
 }
 
@@ -141,7 +143,7 @@ function drawStyle(gr) {
     ids.forEach((id, i) => drawSchemeCard(gr, id, i, g.m + (i % g.cols) * (g.cw + g.gap), y + Math.floor(i / g.cols) * (g.schemeH + g.gap), g.cw, g.schemeH));
     y += Math.ceil(ids.length / g.cols) * (g.schemeH + g.gap) + dp(10);
     // DISPLAY: text size, Archive array scale, inspection size, Archive floor
-    label(gr, tr("DISPLAY  ·  04"), st(STY_ST.sec, C.fg), g.m, y);
+    label(gr, tr("DISPLAY  ·  05"), st(STY_ST.sec, C.fg), g.m, y);
     drawScaleRow(gr, g.m, y + dp(30), g.lx1);
     drawStylePreview(gr, g, skins);
 }
@@ -232,28 +234,96 @@ function drawIntroButton(gr, xr, y) {
 // TEXT [90% … 120%]   ARRAY [80% … 130%]   INSPECT [100% … 150%]   FLOOR [PLAIN | LAB DECK]
 // from x, wrapping to a second row before x1
 const pct = v => `${Math.round(v * 100)}%`;
-function drawScaleRow(gr, x, y, x1) {
+const scaleGroups = () => {
     const scales = list => list.map(v => [v, pct(v)]);
-    const groups = [["TEXT", scales(TEXT_SCALES), STATE.textScale, "sty-text"], ["ARRAY", scales(ARRAY_SCALES), STATE.arrayScale, "sty-array"],
-                    ["INSPECT", scales(INSPECT_SCALES), STATE.inspectScale, "sty-inspect"], ["FLOOR", FLOORS, STATE.floor, "sty-floor"]];
+    return [["TEXT", scales(TEXT_SCALES), STATE.textScale, "sty-text"], ["ARRAY", scales(ARRAY_SCALES), STATE.arrayScale, "sty-array"],
+            ["INSPECT", scales(INSPECT_SCALES), STATE.inspectScale, "sty-inspect"], ["FLOOR", FLOORS, STATE.floor, "sty-floor"]];
+};
+// toggle groups [title, items, cur, hit id, marks] in a row from x, wrapping before x1: where each one's right edge
+// goes ({ at: [[xr, y, group]], y: the last row's, xl: where that row ends })
+function wrapGroups(groups, x, y, x1) {
+    const s = st(GRID_ST.count, 0), at = [];
     let xl = x;
-    for (const [title, items, cur, id] of groups) {
-        const s = st(GRID_ST.count, 0), need = items.reduce((n, [, t]) => n + dp(18) + labelWidth(tr(t), s), 0) + dp(12) + labelWidth(tr(title), s);
+    for (const gp of groups) {
+        const [title, items, , , marks] = gp, need = items.reduce((n, [, t]) => n + (marks ? dp(29) : dp(18)) + labelWidth(tr(t), s), 0) + dp(12) + labelWidth(tr(title), s);
         if (xl > x && xl + need > x1) { xl = x; y += dp(34); }
-        segToggle(gr, xl + need, y, title, items, cur, id);
+        at.push([xl + need, y, gp]);
         xl += need + dp(28);
     }
+    return { at, y, xl };
+}
+// gr null: only measures (the y of the last row)
+function drawScaleRow(gr, x, y, x1) {
+    const wg = wrapGroups(scaleGroups(), x, y, x1);
+    if (gr) for (const [xr, gy, [title, items, cur, id]] of wg.at) segToggle(gr, xr, gy, title, items, cur, id);
+    let xl = wg.xl;
+    y = wg.y;
+    // WALLPAPER · IMG.JPG ›: opens its editor on the right
+    const b = STATE.wallpaper || WP_START, on = STY.edit === "wallpaper", hov = STY.wpHover === "open";
+    const wt = `${tr("WALLPAPER")}  ·  ${b.path ? b.path.slice(b.path.lastIndexOf("\\") + 1).toUpperCase() : tr("NONE")}  ›`;
+    const ws = st(GRID_ST.count, on ? C.bg : C.fg, on ? C.fg : C.bg), wh = dp(22), ww = Math.min(x1 - x, labelWidth(wt, ws) + dp(24));
+    if (xl > x && xl + ww > x1) { xl = x; y += dp(34); }
+    if (gr) {
+        if (on) gr.FillSolidRect(xl, y, ww, wh, C.fg);
+        box(gr, xl, y, ww, wh, hov || on ? C.accent : C["line-dim"]);
+        label(gr, fitLabel(wt, ws, ww - dp(24)), ws, xl + dp(12), y + Math.round((wh - labelHeight(GRID_ST.count)) / 2));
+        hits.add("sty-wp-open", xl, y, ww, wh);
+    }
+    xl += ww + dp(28);
     // REAL STYLE has its own colour scheme: offered next to the floor until it is in use
     if (STATE.floor === "real" && SCHEME !== "hearth" && TOKENS.schemes.hearth) {
         const t = tr("USE HEARTH, MADE FOR REAL STYLE"), s = st(GRID_ST.count, C.fg, C.bg), h = dp(22), w = dp(26) + labelWidth(t, s) + dp(10);
         if (xl + w > x1) { xl = x; y += dp(34); }
+        if (!gr) return y;
         gr.FillSolidRect(xl, y, w, h, C.bg);
         box(gr, xl, y, w, h, C.accent);
         gr.FillSolidRect(xl + dp(9), y + Math.round((h - dp(6)) / 2), dp(6), dp(6), C.accent);
         label(gr, t, s, xl + dp(22), y + Math.round((h - labelHeight(GRID_ST.count)) / 2));
         hits.add("sty-hearth", xl, y, w, h);
     }
+    return y;
 }
+
+// The wallpaper's editor (lib/wallpaper.js): the picture as the stage shows it (look and veil applied), CHOOSE / REMOVE,
+// then where it shows, its look and its veil.
+function drawWallpaperEditor(gr, x0, y, w, y1) {
+    const b = STATE.wallpaper || WP_START, s = st(GRID_ST.count, 0), hh = dp(22);
+    const ty = yy => yy + Math.round((hh - labelHeight(GRID_ST.count)) / 2);
+    label(gr, tr("WALLPAPER"), st(STY_ST.big, C.fg), x0, y);
+    y += labelHeight(STY_ST.big) + dp(6);
+    text(gr, tr("A picture of your own behind the views below."), 10, 500, C["fg-soft"], x0, y, w, dp(18));
+    y += dp(30);
+    const ph = Math.max(dp(80), Math.min(Math.round(w * 9 / 16), y1 - y - dp(200)));
+    if (!(b.path && wallpaperPreview(gr, x0, y, w, ph))) {
+        const t = tr(b.path ? (WP.failed[b.path] ? "CANNOT OPEN THE PICTURE" : "LOADING …") : "NO PICTURE");
+        label(gr, t, st(STY_ST.tiny, b.path && WP.failed[b.path] ? C.accent : C["text-muted"]), x0 + w / 2, y + ph / 2 - dp(6), 1);
+    }
+    box(gr, x0, y, w, ph, C["line-faint"]);
+    y += ph + dp(16);
+    // [CHOOSE PICTURE …]  NAME.JPG                                                           [REMOVE]
+    const pick = tr(b.path ? "CHANGE PICTURE …" : "CHOOSE PICTURE …"), pw = labelWidth(pick, s) + dp(24), hov = STY.wpHover === "pick";
+    gr.FillSolidRect(x0, y, pw, hh, hov ? C.accent : C.fg);
+    label(gr, pick, st(GRID_ST.count, hov ? C["on-accent"] : C.bg, hov ? C.accent : C.fg), x0 + dp(12), ty(y));
+    hits.add("sty-wp-pick", x0, y, pw, hh);
+    if (b.path) {
+        const rm = tr("REMOVE"), rw = labelWidth(rm, s) + dp(24), name = b.path.slice(b.path.lastIndexOf("\\") + 1).toUpperCase(), nst = st(GRID_ST.count, C["fg-soft"]);
+        label(gr, fitLabel(name, nst, w - pw - rw - dp(28)), nst, x0 + pw + dp(14), ty(y));
+        box(gr, x0 + w - rw, y, rw, hh, STY.wpHover === "off" ? C.accent : C["line-dim"]);
+        label(gr, rm, st(GRID_ST.count, C.fg), x0 + w - rw + dp(12), ty(y));
+        hits.add("sty-wp-off", x0 + w - rw, y, rw, hh);
+    }
+    y += dp(40);
+    // VIEWS, LOOK, VEIL: one row each
+    for (const gp of wallpaperGroups()) {
+        const [title, items, cur, id, marks] = gp, [[xr]] = wrapGroups([gp], x0, y, x0 + w).at;
+        segToggle(gr, xr, y, title, items, cur, id, !!marks);
+        y += dp(34);
+    }
+}
+const wallpaperGroups = () => {
+    const b = STATE.wallpaper || WP_START;
+    return [["VIEWS", WP_VIEWS, b.views, "sty-wp-view", true], ["LOOK", WP_LOOKS, b.look, "sty-wp-look"], ["VEIL", WP_VEILS, b.veil, "sty-wp-veil"]];
+};
 
 // the preview of the card under the mouse, else of the skin and scheme in use
 function drawStylePreview(gr, g, skins) {
@@ -283,6 +353,7 @@ function drawStylePreview(gr, g, skins) {
         }
         return;
     }
+    if (!hv && STY.edit === "wallpaper") { drawWallpaperEditor(gr, x0, y0 + dp(30), w, y1); return; }
     if (!hv && (STY.making || (STATE.skin === "custom" && STY.edit !== "scheme"))) { drawCaseEditor(gr, x0, y0 + dp(30), w, y1); return; }
     if (!hv && SCHEME === "custom") { drawCustomEditor(gr, x0, y0 + dp(30), w, y1); return; }
     const s = hv ? skins.find(k => k.id === hv.id) : skins.find(k => k.id === STATE.skin);
@@ -410,6 +481,8 @@ function setCustom(u) {
 
 // ------------------------------------------------------------------------------------------------------- input
 function styleMouseMove(a) {
+    const wh = a && (a.id === "sty-wp-pick" || a.id === "sty-wp-off" || a.id === "sty-wp-open") ? a.id.slice(7) : null;
+    if (wh !== (STY.wpHover || null)) { STY.wpHover = wh; window.Repaint(); }
     const cp = a && a.id === "sty-cpick" ? a.data : null;
     if (cp !== (STY.cpick || null)) { STY.cpick = cp; window.Repaint(); }
     const h = a && (a.id === "sty-skin" || a.id === "sty-scheme") ? { kind: a.id === "sty-skin" ? "skin" : "scheme", id: a.data }
@@ -425,9 +498,10 @@ function styleClick(a) {
         else if (STATE.skin !== "custom") send("skin", "custom");
         window.Repaint();
     }
-    else if (a.id === "sty-skin" && a.data !== STATE.skin) send("skin", a.data);
+    else if (a.id === "sty-wp-open") { STY.edit = STY.edit === "wallpaper" ? null : "wallpaper"; window.Repaint(); }
+    else if (a.id === "sty-skin" && a.data !== STATE.skin) { if (STY.edit === "wallpaper") STY.edit = null; send("skin", a.data); }
     else if (a.id === "sty-scheme" && a.data === "custom") { STY.edit = "scheme"; if (SCHEME !== "custom") send("scheme", "custom"); window.Repaint(); }
-    else if (a.id === "sty-scheme" && a.data !== SCHEME) send("scheme", a.data);
+    else if (a.id === "sty-scheme" && a.data !== SCHEME) { if (STY.edit === "wallpaper") STY.edit = null; send("scheme", a.data); }
     else if (a.id === "sty-cc") { const [k, c] = a.data.split("|"); STY.cc = Object.assign({}, STY.cc || customCase(), { [k]: c }); window.Repaint(); }
     else if (a.id === "sty-ccpat") { STY.cc = Object.assign({}, STY.cc || customCase(), { pattern: a.data }); window.Repaint(); }
     else if (a.id === "sty-ccmake") makeCase();
@@ -447,4 +521,18 @@ function styleClick(a) {
         setCustom(u);
     }
     else if (a.id === "sty-creset") setCustom(JSON.parse(JSON.stringify(CUSTOM_START)));
+    else if (a.id === "sty-wp-pick") {
+        const b = STATE.wallpaper || WP_START, dir = b.path ? b.path.slice(0, b.path.lastIndexOf("\\") + 1) : "";
+        let p = "";
+        try { p = utils.FilePicker(tr("Choose a picture"), dir, "Pictures (*.jpg;*.jpeg;*.png;*.bmp;*.webp)|*.jpg;*.jpeg;*.png;*.bmp;*.webp|All files (*.*)|*.*", 0, window.ID); }
+        catch (e) { return; }
+        if (p) { delete WP.failed[p]; send("wallpaper", { path: p, views: b.views.length ? b.views : WP_START.views }); }
+    }
+    else if (a.id === "sty-wp-off") send("wallpaper", { path: "" });
+    else if (a.id === "sty-wp-view") {
+        const v = (STATE.wallpaper || WP_START).views;
+        send("wallpaper", { views: v.includes(a.data) ? v.filter(k => k !== a.data) : v.concat([a.data]) });
+    }
+    else if (a.id === "sty-wp-look") send("wallpaper", { look: a.data });
+    else if (a.id === "sty-wp-veil") send("wallpaper", { veil: a.data });
 }

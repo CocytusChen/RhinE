@@ -180,13 +180,11 @@ function drawGrid(gr) {
     }
     gr.PopClip();
     // fade under the top bar
-    gr.FillGradRect(0, G.top, aw, dp(18), 90, C.bg, withAlpha(C.bg, 0));
+    gr.FillGradRect(0, G.top, aw, dp(18), 90, LABEL_LIVE ? withAlpha(C.bg, .8) : C.bg, withAlpha(C.bg, 0));
     gr.FillSolidRect(G.padX, G.top - dp(10), G.aw - 2 * G.padX, HAIR, withAlpha(C.fg, .5));
     drawArchiveBar(gr);
     // album file (as in the array layout)
-    if (AR.dirtyInfo || !AR.info) { AR.info = renderLayer(W - infoX() + dp(20), H, drawInfo, AR.info); AR.dirtyInfo = false; }
-    gr.DrawImage(AR.info.img, infoX() - dp(20), 0, AR.info.w, AR.info.h, 0, 0, AR.info.w, AR.info.h);
-    infoHits(infoX() - dp(20));
+    drawInfoLayer(gr);
 }
 
 // The archive's top bar, in both layouts (a plate behind each control: the array's cases pass under them):
@@ -231,6 +229,7 @@ function drawPickButton(gr, x, y) {
 
 // TITLE [■ A | □ B | …] right-aligned at xr, on a plate; items [[value, text]]; marks: the square toggle marks.
 // Returns the left edge (of the title).
+// cur: the value that is on, or a list of them (each item then turns on and off by itself)
 function segToggle(gr, xr, y, title, items, cur, hitId, marks = false) {
     const hh = dp(22), s = st(GRID_ST.count, 0), ty = y + Math.round((hh - labelHeight(GRID_ST.count)) / 2);
     title = tr(title); items = items.map(([v, t]) => [v, tr(t)]);
@@ -240,7 +239,7 @@ function segToggle(gr, xr, y, title, items, cur, hitId, marks = false) {
     label(gr, title, st(GRID_ST.count, C["text-muted"]), left, ty);
     let x = xr - total;
     items.forEach(([v, t], i) => {
-        const on = cur === v, col = on ? C.bg : C["text-muted"];
+        const on = Array.isArray(cur) ? cur.includes(v) : cur === v, col = on ? C.bg : C["text-muted"];
         if (on) gr.FillSolidRect(x, y, widths[i], hh, C.fg);
         if (marks) toggleMark(gr, x + dp(9), y + hh / 2, on, col);
         label(gr, t, st(GRID_ST.count, col, on ? C.fg : C.bg), x + (marks ? dp(20) : dp(9)), ty);
