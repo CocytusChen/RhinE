@@ -102,7 +102,7 @@ function lyricsOnline(handle, onFound, onMiss = () => {}) {
     LYR.state = ""; LYR.req = null;
     if (!handle || !STATE.lyricsOnline || !(handle.Length > 0)) return;
     const [artist, title, album] = TF_LYR.EvalWithMetadb(handle).split("\u0001").map(v => v.trim());
-    if (!artist || !title) return;
+    if (!title) return;   // a track with no artist tag is searched for by its title alone (see lyricsDownloaded)
     const key = fnv(`${artist}|${title}|${album}|${Math.round(handle.Length)}`).toLowerCase(), base = LYR_DIR + key;
     if (utils.IsFile(base + ".lrc")) { const r = parseLrc(utils.ReadTextFile(base + ".lrc", 65001)); if (r) { onFound({ lines: r, source: "LRCLIB", langs: r.some(l => l.b) ? 2 : 1 }); return; } }
     if (utils.IsFile(base + ".none")) {
@@ -112,9 +112,17 @@ function lyricsOnline(handle, onFound, onMiss = () => {}) {
     if (!utils.IsDirectory(LYR_DIR)) utils.CreateFolder(LYR_DIR);
     LYR.req = { key, base, len: handle.Length, onFound, onMiss, step: "get", q: { artist_name: artist, track_name: title, album_name: album } };
     LYR.state = "SEARCHING";
+    if (!artist) { lyricsSearch(LYR.req); return; }   // the exact lookup needs the artist
     utils.DownloadFileAsync(`https://lrclib.net/api/get?${lyrQuery({ ...LYR.req.q, duration: Math.round(handle.Length) })}`, base + ".get.json");
 }
 
+const lyrNorm = s => String(s || "").toLowerCase().replace(/[\s\-–—_'’"“”.,!?()（）\[\]【】「」~·・]/g, "");
+// the search step: by title and artist (by title alone when the track has no artist; lyricsDownloaded then wants the
+// same title as well as the length)
+function lyricsSearch(R) {
+    R.step = "search";
+    utils.DownloadFileAsync(`https://lrclib.net/api/search?${lyrQuery({ track_name: R.q.track_name, artist_name: R.q.artist_name })}`, R.base + ".search.json");
+}
 // foobar2000's on_download_file_done, forwarded by the panel; returns true when the lookup changed state
 function lyricsDownloaded(path, ok) {
     const R = LYR.req;
@@ -124,14 +132,11 @@ function lyricsDownloaded(path, ok) {
     let synced = "";
     if (R.step === "get") {
         if (body && body.syncedLyrics) synced = body.syncedLyrics;
-        else {   // no exact match (or no synced text in it): search
-            R.step = "search";
-            const q = { track_name: R.q.track_name, artist_name: R.q.artist_name };
-            utils.DownloadFileAsync(`https://lrclib.net/api/search?${lyrQuery(q)}`, R.base + ".search.json");
-            return false;
-        }
+        else { lyricsSearch(R); return false; }   // no exact match (or no synced text in it): search
     } else if (Array.isArray(body)) {
-        const hit = body.filter(r => r.syncedLyrics && Math.abs((r.duration || 0) - R.len) <= 3)
+        // without an artist, only a result with the same title counts (a title alone matches many songs)
+        const sameTitle = r => !!R.q.artist_name || lyrNorm(r.trackName) === lyrNorm(R.q.track_name);
+        const hit = body.filter(r => r.syncedLyrics && Math.abs((r.duration || 0) - R.len) <= 3 && sameTitle(r))
                         .sort((p, q) => Math.abs(p.duration - R.len) - Math.abs(q.duration - R.len))[0];
         if (hit) synced = hit.syncedLyrics;
     } else if (!ok) { LYR.state = "OFFLINE"; LYR.req = null; return true; }
