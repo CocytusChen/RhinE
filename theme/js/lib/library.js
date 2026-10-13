@@ -51,8 +51,61 @@ function libIndex(fresh = false) {
         list = fb.GetLibraryItems();
     }
     LIB.source = list && list.Count ? "library" : "playlists";
-    libHandles = LIB.source === "library" ? list : playlistItems();
-    libWorker.postMessage({ type: "index", gen: ++LIB.gen, handles: libHandles, fresh: fresh === true });
+    const gen = ++LIB.gen, post = handles => { libHandles = handles; libWorker.postMessage({ type: "index", gen, handles, fresh: fresh === true }); };
+    withCueTracks(LIB.source === "library" ? list : playlistItems(), gen, post);
+}
+
+// CUE sheets. foobar2000's media library leaves *.CUE out by default (Preferences › Media Library › Exclude), so an
+// album kept as one image file (WAV, FLAC, APE …) with a .cue beside it arrives as a single hour-long track. A long
+// track is looked for in the .cue files of its folder (a FILE line naming it); when one names it, the sheet's tracks
+// take its place (read by fb.AddLocationsAsync: no playlist is touched). When the sheet's tracks are listed already
+// (the library includes .cue files, or they were added to a playlist), the image itself is left out.
+const CUE_MIN_S = 600;   // a file shorter than this is a track, not an album image
+const CUE = { task: -1, gen: 0, base: null, post: null };
+function cueSheetsIn(folder, cache) {
+    if (cache.has(folder)) return cache.get(folder);
+    const sheets = [];
+    try {
+        for (const path of utils.Glob(folder + "*.cue")) {
+            let text = utils.ReadTextFile(path, 65001);
+            if (text.includes("�")) text = utils.ReadTextFile(path, 0);   // not UTF-8: let foobar2000 detect the codepage
+            const files = new Set();
+            for (const m of text.matchAll(/^\s*FILE\s+(?:"([^"]+)"|(\S+))/gim)) {
+                const name = (m[1] || m[2]).replace(/^.*[\\/]/, "").toLowerCase();
+                files.add(name); files.add(name.replace(/\.[^.]+$/, ""));   // a sheet may still name the file before it was converted
+            }
+            sheets.push({ path, files });
+        }
+    } catch (e) { /* unreadable folder: no sheets */ }
+    cache.set(folder, sheets);
+    return sheets;
+}
+function withCueTracks(list, gen, post) {
+    const listed = new Set(), cache = new Map(), drop = new Set(), sheets = new Set();
+    for (let i = 0; i < list.Count; i++) { const p = list[i].Path; if (/\.cue$/i.test(p)) listed.add(p.toLowerCase()); }
+    for (let i = 0; i < list.Count; i++) {
+        const h = list[i], p = h.Path;
+        if (h.Length < CUE_MIN_S || /\.cue$/i.test(p) || !/^([a-z]:\\|\\\\)/i.test(p)) continue;
+        const cut = p.lastIndexOf("\\"), name = p.slice(cut + 1).toLowerCase();
+        const sheet = cueSheetsIn(p.slice(0, cut + 1), cache).find(s => s.files.has(name) || s.files.has(name.replace(/\.[^.]+$/, "")));
+        if (!sheet) continue;
+        drop.add(i);
+        if (!listed.has(sheet.path.toLowerCase())) sheets.add(sheet.path);
+    }
+    if (!drop.size) { post(list); return; }
+    const base = fb.CreateHandleList();
+    for (let i = 0; i < list.Count; i++) if (!drop.has(i)) base.Add(list[i]);
+    if (!sheets.size) { post(base); return; }
+    Object.assign(CUE, { gen, base, post, task: fb.AddLocationsAsync([...sheets]) });
+}
+// on_locations_added, forwarded by the panel (stage.js): the sheets' tracks join the list
+function libLocationsAdded(task, handles) {
+    if (task !== CUE.task || CUE.gen !== LIB.gen) return false;
+    CUE.base.AddRange(handles);
+    CUE.base.Sort();
+    CUE.post(CUE.base);
+    CUE.task = -1; CUE.base = CUE.post = null;
+    return true;
 }
 const libChanged = () => { window.ClearTimeout(libTimer); libTimer = window.SetTimeout(() => libIndex(), 1500); };
 function on_library_items_added() { libChanged(); }

@@ -522,6 +522,7 @@ function on_mouse_lbtn_up(x, y) {
 function on_char(code) { searchChar(code); }
 // online lyrics (lib/lyrics.js) arrive as downloads
 function on_download_file_done(path, success) { if (lyricsDownloaded(path, success)) window.Repaint(); }
+function on_locations_added(task, handles) { libLocationsAdded(task, handles); }   // CUE sheets read for the archive (lib/library.js)
 function on_key_down(vk) {
     if (searchKey(vk)) return;
     if (STATE.view === "archive" && archiveKey(vk)) return;

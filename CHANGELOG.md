@@ -3,6 +3,17 @@
 Newest version first. Download any version from [Releases](https://github.com/ericzhang12111-cell/RhinE/releases).
 最新版本在最上面；各版本可在 Releases 页面下载。
 
+## Unreleased
+
+**Fixed · 修复**
+- Lyrics and Signal: after a song at 44.1 or 48 kHz, a high-resolution one (88.2 to 192 kHz) froze the view's animation:
+  the lyrics jumped once a second instead of scrolling, and the spectrum and read-outs stood still. 歌词与信号视图：在 44.1 或
+  48 kHz 的歌曲之后播放高解析度歌曲（88.2 至 192 kHz）时，视图动画会停住：歌词每秒跳一次而不是平滑滚动，频谱和读数也不再更新。
+- Archive: an album kept as one image file with a CUE sheet (WAV, FLAC or APE plus .cue) shows as its tracks, with the
+  sheet's titles, artist and year, even though foobar2000's media library leaves .cue files out by default. 档案：以整轨文件加
+  CUE 分轨保存的专辑（WAV、FLAC 或 APE 加 .cue）现在按 CUE 分轨显示，带有其中的标题、艺术家与年份，即使 foobar2000 媒体库默认不收录
+  .cue 文件。
+
 ## 1.7.0 — 2026-10-12
 
 **Added · 新增**
