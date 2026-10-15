@@ -1,17 +1,23 @@
 {
- "version": "1.7.1",
- "tag": "v1.7.1",
- "date": "2026-10-13",
+ "version": "1.7.2",
+ "tag": "v1.7.2",
+ "date": "2026-10-15",
  "notes": {
   "en": [
-   "Lyrics and Signal: after a song at 44.1 or 48 kHz, a high-resolution one (88.2 to 192 kHz) froze the view's animation: the lyrics jumped once a second instead of scrolling, and the spectrum and read-outs stood still.",
-   "Lyrics: a track with no artist tag gets its lyrics online too, found by its title and length.",
-   "Archive: an album kept as one image file with a CUE sheet (WAV, FLAC or APE plus .cue) shows as its tracks, with the sheet's titles, artist and year, also when foobar2000's media library leaves the .cue files out."
+   "Ratings: rate tracks 1 to 5 by clicking the marks on the album file's new TRACKS page or on the signal profile card, or with Ctrl+1 – Ctrl+5 (Ctrl+0 clears). They are kept in JSplitter's own database, so no file is written, or in foo_playcount's statistics when it is installed; right-click the Archive › Ratings saved in to pick file tags instead.",
+   "Archive: the album file has a second page listing every track with its rating, so a library can be browsed and rated without opening a playlist; the two dots at its bottom, or L, turn the page.",
+   "Archive: Shift + wheel (or a sideways wheel) switches shelves, as ← → do; in the grid it jumps a section.",
+   "A halftone of dots on the album file and the signal profile card: along the bottom, in the lower right corner or off, faint to strong (05 STYLE › HALFTONE, DOTS).",
+   "Startup: with a large library of CUE albums, 1.7.1 could make foobar2000 report the Archive's script as not responding (#24). The CUE sheets are now read a little at a time, and each folder once.",
+   "Archive: CUE sheets saved in a Japanese or Chinese code page (as EAC writes them) are read, so their albums show as their tracks too."
   ],
   "zh": [
-   "歌词与信号视图：在 44.1 或 48 kHz 的歌曲之后播放高解析度歌曲（88.2 至 192 kHz）时，视图动画会停住：歌词每秒跳一次而不是平滑滚动，频谱和读数也不再更新。",
-   "歌词：没有艺术家标签的曲目现在也会在线获取歌词，按标题与时长匹配。",
-   "档案：以整轨文件加 CUE 分轨保存的专辑（WAV、FLAC 或 APE 加 .cue）现在按 CUE 分轨显示，带有其中的标题、艺术家与年份，即使 foobar2000 媒体库没有收录 .cue 文件。"
+   "评分：在专辑档案新的 曲目 页或信号资料卡上点击菱形为曲目评 1 至 5 分，或按 Ctrl+1 – Ctrl+5 （Ctrl+0 清除）。评分默认保存在 JSplitter 自带的数据库中，不写入文件；装有 foo_playcount 时保存在其播放统计中；也可在右键档案 › 评分保存在 中改为文件标签。",
+   "档案：专辑档案新增第二页，列出全部曲目及其评分，无需打开播放列表即可浏览与评分；点击底部的两个圆点或按 L 翻页。",
+   "档案： Shift + 滚轮（或横向滚轮）切换货架，与 ← → 相同；网格中跳到相邻分区。",
+   "专辑档案与信号资料卡加入半调网点装饰：沿底部、在右下角或关闭，浓淡可调（05 外观 › 半调网点、浓度）。",
+   "启动：媒体库中有大量 CUE 专辑时，1.7.1 可能让 foobar2000 提示档案脚本无响应（#24）。现在 CUE 分轨分批读取，每个文件夹只读一次。",
+   "档案：以日文或中文编码保存的 CUE（EAC 常见）现在也能读取，这些专辑同样按分轨显示。"
   ]
  }
 }
