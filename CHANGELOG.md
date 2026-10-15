@@ -3,7 +3,7 @@
 Newest version first. Download any version from [Releases](https://github.com/ericzhang12111-cell/RhinE/releases).
 最新版本在最上面；各版本可在 Releases 页面下载。
 
-## Unreleased
+## 1.7.2 — 2026-10-15
 
 **Added · 新增**
 - Ratings: rate tracks 1 to 5 by clicking the marks on the album file's new `TRACKS` page or on the signal profile
