@@ -22,18 +22,20 @@ const TF_INFO = fb.TitleFormat([
     "[%replaygain_track_gain%]", "[%play_count%]", "[%codec_profile%]", "$if($stricmp(%__encoding%,lossless),1,)",
 ].join("\u0001"));
 const TF_QUEUE = fb.TitleFormat("%title%\u0001[%length%]"), TF_TITLE = fb.TitleFormat("%title%");
-const T = { handle: null, info: null, lyrics: null, no: 0, title: null, file: 0, next: "", missing: false, session0: Date.now() };
+const T = { handle: null, info: null, lyrics: null, no: 0, title: null, file: 0, next: "", missing: false, session0: Date.now(), rating: 0 };
+const NP_RATE = { hover: 0 };   // the rating under the mouse on the card's RATING row (the panel sets it), previewed
 const heroClear = Spring(1, 6);      // 0 frosted → 1 clear, ≈ 0.8 s
 
 function loadTrack() {
     const h = fb.GetNowPlaying() || fb.GetFocusItem();
     const same = !!(h && T.handle && h.RawPath === T.handle.RawPath && h.SubSong === T.handle.SubSong);
     T.handle = h;
-    if (!h) { T.info = null; T.file = 0; T.next = "—"; npChanged(false, null); return; }
+    if (!h) { T.info = null; T.file = 0; T.next = "—"; T.rating = 0; npChanged(false, null); return; }
     const v = TF_INFO.EvalWithMetadb(h).split("\u0001");
     T.info = { title: v[0], artist: v[1], album: v[2], year: v[3], codec: v[4] || "—", bitrate: v[5], rate: +v[6] || 0, bits: +v[7] || 0,
                ch: v[8], track: v[9], total: v[10], gain: v[11], plays: v[12], profile: v[13], lossless: v[14] === "1" };
     T.no = albumNo(h);
+    T.rating = getRating(h);
     const loc = plman.GetPlayingItemLocation();
     T.file = loc.IsValid ? loc.PlaylistItemIndex + 1 : 0;
     T.next = nextTitle();
@@ -69,20 +71,24 @@ function nextTitle() {
 // ------------------------------------------------------------------------------------------------------ the card
 // kind "pager": ends in the previous / current / next pager (Lyrics view, fixed height cardHeight());
 // kind "queue": ends in QUEUE / NEXT, as many rows as fit in h (Playlists view)
-const CARD_TOP = 14 + 16 + 6 + 250 + 18 + 10 + 54 + 10 + 32 + 12 + 18 + 70;
+const CARD_TOP = 14 + 16 + 6 + 250 + 18 + 10 + 54 + 10 + 32 + 12 + 18 + 90;
 function cardHeight() { return dp(CARD_TOP + 14 + 10 + 16); }
 // profile: the card from its top to the end of the profile table (a click inspects the album in the Archive)
-const CARD_HITS = { pager: [], queue: [], profile: null, folder: null };
+const CARD_HITS = { pager: [], queue: [], profile: null, folder: null, rate: null };
 function hitsCard(ox, oy) {
     if (CARD_HITS.profile && T.handle) { const [x, y, w, h] = CARD_HITS.profile; hits.add("profile", ox + x, oy + y, w, h); }
     // the FILE chip opens the track's folder (on top of the profile card, which inspects the album)
     if (CARD_HITS.folder && T.handle) { const [x, y, w, h] = CARD_HITS.folder; hits.add("folder", ox + x, oy + y, w, h); }
+    // the RATING row's marks rate the track (on top of the profile too)
+    if (CARD_HITS.rate && T.handle) { const [x, y, w, h, size, padX] = CARD_HITS.rate; hits.add("rate", ox + x, oy + y, w, h, { size, pad: padX }); }
     for (const [i, x, y, w, h] of CARD_HITS.pager) hits.add("pager", ox + x, oy + y, w, h, i);
     for (const [q, x, y, w, h] of CARD_HITS.queue) hits.add("queue", ox + x, oy + y, w, h, q);
 }
 
 function drawCard(gr, w, h, kind = "pager", ghost = "INFO") {
     gr.FillSolidRect(0, 0, w, h, C.panel);
+    // halftone low on the right, under the ghost number
+    halftone(gr, w * .2, h - dp(220), w * .8, dp(220), withAlpha(C.fg, MODE === "dark" ? .16 : .19), { from: "br", pitch: 7, max: .9, gamma: 1.3 });
     box(gr, 0, 0, w, h, C.hair);
     const I = T.info, px = dp(16), iw = w - 2 * px;
     // ghost type behind the content, low on the right
@@ -137,7 +143,14 @@ function drawCard(gr, w, h, kind = "pager", ghost = "INFO") {
         label(gr, k, npSt(NP_ST.key, C["text-muted"]), cx, cy + dp(2));
         gr.DrawText(String(v), font(11, 400), C.fg, cx + dp(64), cy - dp(2), colW - dp(70), dp(18), DT_SINGLE | DT_ELLIPSIS);
     });
-    y += dp(40) + dp(10);
+    // RATING ◆◆◆◇◇ (click a mark; the same one again clears it; Ctrl+1–5 from anywhere)
+    const ry = y + dp(40), ms = dp(9), mx = px + dp(8) + dp(64);
+    label(gr, tr("RATING"), npSt(NP_ST.key, C["text-muted"]), px + dp(8), ry + dp(2));
+    if (I) {
+        drawRating(gr, mx, ry + Math.round((labelHeight(NP_ST.key) - ms) / 2) + dp(2), ms, T.rating, NP_RATE.hover);
+        CARD_HITS.rate = [mx - dp(4), ry - dp(3), ratingWidth(ms) + dp(8), dp(20), ms, dp(4)];
+    } else { gr.DrawText("—", font(11, 400), C.fg, mx, ry - dp(2), dp(40), dp(18), DT_SINGLE); CARD_HITS.rate = null; }
+    y += dp(60) + dp(10);
     CARD_HITS.profile = [0, 0, w, y];
     hline(gr, px, y, iw);
     y += dp(14);

@@ -113,3 +113,29 @@ function accentShift(img) {
     ACCENT_CACHE.set(img, { deg: ACCENT_FX.deg, img: out });
     return out;
 }
+
+// Halftone: dots on a staggered grid, largest at `from` (a corner "br" "bl" "tr" "tl", or an edge "r" "l" "b" "t") and
+// shrinking to nothing across the area, as in the studio's halftone generator. Decoration under content: drawn once
+// into an image per size, colour and settings (kept until the next of those), then copied.
+const HALFTONE = new Map();
+function halftone(gr, x, y, w, h, colour, { from = "br", pitch = 8, max = .78, gamma = 1.7 } = {}) {
+    w = Math.round(w); h = Math.round(h);
+    if (w < 4 || h < 4) return;
+    const key = `${w}|${h}|${colour}|${from}|${pitch}|${max}|${gamma}|${SCALE}`;
+    let img = HALFTONE.get(key);
+    if (!img) {
+        if (HALFTONE.size > 12) HALFTONE.clear();
+        img = d2d.CreateImage(w, h);
+        const g = img.GetGraphics(), p = dp(pitch), fx = from.includes("r") ? 1 : from.includes("l") ? 0 : -1, fy = from.includes("b") ? 1 : from.includes("t") ? 0 : -1;
+        try {
+            for (let j = 0, cy = p / 2; cy < h + p; cy += p * .866, j++) for (let cx = (j % 2 ? p : p / 2); cx < w + p; cx += p) {
+                // 1 at `from`, 0 at the far side (a corner: by distance; an edge: straight across)
+                const dx = fx < 0 ? 0 : Math.abs(cx / w - fx), dy = fy < 0 ? 0 : Math.abs(cy / h - fy);
+                const t = Math.pow(clamp(1 - (fx >= 0 && fy >= 0 ? Math.hypot(dx, dy) / Math.SQRT2 * 1.25 : dx + dy), 0, 1), gamma), r = p * max / 2 * t;
+                if (r >= .35) g.FillEllipse(cx - r, cy - r, 2 * r, 2 * r, colour);
+            }
+        } finally { img.ReleaseGraphics(g); }
+        HALFTONE.set(key, img);
+    }
+    gr.DrawImage(img, Math.round(x), Math.round(y), w, h, 0, 0, w, h);
+}

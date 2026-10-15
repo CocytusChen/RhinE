@@ -79,7 +79,7 @@ function npChanged(same, h, what) {
 }
 
 // the archive's file panel marks the playing track
-const playingChanged = () => { AR.tracks.key = ""; AR.dirtyInfo = true; if (STATE.view === "archive") window.Repaint(); };
+const playingChanged = () => { AR.tracks.key = ""; AR.listVer++; AR.dirtyInfo = true; if (STATE.view === "archive") window.Repaint(); };
 function on_playback_new_track() { loadTrack(); playingChanged(); }
 function on_playback_starting() { clock.wake(); }
 function on_playback_pause() { dirty.card = true; clock.wake(); window.Repaint(); }
@@ -88,7 +88,13 @@ function on_playback_seek() { lyrIdx = -2; clock.wake(); }
 function on_playback_queue_changed() { if (T.handle) { T.next = nextTitle(); dirty.left = dirty.card = true; window.Repaint(); } }
 function on_playlist_items_reordered(i) { plDirty(i); }
 function on_item_focus_change() { if (!fb.IsPlaying) loadTrack(); }
-function on_metadb_changed() { if (T.handle) loadTrack(); }
+// a track changed (tags, a rating): the card and the album file read it again
+function on_metadb_changed() {
+    if (T.handle) loadTrack();
+    AR.listVer++; AR.dirtyInfo = true;
+    if (STATE.view === "archive") window.Repaint();
+}
+onMessage("rating-store", () => { if (T.handle) loadTrack(); AR.listVer++; AR.dirtyInfo = true; window.Repaint(); });
 
 // ----------------------------------------------------------------------------------------------- animation clock
 let lastPaint = 0, lastLeft = 0, alertShown = false, lyrBar = null, specRect = null, LEFT_SPEC = null;   // lyrBar: the karaoke rule's rect, repainted every frame
@@ -483,13 +489,18 @@ function on_mouse_move(x, y, mask) {
     window.SetCursor(a || onCase ? 32649 : 32512);
     if ((a && a.id) !== (hover && hover.id) && (STATE.view === "lyrics" || STATE.view === "signal")) window.Repaint();
     hover = a;
+    // the card's RATING row: the rating its marks would give, previewed
+    const n = a && a.id === "rate" ? ratingAt(x, a.x + a.data.pad, a.data.size) : 0;
+    if (n !== NP_RATE.hover) { NP_RATE.hover = n; dirty.card = true; window.Repaint(); }
 }
 function on_mouse_leave() {
+    if (NP_RATE.hover) { NP_RATE.hover = 0; dirty.card = true; }
     if (STATE.view === "archive") archiveMouseLeave();
     if (STATE.view === "style") styleMouseMove(null);
     if (hover) { hover = null; if (STATE.view === "lyrics" || STATE.view === "signal") window.Repaint(); }
 }
 function on_mouse_lbtn_dblclk(x, y) { if (STATE.view === "archive" && AR.layout === "grid" && !hits.at(x, y)) gridDblClick(x, y); }
+function on_mouse_wheel_h(step) { if (STATE.view === "archive") archiveWheelH(step); }   // a sideways wheel: shelves
 function on_mouse_wheel(step) {
     if (STATE.view === "archive") { archiveWheel(step); return; }
     if (STATE.view === "lyrics" && T.lyrics) {
@@ -512,6 +523,7 @@ function on_mouse_lbtn_up(x, y) {
     if (!a) return;
     if (a.id === "vis") visMenu(a.x, a.y + a.h);
     else if (a.id === "model" && a.data !== Ring.mode) { Ring.mode = a.data; setSetting("ringMode", a.data); window.Repaint(); }
+    else if (a.id === "rate") setRating(T.handle, ratingAt(x, a.x + a.data.pad, a.data.size));
     else if (a.id === "profile") inspectRequest();
     else if (a.id === "folder") openFolder(T.handle);
     else if (a.id === "pager") { if (a.data === 0) fb.Prev(); else if (a.data === 2) fb.Next(); }

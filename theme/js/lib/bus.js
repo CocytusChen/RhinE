@@ -58,6 +58,8 @@ function openFolder(h) {
 // B intro film, S shuffle the library, F the playing (else focused) track's folder, / search. A panel calls globalKey(vk) for keys it does not use itself.
 function globalKey(vk) {
     if (vk === 0xBF) { startSearchFwd(); return true; }   // "/"
+    // Ctrl+1–5: rate the playing (else focused) track; Ctrl+0: clear its rating (lib/rating.js)
+    if (vk >= 0x30 && vk <= 0x35 && utils.IsKeyPressed(0x11)) { setRating(fb.GetNowPlaying() || fb.GetFocusItem(), vk - 0x30, false); return true; }
     if (vk >= 0x31 && vk <= 0x35) send("view", ["archive", "playlists", "lyrics", "signal", "style"][vk - 0x31]);
     else if (vk === 0x54) send("mode");
     else if (vk === 0x50) send("preset");

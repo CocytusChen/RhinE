@@ -9,8 +9,11 @@
 //          number. Below: ALBUM / SELECT numeral, album index (navigation), shelf switcher. Click the selected case
 //          (or Enter) to inspect it: the case is lifted straight up out of its row, then turns square-on in front
 //          (and goes back the same way).
-//   right  the album file: eyebrow, bracketed album number, format chip, title plate, artist, profile table, first
-//          tracks, PLAY ALBUM / OPEN ALBUM, ghost row name.
+//   right  the album file, two pages (the two dots at the bottom, or L):
+//            FILE    eyebrow, bracketed album number, format chip, title plate, artist, profile table, first tracks,
+//                    PLAY ALBUM / OPEN ALBUM, ghost row name
+//            TRACKS  every track of the album with its rating (click the marks; lib/rating.js), scrolled with the
+//                    wheel; a click on a row plays the album from it, so nothing has to be opened in a playlist
 // Each case is one pre-rendered sprite (frost and clear) with the cover mapped into its window underneath
 // (case.json: quads and axes); inactive rows use tinted copies of the sprite made once per tint level and mode.
 
@@ -48,6 +51,9 @@ const AR = {
     insp: 0, inspOn: false,        // inspection timeline: 0 in the row · 1 lifted out · 2 square-on in front
     selRoll: Roll("01"), groupRoll: Roll("01"), noRoll: Roll("0000"),
     title: null, tracks: { key: "", rows: [], total: 0 },
+    page: getSetting("archiveInfoPage", "file") === "tracks" ? "tracks" : "file",   // the album file's page
+    list: null, listVer: 0, listScroll: 0, listMax: 0, listKey: "",   // the TRACKS page: its rows, their scroll
+    rateHover: null, mouseX: 0,   // { i, n }: the rating under the mouse (previewed); the mouse's x (wheel over the file)
     rulerStart: Spring(0, 14), ticks: new Map(),
     dirtyInfo: true, info: null,
     topTitles: getSetting("caseTopTitles", true) !== false,   // the titles on the cases' top edges (the context menu)
@@ -287,6 +293,35 @@ function albumTracks(a, max) {
     }
     AR.tracks = { key, rows, first, total: list ? list.Count : (albumOf(a) || a).tracks };
     return AR.tracks;
+}
+
+// every track of the selected item's album for the TRACKS page: disc, number, title, length, rating; AR.listVer goes up
+// when a track changes (a rating, tags) or another one plays
+const TF_AR_LIST = fb.TitleFormat("[%discnumber%]\u0001[%tracknumber%]\u0001%title%\u0001[%length_seconds%]");
+function albumTrackList(a) {
+    const key = `${a.key}|${LIB.live}|${AR.listVer}|${ratingStore()}`;
+    if (AR.list && AR.list.key === key) return AR.list;
+    const list = albumHandles(a), np = fb.GetNowPlaying(), own = itemTrack(a);
+    let rows = [];
+    if (list && list.Count) {
+        const R = getRatings(list);
+        rows = TF_AR_LIST.EvalWithMetadbs(list).map((v, i) => {
+            const [disc, no, title, len] = v.split("\u0001"), h = list[i];
+            return { i, disc: disc || "", no: no ? pad(parseInt(no) || 0, 2) : pad(i + 1, 2), title, len: +len || 0, rating: R[i] || 0,
+                     playing: sameTrack(h, np), own: sameTrack(h, own) };
+        });
+    }
+    const rated = rows.filter(r => r.rating);
+    AR.list = { key, rows, handles: list, discs: new Set(rows.map(r => r.disc)).size, total: rows.reduce((n, r) => n + r.len, 0),
+                rated: rated.length, avg: rated.length ? rated.reduce((n, r) => n + r.rating, 0) / rated.length : 0 };
+    return AR.list;
+}
+function setInfoPage(page) {
+    if (page === AR.page) return;
+    AR.page = page;
+    setSetting("archiveInfoPage", page);
+    AR.rateHover = null; AR.dirtyInfo = true;
+    window.Repaint();
 }
 
 // short: without the codec's bracketed note ("PCM (FLOATING-POINT)" → "PCM"), for a narrow header
@@ -1052,6 +1087,8 @@ function drawInfo(gr, w, h) {
     const a = curAlbum();
     if (!a) return;
     const x = dp(20), iw = dp(INFO_W), gname = groupName(a.grp || "");
+    // halftone low on the right, under the ghost group name (both pages)
+    halftone(gr, w * .2, h - dp(210), w * .8, dp(210), withAlpha(C.fg, MODE === "dark" ? .17 : .2), { from: "br", pitch: 7, max: .9, gamma: 1.3 });
     // ghost group name, low behind the actions
     const gf = font(132, 700), gw = gr.CalcTextWidth(gname, gf);
     gr.DrawStrokedText(gname, gf, withAlpha(C["line-faint"], .45), HAIR, 0, 0, h - dp(150), gw + dp(20), dp(170));
@@ -1061,6 +1098,56 @@ function drawInfo(gr, w, h) {
     ex += label(gr, "  /  ", st(AR_ST.eyebrow, C["text-muted"]), ex, y);
     label(gr, fitLabel(gname, st(AR_ST.eyebrowB, 0), iw - (ex - x)), st(AR_ST.eyebrowB, C.fg), ex, y);
     y += dp(24);
+    if (AR.page === "tracks") drawInfoTracks(gr, a, x, y, iw, w, h);
+    else drawInfoFile(gr, a, x, y, iw, w, h);
+    drawInfoPages(gr, x, iw, h);
+}
+
+// the two dots at the bottom: ● FILE  ○ TRACKS (a click on either, or L, turns the page)
+const INFO_PAGES = [["file", "FILE"], ["tracks", "TRACKS"]];
+function drawInfoPages(gr, x, iw, h) {
+    const cy = h - dp(22), r = dp(3.5), gap = dp(16), s = st(AR_ST.key, C["text-muted"]), names = INFO_PAGES.map(([, t]) => tr(t));
+    const cx0 = x + iw / 2 - gap / 2, at = INFO_PAGES.findIndex(([k]) => k === AR.page);
+    // a plate under the dots, so the halftone does not run through them
+    const nw = labelWidth(names[at], s), pw = gap + 2 * r + dp(14) + nw + dp(16), px = cx0 - r - dp(10);
+    gr.FillSolidRect(px, cy - dp(11), pw, dp(22), C.bg);
+    INFO_PAGES.forEach(([k], i) => {
+        const cx = cx0 + i * gap;
+        if (i === at) gr.FillEllipse(cx - r, cy - r, 2 * r, 2 * r, C.accent);
+        else gr.DrawEllipse(cx - r + HAIR / 2, cy - r + HAIR / 2, 2 * r - HAIR, 2 * r - HAIR, Math.max(HAIR, dp(1.2)), C["text-muted"]);
+        INFO_HITS.push(["ar-page", cx - dp(8), cy - dp(11), dp(16), dp(22), k]);
+    });
+    const lx = cx0 + gap + r + dp(12);
+    label(gr, names[at], s, lx, cy - Math.round(labelHeight(AR_ST.key) / 2));
+    INFO_HITS.push(["ar-page", lx - dp(2), cy - dp(11), nw + dp(4), dp(22), INFO_PAGES[(at + 1) % 2][0]]);
+}
+
+// ▶ PLAY ALBUM / PLAY TRACK (inverse) · OPEN ALBUM ↗ (orange focus frame); the key that does the same (Space) is
+// printed on the button, dimmed. Returns its height.
+function drawInfoButtons(gr, x, y, isTrack) {
+    const bh = dp(40), bs = st(AR_ST.btn, C.bg, C.fg), playTxt = tr(isTrack ? "PLAY TRACK" : "PLAY ALBUM");
+    const ks = st(AR_ST.key, mix(C.bg, C.fg, .45), C.fg), kt = tr("SPACE"), kw = labelWidth(kt, ks);
+    const pw = dp(14) + dp(10) + dp(10) + labelWidth(playTxt, bs) + dp(14) + kw + dp(14);
+    gr.FillSolidRect(x, y, pw, bh, C.fg);
+    icon(gr, "play", x + dp(19), y + bh / 2, 9, C.bg);
+    label(gr, playTxt, bs, x + dp(34), y + Math.round((bh - labelHeight(AR_ST.btn)) / 2));
+    label(gr, kt, ks, x + pw - dp(14) - kw, y + Math.round((bh - labelHeight(AR_ST.key)) / 2));
+    INFO_HITS.push(["ar-play", x, y, pw, bh]);
+    const ox2 = x + pw + dp(10), os = st(AR_ST.btn, C.fg), ow = dp(14) + labelWidth(tr("OPEN ALBUM"), os) + dp(40) + dp(26);
+    if (!LABEL_LIVE) gr.FillSolidRect(ox2, y, ow, bh, C.bg);   // over the halftone (a wallpaper shows through, as before)
+    box(gr, ox2, y, ow, bh, C.fg);
+    box(gr, ox2 - dp(4), y - dp(4), ow + dp(8), bh + dp(8), C.accent);
+    label(gr, tr("OPEN ALBUM"), os, ox2 + dp(14), y + Math.round((bh - labelHeight(AR_ST.btn)) / 2));
+    const ax0 = ox2 + ow - dp(24), ay0 = y + bh / 2 + dp(5), aL = dp(9), sw = Math.max(HAIR, dp(1.5));
+    gr.DrawLine(ax0, ay0, ax0 + aL, ay0 - aL, sw, C.accent);
+    gr.DrawLine(ax0 + dp(2.5), ay0 - aL, ax0 + aL, ay0 - aL, sw, C.accent);
+    gr.DrawLine(ax0 + aL, ay0 - aL, ax0 + aL, ay0 - dp(2.5), sw, C.accent);
+    INFO_HITS.push(["ar-open", ox2, y, ow, bh]);
+    return bh;
+}
+
+// FILE: the album file as it always was (the first tracks, as many as fit; "+ N MORE" turns to the TRACKS page)
+function drawInfoFile(gr, a, x, y, iw, w, h) {
     // bracketed ALBUM NO. 0269 + format chip
     const hh = dp(34), hs = st(AR_ST.head, C.fg), lw = labelWidth(tr("ALBUM NO.") + " ", hs);
     const f = font(13, 600), cell = Math.round(gr.CalcTextWidth("0", f, true) + .12 * dp(13)), bw = dp(20) + lw + cell * 4 + dp(16);
@@ -1080,11 +1167,11 @@ function drawInfo(gr, w, h) {
     const title = AR.title ? scrambleText(AR.title) : (a.title || tr("UNTITLED")), tf = fontFor(a.title || "U", 25, 600);
     const lines = gr.EstimateLineWrap(title, tf, iw - dp(24)), lh = dp(42);
     for (let i = 0, ly = y; i < Math.min(4, lines.length); i += 2, ly += lh + dp(2)) {
-        let s = lines[i];
-        if (i === 2 && lines.length > 4) s = s.replace(/.?$/, "…");
-        const tw = Math.min(iw, Math.ceil(gr.CalcTextWidth(s, tf)) + dp(24));
+        let t = lines[i];
+        if (i === 2 && lines.length > 4) t = t.replace(/.?$/, "…");
+        const tw = Math.min(iw, Math.ceil(gr.CalcTextWidth(t, tf)) + dp(24));
         gr.FillSolidRect(x, ly, tw, lh, C.fg);
-        gr.DrawText(s, tf, C.bg, x + dp(12), ly, tw - dp(12), lh, DT_SINGLE);
+        gr.DrawText(t, tf, C.bg, x + dp(12), ly, tw - dp(12), lh, DT_SINGLE);
     }
     y += dp(104);
     // artist, year / tracks / length
@@ -1112,8 +1199,8 @@ function drawInfo(gr, w, h) {
     y += dp(60) + dp(12);
     // the album's tracks, as many as fit above the buttons: click one to play the album from it (the selected track
     // item is marked, the playing track has ▶)
-    // (below the list: the "+ N MORE" row, the buttons and a margin, more with the source note)
-    const below = dp(24 + 18 + 40) + dp(LIB.source === "playlists" ? 56 : 28);
+    // (below the list: the "+ N MORE" row, the buttons, the page dots and a margin, more with the source note)
+    const below = dp(24 + 18 + 40) + dp(26) + dp(LIB.source === "playlists" ? 56 : 28);
     const rowH = dp(24), fit = clamp(Math.floor((h - y - below) / rowH), 1, 40), TL = albumTracks(a, fit);
     if (!TL.rows.length) label(gr, tr(LIB.live ? "NO TRACKS" : "INDEXING …"), st(AR_ST.more, C["text-muted"]), x + dp(34), y + dp(6));
     TL.rows.forEach((t, k) => {
@@ -1128,30 +1215,83 @@ function drawInfo(gr, w, h) {
     y += Math.max(1, TL.rows.length) * rowH;
     const more = TL.total - TL.first - TL.rows.length;
     if (more > 0 && TL.rows.length) {
-        const mw = label(gr, tr("+ {0} MORE  ·  OPEN ALBUM", more), st(AR_ST.more, C["text-muted"]), x + dp(34), y + dp(6));
-        INFO_HITS.push(["ar-open", x + dp(30), y, mw + dp(8), rowH]);
+        const mw = label(gr, tr("+ {0} MORE  ·  ALL TRACKS"), st(AR_ST.more, C["text-muted"]), x + dp(34), y + dp(6));
+        INFO_HITS.push(["ar-page", x + dp(30), y, mw + dp(8), rowH, "tracks"]);
     }
     y += dp(24 + 18);
-    // ▶ PLAY ALBUM / PLAY TRACK (inverse) · OPEN ALBUM ↗ (orange focus frame)
-    // the key that does the same (Space) is printed on the button, dimmed
-    const bh = dp(40), bs = st(AR_ST.btn, C.bg, C.fg), playTxt = tr(isTrack ? "PLAY TRACK" : "PLAY ALBUM");
-    const ks = st(AR_ST.key, mix(C.bg, C.fg, .45), C.fg), kt = tr("SPACE"), kw = labelWidth(kt, ks);
-    const pw = dp(14) + dp(10) + dp(10) + labelWidth(playTxt, bs) + dp(14) + kw + dp(14);
-    gr.FillSolidRect(x, y, pw, bh, C.fg);
-    icon(gr, "play", x + dp(19), y + bh / 2, 9, C.bg);
-    label(gr, playTxt, bs, x + dp(34), y + Math.round((bh - labelHeight(AR_ST.btn)) / 2));
-    label(gr, kt, ks, x + pw - dp(14) - kw, y + Math.round((bh - labelHeight(AR_ST.key)) / 2));
-    INFO_HITS.push(["ar-play", x, y, pw, bh]);
-    const ox2 = x + pw + dp(10), os = st(AR_ST.btn, C.fg), ow = dp(14) + labelWidth(tr("OPEN ALBUM"), os) + dp(40) + dp(26);
-    box(gr, ox2, y, ow, bh, C.fg);
-    box(gr, ox2 - dp(4), y - dp(4), ow + dp(8), bh + dp(8), C.accent);
-    label(gr, tr("OPEN ALBUM"), os, ox2 + dp(14), y + Math.round((bh - labelHeight(AR_ST.btn)) / 2));
-    const ax0 = ox2 + ow - dp(24), ay0 = y + bh / 2 + dp(5), aL = dp(9), sw = Math.max(HAIR, dp(1.5));
-    gr.DrawLine(ax0, ay0, ax0 + aL, ay0 - aL, sw, C.accent);
-    gr.DrawLine(ax0 + dp(2.5), ay0 - aL, ax0 + aL, ay0 - aL, sw, C.accent);
-    gr.DrawLine(ax0 + aL, ay0 - aL, ax0 + aL, ay0 - dp(2.5), sw, C.accent);
-    INFO_HITS.push(["ar-open", ox2, y, ow, bh]);
+    const bh = drawInfoButtons(gr, x, y, isTrack);
     if (LIB.source === "playlists") label(gr, tr("SOURCE · ALL PLAYLISTS (NO MEDIA LIBRARY FOLDERS)"), st(AR_ST.key, C["text-muted"]), x, y + bh + dp(16));
+}
+
+// TRACKS: the album's title and totals, then every track with its rating, scrolled by the wheel over the panel;
+// discs get a header row. A click on the marks rates the track (the same mark again clears it), elsewhere on the row
+// it plays the album from there. The buttons stay at the bottom.
+function drawInfoTracks(gr, a, x, y, iw, w, h) {
+    const al = albumOf(a) || a, isTrack = al !== a, L = albumTrackList(a);
+    const tt = al.title || tr("UNTITLED");
+    gr.DrawText(tt, fontFor(tt, 18, 600), C.fg, x, y, iw, dp(28), DT_SINGLE | DT_ELLIPSIS);
+    y += dp(30);
+    label(gr, fitLabel((al.artist || a.artist || tr("UNKNOWN ARTIST")).toUpperCase(), st(AR_ST.artist, 0), iw), st(AR_ST.artist, C.fg), x, y);
+    y += dp(22);
+    const n = L.rows.length, meta = `${al.year || a.year || "—"} / ${tr("{0} TRACKS", pad(n, 2))} / ${fmtTime(L.total)}`;
+    label(gr, fitLabel(meta, st(AR_ST.meta, 0), iw), st(AR_ST.meta, C["text-muted"]), x, y);
+    // RATED 7 / 12 · ◆ 3.8, right
+    if (n) {
+        const rs = st(AR_ST.meta, L.rated ? C.fg : C["text-muted"]), rt = L.rated ? `${tr("RATED {0} / {1}", L.rated, n)}  ·  ${L.avg.toFixed(1)}` : tr("NOT RATED");
+        label(gr, rt, rs, x + iw, y, 2);
+    }
+    y += dp(26);
+    gr.FillSolidRect(x, y, w - x, HEAVY, C.fg);
+    y += HEAVY + dp(12);
+    // column heads
+    const ms = dp(9), rw = ratingWidth(ms), tx = x + dp(34), timeW = dp(52), rx = x + iw - timeW - dp(14) - rw, ks = st(AR_ST.key, C["text-muted"]);
+    label(gr, tr("NO."), ks, x, y);
+    label(gr, tr("TITLE"), ks, tx, y);
+    label(gr, tr("RATING"), ks, rx, y);
+    label(gr, tr("TIME"), ks, x + iw, y, 2);
+    y += dp(18);
+    hline(gr, x, y, iw, C["line-faint"]);
+    y += dp(4);
+    // the rows, between the heads and the buttons
+    const bh = dp(40), by = h - dp(22) - dp(20) - bh - (LIB.source === "playlists" ? dp(24) : 0), listH = by - dp(18) - y, rowH = dp(26);
+    if (!n) { label(gr, tr(LIB.live ? "NO TRACKS" : "INDEXING …"), st(AR_ST.more, C["text-muted"]), tx, y + dp(8)); }
+    else {
+        // the display rows: a header per disc when there are several, then its tracks
+        const D = [];
+        let disc = null;
+        for (const r of L.rows) { if (L.discs > 1 && r.disc !== disc) { disc = r.disc; D.push({ head: r.disc }); } D.push(r); }
+        const fit = Math.max(1, Math.floor(listH / rowH));
+        AR.listMax = Math.max(0, D.length - fit);
+        // a new album opens on its selected track item (else at the top)
+        if (AR.listKey !== a.key) { AR.listKey = a.key; const at = D.findIndex(r => r.own); AR.listScroll = at > fit - 2 ? at - 1 : 0; }
+        AR.listScroll = clamp(AR.listScroll, 0, AR.listMax);
+        D.slice(AR.listScroll, AR.listScroll + fit).forEach((r, k) => {
+            const ry = y + k * rowH;
+            if (r.head !== undefined) {
+                label(gr, `${tr("DISC")} ${r.head || "—"}`, st(AR_ST.key, C.fg), x, ry + Math.round((rowH - labelHeight(AR_ST.key)) / 2));
+                hline(gr, x + dp(64), ry + rowH / 2, iw - dp(64), C["line-faint"]);
+                return;
+            }
+            const hov = AR.infoHover === r.i, rh = AR.rateHover && AR.rateHover.i === r.i ? AR.rateHover.n : 0;
+            if (r.own || hov) gr.FillSolidRect(x - dp(8), ry, iw + dp(16), rowH, r.own ? C.panel : withAlpha(C.fg, .06));
+            if (r.own) gr.FillSolidRect(x - dp(8), ry, dp(3), rowH, C.accent);
+            gr.DrawText(r.playing ? "▶" : r.no, font(12, 400), r.playing ? C.accent : C["text-muted"], x, ry, dp(34), rowH, DT_SINGLE);
+            gr.DrawText(r.title, fontFor(r.title, 12, r.own ? 600 : 400), C.fg, tx, ry, rx - dp(12) - tx, rowH, DT_SINGLE | DT_ELLIPSIS);
+            drawRating(gr, rx, ry + (rowH - ms) / 2, ms, r.rating, rh);
+            gr.DrawText(fmtTime(r.len), font(12, 400), C["fg-soft"], x + iw - timeW, ry, timeW, rowH, DT_RIGHT_SINGLE);
+            INFO_HITS.push(["ar-track", x - dp(8), ry, rx - dp(6) - (x - dp(8)), rowH, r.i]);
+            INFO_HITS.push(["ar-track", x + iw - timeW, ry, timeW + dp(8), rowH, r.i]);
+            INFO_HITS.push(["ar-rate", rx - dp(6), ry, rw + dp(12), rowH, { i: r.i, pad: dp(6), size: ms }]);
+        });
+        // the scroll bar, when the list is longer than the room
+        if (AR.listMax > 0) {
+            const th = fit * rowH, bh2 = Math.max(dp(18), th * fit / D.length), by2 = y + (th - bh2) * AR.listScroll / AR.listMax;
+            gr.FillSolidRect(x + iw + dp(10), y, HAIR, th, C["line-faint"]);
+            gr.FillSolidRect(x + iw + dp(9), Math.round(by2), dp(3), Math.round(bh2), C.fg);
+        }
+    }
+    drawInfoButtons(gr, x, by, isTrack);
+    if (LIB.source === "playlists") label(gr, tr("SOURCE · ALL PLAYLISTS (NO MEDIA LIBRARY FOLDERS)"), st(AR_ST.key, C["text-muted"]), x, by + bh + dp(12));
 }
 
 // ------------------------------------------------------------------------------------------------------ actions
@@ -1232,8 +1372,14 @@ function inQuad(x, y, q) {   // any polygon
     return inside;
 }
 function archiveMouseMove(x, y, a) {
-    const th = a && a.id === "ar-track" ? a.data : -1;   // the file panel's track rows highlight under the mouse
-    if (th !== AR.infoHover) { AR.infoHover = th; AR.dirtyInfo = true; window.RepaintRect(infoX() - dp(20), 0, W - infoX() + dp(20), H); }
+    AR.mouseX = x;
+    // the file panel's track rows highlight under the mouse; over a row's marks, the rating they would give shows
+    const th = a && a.id === "ar-track" ? a.data : a && a.id === "ar-rate" ? a.data.i : -1;
+    const rh = a && a.id === "ar-rate" ? { i: a.data.i, n: ratingAt(x, a.x + a.data.pad, a.data.size) } : null;
+    if (th !== AR.infoHover || (rh && rh.n) !== (AR.rateHover && AR.rateHover.n) || (rh && rh.i) !== (AR.rateHover && AR.rateHover.i)) {
+        AR.infoHover = th; AR.rateHover = rh; AR.dirtyInfo = true;
+        window.RepaintRect(infoX() - dp(20), 0, W - infoX() + dp(20), H);
+    }
     if (AR.layout === "grid") return gridMouseMove(x, y, a);
     let h = -1;
     if (!AR.inspOn && x < arrayW() && !a) for (let j = AR.hits.length - 1; j >= 0; j--) if (inQuad(x, y, AR.hits[j].quad)) { h = AR.hits[j].i; break; }
@@ -1243,7 +1389,7 @@ function archiveMouseMove(x, y, a) {
     return h >= 0;
 }
 function archiveMouseLeave() {
-    if (AR.infoHover >= 0) { AR.infoHover = -1; AR.dirtyInfo = true; window.Repaint(); }
+    if (AR.infoHover >= 0 || AR.rateHover) { AR.infoHover = -1; AR.rateHover = null; AR.dirtyInfo = true; window.Repaint(); }
     if (GRID.hover) { GRID.hover = null; window.Repaint(); }
     if (AR.rulerDrag) return;   // a drag along the album index goes on outside the panel
     if (AR.hover >= 0 || AR.hoverTick >= 0) { AR.hover = -1; AR.hoverTick = -1; clock.wake(); }
@@ -1257,6 +1403,12 @@ function archiveClick(x, y, a) {
             case "ar-play": playAlbum(); return;
             case "ar-addmusic": addMusicFolder(); return;
             case "ar-track": playAlbum(a.data); return;
+            case "ar-rate": {
+                const L = AR.list, h = L && L.handles ? L.handles[a.data.i] : null;
+                if (h) setRating(h, ratingAt(x, a.x + a.data.pad, a.data.size));
+                return;
+            }
+            case "ar-page": setInfoPage(a.data); return;
             case "ar-unit": setUnit(a.data); return;
             case "ar-open": openAlbum(); return;
             case "ar-prev": moveAlbum(-1); return;
@@ -1278,7 +1430,25 @@ function archiveClick(x, y, a) {
         else moveAlbum(AR.hover - r.sel);
     }
 }
-function archiveWheel(step) { pickStop(); if (AR.layout === "grid") gridWheel(step); else moveAlbum(step > 0 ? -1 : 1); }
+// the wheel: along the shelf (the array) or down the grid; over the TRACKS page, through its list. With Shift held
+// (or a sideways wheel, archiveWheelH) it switches shelves (the grid: sections), as ← → do.
+function archiveWheel(step) {
+    pickStop();
+    if (utils.IsKeyPressed(0x10)) { archiveShelf(step > 0 ? 1 : -1); return; }
+    if (AR.page === "tracks" && AR.mouseX >= infoX() - dp(20) && curAlbum()) {
+        const s = clamp(AR.listScroll - step * 3, 0, AR.listMax);
+        if (s !== AR.listScroll) { AR.listScroll = s; AR.dirtyInfo = true; AR.rateHover = null; window.RepaintRect(infoX() - dp(20), 0, W - infoX() + dp(20), H); }
+        return;
+    }
+    if (AR.layout === "grid") gridWheel(step); else moveAlbum(step > 0 ? -1 : 1);
+}
+function archiveWheelH(step) { pickStop(); archiveShelf(step > 0 ? -1 : 1); }
+// d = 1: the next shelf back (the array: up and to the left, as ←), the grid: the section above; -1 the other way
+function archiveShelf(d) {
+    if (AR.layout !== "grid") { moveGroup(d); return; }
+    const gi = clamp(AR.group - d, 0, LIB.groups.length - 1);
+    if (gi !== AR.group) gridSelect(gi, rowState(gi).sel);
+}
 function archiveKey(vk) {
     if (vk === 0x52) { randomPick(); return true; }   // R
     if (vk === 0x46 && curAlbum()) { openFolder(itemTrack(curAlbum()) || albumFirst(curAlbum())); return true; }   // F: the selected item's folder
@@ -1293,6 +1463,7 @@ function archiveKey(vk) {
         return vk >= 0x21 && vk <= 0x28;   // navigation keys do nothing while inspecting
     }
     if (vk === 0x47) { setLayout(AR.layout === "grid" ? "array" : "grid"); return true; }   // G
+    if (vk === 0x4C) { setInfoPage(AR.page === "tracks" ? "file" : "tracks"); return true; }   // L: the album file's other page
     if (AR.layout === "grid" && gridKey(vk)) return true;
     switch (vk) {
         case 0x26: moveAlbum(-1); return true;          // ↑
@@ -1336,6 +1507,8 @@ function archiveMenu(x, y) {
     m.AppendMenuItem(curAlbum() ? 0 : 1, 13, tr("Open containing folder") + "\tF");
     m.AppendMenuItem(curAlbum() ? 0 : 1, 11, tr("Random pick") + "	R");
     m.AppendMenuItem(AR.topTitles ? 0x8 : 0, 12, tr("Titles on the cases' top edges"));
+    m.AppendMenuItem(AR.page === "tracks" ? 0x8 : 0, 14, tr("Album file: all tracks with ratings") + "\tL");
+    ratingMenu(m, 600);
     const hv = window.CreatePopupMenu();
     ["Outline it", "Show its title", "Nothing"].forEach((t, i) => hv.AppendMenuItem(0, 500 + i, tr(t)));
     hv.CheckMenuRadioItem(500, 502, 500 + HOVER_MODES.indexOf(AR.hoverMode));
@@ -1351,6 +1524,8 @@ function archiveMenu(x, y) {
     else if (id === 13) openFolder(itemTrack(curAlbum()) || albumFirst(curAlbum()));
     else if (id >= 500 && HOVER_MODES[id - 500]) { AR.hoverMode = HOVER_MODES[id - 500]; setSetting("caseHover", AR.hoverMode); window.Repaint(); }
     else if (id === 12) { AR.topTitles = !AR.topTitles; setSetting("caseTopTitles", AR.topTitles); window.Repaint(); }
+    else if (id === 14) setInfoPage(AR.page === "tracks" ? "file" : "tracks");
+    else if (id >= 600 && ratingMenuPick(id, 600)) { AR.listVer++; AR.dirtyInfo = true; window.Repaint(); }
     else if (id === 10) setUnit(showTracks() ? "albums" : "tracks");
     else if (id === 5) openAlbum();
     else if (id === 6) libIndex(true);

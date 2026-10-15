@@ -5,6 +5,6 @@
 //   bus     messages between panels, shared state and keys    skins   case skins (folders of renders)
 //   grain   the noise texture over each panel                 settings  settings kept across layout imports
 //   i18n    tr(): the interface language                     custom  the user's own colour scheme
-//   wallpaper  the user's picture behind some views
+//   wallpaper  the user's picture behind some views          rating  track ratings (where kept, read, set, drawn)
 
-for (const f of ["settings", "i18n", "custom", "tokens", "motion", "text", "draw", "bus", "skins", "grain", "wallpaper"]) include(fb.ProfilePath + `themes\\audio-archive\\js\\lib\\${f}.js`);
+for (const f of ["settings", "i18n", "custom", "tokens", "motion", "text", "draw", "bus", "rating", "skins", "grain", "wallpaper"]) include(fb.ProfilePath + `themes\\audio-archive\\js\\lib\\${f}.js`);

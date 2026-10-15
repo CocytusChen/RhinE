@@ -168,4 +168,16 @@ I18N["zh-CN"] = {
     "CANNOT OPEN THE PICTURE": "无法打开这张图片",
     "LOADING …": "加载中 …",
     "NO PICTURE": "没有图片",
+    // ratings and the album file's TRACKS page (1.7.2)
+    "+ {0} MORE  ·  ALL TRACKS": "还有 {0} 首  ·  全部曲目",
+    "RATED {0} / {1}": "已评分 {0} / {1}",
+    "NOT RATED": "未评分",
+    "RATING": "评分",
+    "DISC": "碟",
+    "Album file: all tracks with ratings": "专辑档案：全部曲目与评分",
+    "Ratings saved in": "评分保存在",
+    "Automatic": "自动",
+    "JSplitter database (no files written)": "JSplitter 数据库（不写入文件）",
+    "Playback Statistics (foo_playcount)": "播放统计（foo_playcount）",
+    "File tags (RATING)": "文件标签（RATING）",
 };

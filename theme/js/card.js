@@ -43,13 +43,16 @@ function on_paint(gr) {
 
 function on_mouse_move(x, y) {
     const a = hits.at(x, y);
+    const n = a && a.id === "rate" ? ratingAt(x, a.x + a.data.pad, a.data.size) : 0;   // the rating the marks would give
+    if (n !== NP_RATE.hover) { NP_RATE.hover = n; window.Repaint(); }
     window.SetCursor(a ? 32649 : 32512);
     if ((a && a.id + a.y) !== (hover && hover.id + hover.y)) { hover = a; window.Repaint(); }
 }
-function on_mouse_leave() { if (hover) { hover = null; window.Repaint(); } }
+function on_mouse_leave() { NP_RATE.hover = 0; if (hover) { hover = null; window.Repaint(); } }
 function on_mouse_lbtn_up(x, y) {
     const a = hits.at(x, y);
     if (a && a.id === "queue") plman.ExecutePlaylistDefaultAction(a.data.pl, a.data.index);
+    else if (a && a.id === "rate") setRating(T.handle, ratingAt(x, a.x + a.data.pad, a.data.size));
     else if (a && a.id === "profile") send("inspect");
     else if (a && a.id === "folder") openFolder(T.handle);
 }
@@ -69,6 +72,7 @@ function on_playlist_items_added(i) { plDirty(i); window.Repaint(); }
 function on_playlist_items_removed(i) { plDirty(i); window.Repaint(); }
 function on_playlist_items_reordered(i) { plDirty(i); window.Repaint(); }
 function on_colours_changed() { refreshTokens(); window.Repaint(); }
+onMessage("rating-store", () => { if (T.handle) loadTrack(); });
 onMessage("state", () => { if (STATE.skin !== CASE_SKIN) loadSkin(STATE.skin); window.Repaint(); });
 send("hello");
 window.SetTimeout(loadTrack, 0);

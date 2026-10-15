@@ -169,4 +169,16 @@ I18N["ja"] = {
     "CANNOT OPEN THE PICTURE": "この画像を開けません",
     "LOADING …": "読み込み中 …",
     "NO PICTURE": "画像なし",
+    // ratings and the album file's TRACKS page (1.7.2)
+    "+ {0} MORE  ·  ALL TRACKS": "ほか {0} 曲  ·  全曲",
+    "RATED {0} / {1}": "評価済み {0} / {1}",
+    "NOT RATED": "未評価",
+    "RATING": "評価",
+    "DISC": "ディスク",
+    "Album file: all tracks with ratings": "アルバムファイル：全曲と評価",
+    "Ratings saved in": "評価の保存先",
+    "Automatic": "自動",
+    "JSplitter database (no files written)": "JSplitter データベース（ファイルに書き込まない）",
+    "Playback Statistics (foo_playcount)": "再生統計（foo_playcount）",
+    "File tags (RATING)": "ファイルタグ（RATING）",
 };
