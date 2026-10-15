@@ -87,8 +87,8 @@ function hitsCard(ox, oy) {
 
 function drawCard(gr, w, h, kind = "pager", ghost = "INFO") {
     gr.FillSolidRect(0, 0, w, h, C.panel);
-    // halftone low on the right, under the ghost number
-    halftone(gr, w * .2, h - dp(220), w * .8, dp(220), withAlpha(C.fg, MODE === "dark" ? .16 : .19), { from: "br", pitch: 7, max: .9, gamma: 1.3 });
+    // halftone along the bottom, largest at the edge and fading upwards, under the ghost number
+    halftone(gr, 0, h - dp(220), w, dp(220), withAlpha(C.fg, MODE === "dark" ? .16 : .19), { from: "b", pitch: 7, max: .9, gamma: 1.3 });
     box(gr, 0, 0, w, h, C.hair);
     const I = T.info, px = dp(16), iw = w - 2 * px;
     // ghost type behind the content, low on the right
