@@ -114,6 +114,16 @@ function accentShift(img) {
     return out;
 }
 
+// The panels' halftone decoration, as chosen in 05 STYLE (STATE.halftone, STATE.halftoneLevel): across the bottom
+// `height` px of a w × h area, fading upwards, or into its lower right corner; nothing when off.
+const HALFTONE_ALPHA = { low: [.09, .11], mid: [.17, .2], high: [.27, .3] };   // [dark, light]
+function halftoneDecor(gr, w, h, height) {
+    if (STATE.halftone === "off") return;
+    const a = (HALFTONE_ALPHA[STATE.halftoneLevel] || HALFTONE_ALPHA.mid)[MODE === "dark" ? 0 : 1], c = withAlpha(C.fg, a), o = { pitch: 7, max: .9, gamma: 1.3 };
+    if (STATE.halftone === "corner") halftone(gr, w * .2, h - height, w * .8, height, c, Object.assign({ from: "br" }, o));
+    else halftone(gr, 0, h - height, w, height, c, Object.assign({ from: "b" }, o));
+}
+
 // Halftone: dots on a staggered grid, largest at `from` (a corner "br" "bl" "tr" "tl", or an edge "r" "l" "b" "t") and
 // shrinking to nothing across the area, as in the studio's halftone generator. Decoration under content: drawn once
 // into an image per size, colour and settings (kept until the next of those), then copied.

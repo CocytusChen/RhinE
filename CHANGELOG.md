@@ -17,7 +17,9 @@ Newest version first. Download any version from [Releases](https://github.com/er
   评分，无需打开播放列表即可浏览与评分；点击底部的两个圆点或按 `L` 翻页。
 - Archive: `Shift` + wheel (or a sideways wheel) switches shelves, as `←` `→` do; in the grid it jumps a section. 档案：
   `Shift` + 滚轮（或横向滚轮）切换货架，与 `←` `→` 相同；网格中跳到相邻分区。
-- A halftone of dots on the album file and the signal profile card. 专辑档案与信号资料卡加入半调网点装饰。
+- A halftone of dots on the album file and the signal profile card: along the bottom, in the lower right corner or
+  off, faint to strong (`05 STYLE` › `HALFTONE`, `DOTS`). 专辑档案与信号资料卡加入半调网点装饰：沿底部、在右下角或关闭，
+  浓淡可调（`05 外观` › `半调网点`、`浓度`）。
 
 **Fixed · 修复**
 - Startup: with a large library of CUE albums, 1.7.1 could make foobar2000 report the Archive's script as not

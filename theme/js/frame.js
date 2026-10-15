@@ -28,13 +28,16 @@ setTextScale(STATE.textScale);   // the root panel's own copy: the Playlists vie
 STATE.inspectScale = pickScale(+getSetting("inspectScale", 1.3), INSPECT_SCALES);
 STATE.floor = pickFloor(getSetting("floor", "plain"));
 STATE.wallpaper = pickWallpaper(getSetting("wallpaper", null));
+STATE.halftone = pickHalftone(getSetting("halftone", "bottom"));
+STATE.halftoneLevel = pickHalftoneLevel(getSetting("halftoneLevel", "mid"));
 REDUCE_MOTION = STATE.reduce;
 RELOAD_ON_LANG = false;   // see lib/bus.js
 const P = {};          // child name -> PanelObject
 let ready = false;
 
 const broadcast = () => send("state", { view: STATE.view, preset: STATE.preset, reduce: STATE.reduce, boot: STATE.boot, skin: STATE.skin, grain: STATE.grain, lyricsOnline: STATE.lyricsOnline,
-                                   textScale: STATE.textScale, arrayScale: STATE.arrayScale, inspectScale: STATE.inspectScale, floor: STATE.floor, wallpaper: STATE.wallpaper });
+                                   textScale: STATE.textScale, arrayScale: STATE.arrayScale, inspectScale: STATE.inspectScale, floor: STATE.floor, wallpaper: STATE.wallpaper,
+                                   halftone: STATE.halftone, halftoneLevel: STATE.halftoneLevel });
 
 // The layout creates the children in CHILDREN order and that is their z-order, so GetPanelByIndex(i) is CHILDREN[i].
 // They may not exist yet on the root's first on_size, so look again (briefly) until they are all there.
@@ -231,6 +234,8 @@ onMessage("text-scale", v => { STATE.textScale = pickScale(+v, TEXT_SCALES); set
 onMessage("inspect-scale", v => { STATE.inspectScale = pickScale(+v, INSPECT_SCALES); setSetting("inspectScale", STATE.inspectScale); broadcast(); });
 onMessage("array-scale", v => { STATE.arrayScale = pickScale(+v, ARRAY_SCALES); setSetting("arrayScale", STATE.arrayScale); broadcast(); });
 onMessage("floor", v => { STATE.floor = pickFloor(v); setSetting("floor", STATE.floor); broadcast(); });
+onMessage("halftone", v => { STATE.halftone = pickHalftone(v); setSetting("halftone", STATE.halftone); broadcast(); });
+onMessage("halftone-level", v => { STATE.halftoneLevel = pickHalftoneLevel(v); setSetting("halftoneLevel", STATE.halftoneLevel); broadcast(); });
 // the wallpaper's settings, changed in part (05 STYLE)
 onMessage("wallpaper", w => { STATE.wallpaper = pickWallpaper(Object.assign({}, STATE.wallpaper, w)); setSetting("wallpaper", STATE.wallpaper, true); broadcast(); });
 onMessage("grain", on => { STATE.grain = !!on; setSetting("grain", STATE.grain); broadcast(); window.Repaint(); });

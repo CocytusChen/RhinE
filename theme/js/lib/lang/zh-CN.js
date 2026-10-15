@@ -92,7 +92,7 @@ I18N["zh-CN"] = {
     "NO COVER": "无封面", "END": "结束",
 
     // style
-    "STYLE  ·  05": "外观  ·  05", "CASE SKIN": "外壳", "COLOUR SCHEME": "配色方案", "DISPLAY  ·  05": "显示  ·  05",
+    "STYLE  ·  05": "外观  ·  05", "CASE SKIN": "外壳", "COLOUR SCHEME": "配色方案", "DISPLAY": "显示",
     "IN USE": "使用中", "MODE": "模式", "PLAY INTRO": "播放开场", "PREVIEW": "预览", "TEXT": "文字", "INSPECT": "查看",
     "FLOOR": "地面", "PLAIN": "纯色", "LAB DECK": "实验甲板", "Archive floor": "档案地面", "Plain": "纯色", "Lab deck": "实验甲板", "REAL STYLE": "写实风格", "Real style": "写实风格",
     "CLICK TO SKIP": "点击跳过",
@@ -180,4 +180,11 @@ I18N["zh-CN"] = {
     "JSplitter database (no files written)": "JSplitter 数据库（不写入文件）",
     "Playback Statistics (foo_playcount)": "播放统计（foo_playcount）",
     "File tags (RATING)": "文件标签（RATING）",
+    // the halftone (05 STYLE, 1.7.2)
+    "BOTTOM": "底部",
+    "CORNER": "角落",
+    "DOTS": "浓度",
+    "FAINT": "淡",
+    "MEDIUM": "中",
+    "STRONG": "浓",
 };

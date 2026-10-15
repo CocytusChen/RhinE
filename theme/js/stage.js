@@ -123,8 +123,12 @@ const clock = Clock((dt, now) => {
     return anim || playing || alertShown || (LYR_SCROLL.n !== 0 && lyrSynced());
 });
 let arrayScaleWas = STATE.arrayScale;
+let halftoneWas = "";
 onMessage("state", () => {
     if (stageSkin() !== CASE_SKIN && loadSkin(stageSkin())) dirty.card = true;
+    // another halftone (05 STYLE): the album file and the card are drawn again
+    const ht = STATE.halftone + STATE.halftoneLevel;
+    if (ht !== halftoneWas) { halftoneWas = ht; AR.dirtyInfo = dirty.card = true; }
     const on = STATE.view === "archive";
     if (on !== ARCHIVE_ON) { ARCHIVE_ON = on; if (on) requestVisibleThumbs(); else archiveHidden(); }
     if (on) inspectPending();

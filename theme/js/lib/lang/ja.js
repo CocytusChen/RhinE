@@ -93,7 +93,7 @@ I18N["ja"] = {
     "NO COVER": "カバーなし", "END": "終わり",
 
     // style
-    "STYLE  ·  05": "スタイル  ·  05", "CASE SKIN": "ケース", "COLOUR SCHEME": "カラースキーム", "DISPLAY  ·  05": "表示  ·  05",
+    "STYLE  ·  05": "スタイル  ·  05", "CASE SKIN": "ケース", "COLOUR SCHEME": "カラースキーム", "DISPLAY": "表示",
     "IN USE": "使用中", "MODE": "モード", "PLAY INTRO": "イントロ再生", "PREVIEW": "プレビュー", "TEXT": "文字", "INSPECT": "詳細",
     "FLOOR": "床", "PLAIN": "無地", "LAB DECK": "ラボデッキ", "Archive floor": "アーカイブの床", "Plain": "無地", "Lab deck": "ラボデッキ", "REAL STYLE": "リアルスタイル", "Real style": "リアルスタイル",
     "CLICK TO SKIP": "クリックでスキップ",
@@ -181,4 +181,11 @@ I18N["ja"] = {
     "JSplitter database (no files written)": "JSplitter データベース（ファイルに書き込まない）",
     "Playback Statistics (foo_playcount)": "再生統計（foo_playcount）",
     "File tags (RATING)": "ファイルタグ（RATING）",
+    // the halftone (05 STYLE, 1.7.2)
+    "BOTTOM": "下端",
+    "CORNER": "隅",
+    "DOTS": "濃さ",
+    "FAINT": "淡",
+    "MEDIUM": "中",
+    "STRONG": "濃",
 };

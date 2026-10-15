@@ -168,6 +168,7 @@ Running it again keeps the foobar2000 folder and installs the theme again.
 | Case skin | `MENU › Audio Archive › Case skin`, or right-click the Archive | — |
 | Your own case | the `CUSTOM` card under `CASE SKIN` in `05 STYLE`: a base colour, an accent and a pattern (stripes, blocks or an edge band), then `MAKE THIS CASE` | — |
 | Wallpaper | `WALLPAPER ›` under `DISPLAY` in `05 STYLE`: a picture of your own behind the views you pick (Archive, Playlists, Lyrics, Signal), clear, frosted or as a halftone, with a light, medium or strong veil | — |
+| Halftone dots on the album file and the signal profile card | `HALFTONE` under `DISPLAY` in `05 STYLE`: off, along the bottom (fading upwards) or into the lower right corner; `DOTS`: faint, medium or strong | — |
 | Colour scheme (ARCHIVE, HAZARD, FLARE, FIELD, COLD FRONT, HEARTH, LIVEWIRE, MATCHA) | `MENU › Audio Archive › Colour scheme`, or the `05 STYLE` view | — |
 | Your own colour scheme | the `CUSTOM` card in `05 STYLE`: pick the page, text and accent for light and dark; the rest follows, with a warning when text is hard to read | — |
 | Style: see and switch skins and schemes | the `05 STYLE` view: hover a card for its preview, click to apply | `5` |

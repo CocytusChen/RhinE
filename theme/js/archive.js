@@ -1087,8 +1087,8 @@ function drawInfo(gr, w, h) {
     const a = curAlbum();
     if (!a) return;
     const x = dp(20), iw = dp(INFO_W), gname = groupName(a.grp || "");
-    // halftone along the bottom, largest at the edge and fading upwards, under the ghost group name (both pages)
-    halftone(gr, 0, h - dp(210), w, dp(210), withAlpha(C.fg, MODE === "dark" ? .17 : .2), { from: "b", pitch: 7, max: .9, gamma: 1.3 });
+    // the halftone (05 STYLE), under the ghost group name (both pages)
+    halftoneDecor(gr, w, h, dp(210));
     // ghost group name, low behind the actions
     const gf = font(132, 700), gw = gr.CalcTextWidth(gname, gf);
     gr.DrawStrokedText(gname, gf, withAlpha(C["line-faint"], .45), HAIR, 0, 0, h - dp(150), gw + dp(20), dp(170));
