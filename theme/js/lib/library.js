@@ -45,6 +45,7 @@ function playlistItems() {
 // (re)index once the media library has loaded; fresh: look again for covers of albums known to have none
 function libIndex(fresh = false) {
     window.ClearTimeout(libTimer);
+    if (fresh === true) CUE_SHEETS.clear();   // Re-index library: read the CUE sheets again too
     let list = null;
     if (fb.IsLibraryEnabled()) {
         if (!fb.IsLibraryInitialised()) { libTimer = window.SetTimeout(() => libIndex(fresh), 500); return; }
@@ -60,57 +61,113 @@ function libIndex(fresh = false) {
 // track is looked for in the .cue files of its folder (a FILE line naming it); when one names it, the sheet's tracks
 // take its place (read by fb.AddLocationsAsync: no playlist is touched). When the sheet's tracks are listed already
 // (the library includes .cue files, or they were added to a playlist), the image itself is left out.
-const CUE_MIN_S = 600;   // a file shorter than this is a track, not an album image
-const CUE = { task: -1, gen: 0, base: null, post: null };
-function cueSheetsIn(folder, cache) {
-    if (cache.has(folder)) return cache.get(folder);
+// The scan runs in slices of about CUE_SLICE_MS between paints, so a large library of CUE albums never holds the panel
+// up (1.7.1 read every folder in one go, and JSplitter called the panel unresponsive, #24). What a folder holds is kept
+// for the session; a library change in a folder (or Re-index library) reads it again.
+const CUE_MIN_S = 600;     // a file shorter than this is a track, not an album image
+const CUE_SLICE_MS = 25;
+const CUE_MAX_CHARS = 1 << 20;   // a CUE sheet is a few KB: anything bigger is not one
+const CUE = { task: -1, gen: 0, base: null, post: null, timer: 0, images: null };
+const CUE_SHEETS = new Map();    // folder (lower case, ending in \) -> [{ path, files }]
+// the names a sheet's FILE lines give (lower case, each with and without its extension: a sheet may still name the
+// file before it was converted)
+function cueFileNames(text) {
+    const files = new Set();
+    for (const line of text.split(/\r?\n/)) {
+        const m = /^\s*FILE\s+(?:"([^"]+)"|(\S+))/i.exec(line);
+        if (!m) continue;
+        const name = (m[1] || m[2]).replace(/^.*[\\/]/, "").toLowerCase();
+        files.add(name); files.add(name.replace(/\.[^.]+$/, ""));
+    }
+    return files;
+}
+// A sheet that is not UTF-8 is in some Windows code page: often a Japanese or Chinese one (EAC writes the system's),
+// which need not be this computer's. Read as UTF-8, such a sheet does not even show its FILE lines (JSplitter returns
+// no replacement characters to look for), so each reading is tried in turn, UTF-8 first: the first whose FILE lines
+// name files that are in the folder wins; with none, the first one that names any file stands.
+const CUE_CODEPAGES = [65001, 0, 932, 936, 950, 949, 1252, 1251];
+function cueSheetsIn(folder) {
+    const key = folder.toLowerCase();
+    if (CUE_SHEETS.has(key)) return CUE_SHEETS.get(key);
     const sheets = [];
+    let here = null;   // the folder's files, lower case, with and without extension (read once)
     try {
         for (const path of utils.Glob(folder + "*.cue")) {
-            let text = utils.ReadTextFile(path, 65001);
-            if (text.includes("�")) text = utils.ReadTextFile(path, 0);   // not UTF-8: let foobar2000 detect the codepage
-            const files = new Set();
-            for (const m of text.matchAll(/^\s*FILE\s+(?:"([^"]+)"|(\S+))/gim)) {
-                const name = (m[1] || m[2]).replace(/^.*[\\/]/, "").toLowerCase();
-                files.add(name); files.add(name.replace(/\.[^.]+$/, ""));   // a sheet may still name the file before it was converted
+            if (!here) { here = new Set(); for (const p of utils.Glob(folder + "*")) { const n = p.slice(p.lastIndexOf("\\") + 1).toLowerCase(); here.add(n); here.add(n.replace(/\.[^.]+$/, "")); } }
+            let files = null;
+            for (const cp of CUE_CODEPAGES) {
+                const text = utils.ReadTextFile(path, cp);
+                if (text.length > CUE_MAX_CHARS) break;
+                const f = cueFileNames(text);
+                if (!files && f.size) files = f;
+                if ([...f].some(n => here.has(n))) { files = f; break; }
             }
-            sheets.push({ path, files });
+            if (files) sheets.push({ path, files });
         }
     } catch (e) { /* unreadable folder: no sheets */ }
-    cache.set(folder, sheets);
+    CUE_SHEETS.set(key, sheets);
     return sheets;
 }
+// a library change in these files' folders: read those folders' sheets again at the next index
+function cueForget(handles) {
+    if (!handles || !handles.Count) return;
+    for (let i = 0; i < handles.Count; i++) { const p = handles[i].Path; CUE_SHEETS.delete(p.slice(0, p.lastIndexOf("\\") + 1).toLowerCase()); }
+}
+// post(list) once the long tracks have been looked for in their folders' sheets: list with the images replaced
 function withCueTracks(list, gen, post) {
-    const listed = new Set(), cache = new Map(), drop = new Set(), sheets = new Set();
-    for (let i = 0; i < list.Count; i++) { const p = list[i].Path; if (/\.cue$/i.test(p)) listed.add(p.toLowerCase()); }
-    for (let i = 0; i < list.Count; i++) {
-        const h = list[i], p = h.Path;
-        if (h.Length < CUE_MIN_S || /\.cue$/i.test(p) || !/^([a-z]:\\|\\\\)/i.test(p)) continue;
-        const cut = p.lastIndexOf("\\"), name = p.slice(cut + 1).toLowerCase();
-        const sheet = cueSheetsIn(p.slice(0, cut + 1), cache).find(s => s.files.has(name) || s.files.has(name.replace(/\.[^.]+$/, "")));
-        if (!sheet) continue;
-        drop.add(i);
-        if (!listed.has(sheet.path.toLowerCase())) sheets.add(sheet.path);
-    }
-    if (!drop.size) { post(list); return; }
-    const base = fb.CreateHandleList();
-    for (let i = 0; i < list.Count; i++) if (!drop.has(i)) base.Add(list[i]);
-    if (!sheets.size) { post(base); return; }
-    Object.assign(CUE, { gen, base, post, task: fb.AddLocationsAsync([...sheets]) });
+    window.ClearTimeout(CUE.timer);
+    const n = list.Count, listed = new Set(), cands = [], drop = new Set(), sheets = new Set(), images = new Map(), t0 = Date.now();
+    let i = 0, k = 0, folders = 0;
+    const slice = () => {
+        CUE.timer = 0;
+        if (gen !== LIB.gen) return;   // a newer index has started
+        const until = Date.now() + CUE_SLICE_MS;
+        // 1: the listed sheets, and the long tracks with a path on disk
+        for (; i < n && Date.now() < until; i++) {
+            const h = list[i], p = h.Path;
+            if (/\.cue$/i.test(p)) listed.add(p.toLowerCase());
+            else if (h.Length >= CUE_MIN_S && /^([a-z]:\\|\\\\)/i.test(p)) cands.push([i, p]);
+        }
+        // 2: each long track's folder, read once
+        for (; i >= n && k < cands.length && Date.now() < until; k++) {
+            const [at, p] = cands[k], cut = p.lastIndexOf("\\"), name = p.slice(cut + 1).toLowerCase(), folder = p.slice(0, cut + 1);
+            if (!CUE_SHEETS.has(folder.toLowerCase())) folders++;
+            const sheet = cueSheetsIn(folder).find(s => s.files.has(name) || s.files.has(name.replace(/\.[^.]+$/, "")));
+            if (!sheet) continue;
+            drop.add(at);
+            const sp = sheet.path.toLowerCase();
+            if (listed.has(sp)) continue;
+            sheets.add(sheet.path);
+            (images.get(sp) || images.set(sp, []).get(sp)).push(list[at]);   // back in if the sheet gives no tracks
+        }
+        if (i < n || k < cands.length) { CUE.timer = window.SetTimeout(slice, 0); return; }
+        if (cands.length) console.log(`audio-archive library: CUE check, ${cands.length} long tracks, ${folders} folders read, ${drop.size} images, ${Date.now() - t0} ms`);
+        if (!drop.size) { post(list); return; }
+        const base = fb.CreateHandleList();
+        for (let j = 0; j < n; j++) if (!drop.has(j)) base.Add(list[j]);
+        if (!sheets.size) { post(base); return; }
+        Object.assign(CUE, { gen, base, post, images, task: fb.AddLocationsAsync([...sheets]) });
+    };
+    slice();
 }
 // on_locations_added, forwarded by the panel (stage.js): the sheets' tracks join the list
 function libLocationsAdded(task, handles) {
     if (task !== CUE.task || CUE.gen !== LIB.gen) return false;
+    // a sheet foobar2000 could not read (or whose FILE it could not find, e.g. a code page this computer does not use)
+    // gives no tracks: its image stays an album of its own
+    const got = new Set();
+    for (let i = 0; i < handles.Count; i++) if (handles[i].Length > 0) got.add(handles[i].Path.toLowerCase());
+    for (const [sp, imgs] of CUE.images) if (!got.has(sp)) for (const h of imgs) CUE.base.Add(h);
     CUE.base.AddRange(handles);
     CUE.base.Sort();
     CUE.post(CUE.base);
-    CUE.task = -1; CUE.base = CUE.post = null;
+    CUE.task = -1; CUE.base = CUE.post = CUE.images = null;
     return true;
 }
 const libChanged = () => { window.ClearTimeout(libTimer); libTimer = window.SetTimeout(() => libIndex(), 1500); };
-function on_library_items_added() { libChanged(); }
+function on_library_items_added(handles) { cueForget(handles); libChanged(); }
 function on_library_items_removed() { libChanged(); }
-function on_library_items_changed() { libChanged(); }
+function on_library_items_changed(handles) { cueForget(handles); libChanged(); }
 const playlistsChanged = () => { if (LIB.source === "playlists") libChanged(); };
 function on_playlist_items_added(i) { plDirty(i); if (!OWN_PLAYLISTS.has(plman.GetPlaylistName(i))) playlistsChanged(); }
 function on_playlist_items_removed(i) { plDirty(i); if (!OWN_PLAYLISTS.has(plman.GetPlaylistName(i))) playlistsChanged(); }
