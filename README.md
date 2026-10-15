@@ -150,10 +150,13 @@ Running it again keeps the foobar2000 folder and installs the theme again.
 | Archive: play / open the album | `PLAY ALBUM` / `OPEN ALBUM` | `Space` plays (or pauses it if it is playing); `Enter` while inspecting opens |
 | Archive: group by genre, decade, artist initial or none | `GROUP` in the Archive's top bar, or right-click | — |
 | Archive: sort albums by artist, title, year or date added | `SORT` in the Archive's top bar, or right-click | — |
-| Archive: next shelf (behind, on the left) / previous shelf (in front) | `← SHELF 04 / 31 →` under the array | `←` `→` |
+| Archive: next shelf (behind, on the left) / previous shelf (in front) | `← SHELF 04 / 31 →` under the array, or `Shift` + wheel (a sideways wheel too; in the grid it jumps a section) | `←` `→` |
 | Archive: pick an album from the index under the shelf | hover it to see the album's name; click, or hold and drag along it and release | — |
 | Archive: every track as its own case / tile (with its album's cover) | `SHOW [ALBUMS | TRACKS]` in the Archive's top bar, or right-click | — |
 | Archive: play a track | click it in the album file's track list (the album plays from there) | — |
+| Archive: every track of the album, with ratings, without opening a playlist | the album file's second page: the two dots at its bottom, `+ N MORE · ALL TRACKS`, or right-click › `Album file: all tracks with ratings`; the wheel over it scrolls the list | `L` (Archive) |
+| Rate a track (1 – 5) | click its marks on the album file's `TRACKS` page, or on the `RATING` row of the signal profile card; the same mark again clears it | `Ctrl+1` – `Ctrl+5` rate the playing track (else the focused one), `Ctrl+0` clears |
+| Where ratings are kept | right-click the Archive › `Ratings saved in`: *Automatic* (foo_playcount's Playback Statistics when it is installed, else JSplitter's own database), *JSplitter database* (no file is written), *Playback Statistics*, or *File tags* (a `RATING` tag in the files) | — |
 | Archive: random pick (the selection runs through the shelves to a random album, which is lifted out and plays) | `RANDOM PICK` at the top left of the Archive, or right-click | `R` |
 | Archive: titles on the cases' top edges | on by default; right-click › `Titles on the cases' top edges` | — |
 | Archive: the case under the mouse | outlined by default; right-click › `Case under the mouse` › outline it, show its title (the album's, or the song's when every track is shown), or nothing | — |
@@ -228,7 +231,8 @@ cover). An album is the tracks with the same album tag in the same folder (a `CD
 parent), so tracks with guest artists stay together. The cases stand on shelves of 20: the groups (genre, decade,
 artist initial or none) follow one another, so every shelf is full; `SORT` orders them by artist, title, year or date
 added. Each shelf keeps its own selection. The file on the right lists the album's tracks: click one to play the album
-from there. `LAYOUT GRID` shows the same albums as a cover grid. The library is read on a background thread and cached
+from there. Its second page (the two dots at its bottom, or `L`) lists every track with its rating, so a large library
+can be browsed and rated without opening anything in a playlist. `LAYOUT GRID` shows the same albums as a cover grid. The library is read on a background thread and cached
 in `<profile>\audio-archive-cache\library.db`, so the view appears at once on the next start and follows library
 changes by itself; cover thumbnails are extracted once in the background and cached in
 `<profile>\audio-archive-cache\covers\`. Without media library folders the Archive shows the contents of all

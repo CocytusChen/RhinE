@@ -3,6 +3,29 @@
 Newest version first. Download any version from [Releases](https://github.com/ericzhang12111-cell/RhinE/releases).
 最新版本在最上面；各版本可在 Releases 页面下载。
 
+## Unreleased
+
+**Added · 新增**
+- Ratings: rate tracks 1 to 5 by clicking the marks on the album file's new `TRACKS` page or on the signal profile
+  card, or with `Ctrl+1` – `Ctrl+5` (`Ctrl+0` clears). They are kept in JSplitter's own database, so no file is
+  written, or in foo_playcount's statistics when it is installed; right-click the Archive › `Ratings saved in` to pick
+  file tags instead. 评分：在专辑档案新的 `曲目` 页或信号资料卡上点击菱形为曲目评 1 至 5 分，或按 `Ctrl+1` – `Ctrl+5`
+  （`Ctrl+0` 清除）。评分默认保存在 JSplitter 自带的数据库中，不写入文件；装有 foo_playcount 时保存在其播放统计中；也可在
+  右键档案 › `评分保存在` 中改为文件标签。
+- Archive: the album file has a second page listing every track with its rating, so a library can be browsed and rated
+  without opening a playlist; the two dots at its bottom, or `L`, turn the page. 档案：专辑档案新增第二页，列出全部曲目及其
+  评分，无需打开播放列表即可浏览与评分；点击底部的两个圆点或按 `L` 翻页。
+- Archive: `Shift` + wheel (or a sideways wheel) switches shelves, as `←` `→` do; in the grid it jumps a section. 档案：
+  `Shift` + 滚轮（或横向滚轮）切换货架，与 `←` `→` 相同；网格中跳到相邻分区。
+- A halftone of dots on the album file and the signal profile card. 专辑档案与信号资料卡加入半调网点装饰。
+
+**Fixed · 修复**
+- Startup: with a large library of CUE albums, 1.7.1 could make foobar2000 report the Archive's script as not
+  responding (#24). The CUE sheets are now read a little at a time, and each folder once. 启动：媒体库中有大量 CUE
+  专辑时，1.7.1 可能让 foobar2000 提示档案脚本无响应（#24）。现在 CUE 分轨分批读取，每个文件夹只读一次。
+- Archive: CUE sheets saved in a Japanese or Chinese code page (as EAC writes them) are read, so their albums show as
+  their tracks too. 档案：以日文或中文编码保存的 CUE（EAC 常见）现在也能读取，这些专辑同样按分轨显示。
+
 ## 1.7.1 — 2026-10-13
 
 **Fixed · 修复**
