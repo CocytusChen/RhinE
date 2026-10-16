@@ -317,8 +317,9 @@ installed. Columns UI and JSplitter stay installed.
 
 ## Credits and licence
 
-The theme is MIT-licensed ([LICENSE](LICENSE)). [Geist Mono](https://github.com/vercel/geist-font) is under the SIL Open
-Font License 1.1 (`assets/fonts/OFL.txt`). Built on [foobar2000](https://www.foobar2000.org),
+The theme is MIT-licensed ([LICENSE](LICENSE)). [Geist Mono](https://github.com/vercel/geist-font),
+[Oxanium](https://github.com/sevmeyer/oxanium) and [Chakra Petch](https://github.com/m4rc1e/Chakra-Petch) are under the
+SIL Open Font License 1.1 (`assets/fonts/OFL.txt`, `OFL-Oxanium.txt`, `OFL-ChakraPetch.txt`). Built on [foobar2000](https://www.foobar2000.org),
 [Columns UI](https://github.com/reupen/columns_ui) and [JSplitter](https://github.com/dima-lur/jsplitter); online
 lyrics from [LRCLIB](https://lrclib.net). The portable bundle carries foobar2000's unmodified installer, Columns UI
 (LGPL-3.0, its licence alongside) and [7-Zip](https://www.7-zip.org) (LGPL, its licence alongside). The 3D art was

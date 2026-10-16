@@ -1162,18 +1162,22 @@ function drawInfoFile(gr, a, x, y, iw, w, h) {
     y += hh + dp(14);
     gr.FillSolidRect(x, y, w - x, HEAVY, C.fg);
     y += HEAVY + dp(20);
-    // title plate (wraps, two lines at most): the album's title, or the track's
+    // the album's title, or the track's: on the title tag (05 STYLE), or on title plates (wraps, two lines at most)
     const al = albumOf(a) || a, isTrack = al !== a;
     const title = AR.title ? scrambleText(AR.title) : (a.title || tr("UNTITLED")), tf = fontFor(a.title || "U", 25, 600);
-    const lines = gr.EstimateLineWrap(title, tf, iw - dp(24)), lh = dp(42);
-    for (let i = 0, ly = y; i < Math.min(4, lines.length); i += 2, ly += lh + dp(2)) {
-        let t = lines[i];
-        if (i === 2 && lines.length > 4) t = t.replace(/.?$/, "…");
-        const tw = Math.min(iw, Math.ceil(gr.CalcTextWidth(t, tf)) + dp(24));
-        gr.FillSolidRect(x, ly, tw, lh, C.fg);
-        gr.DrawText(t, tf, C.bg, x + dp(12), ly, tw - dp(12), lh, DT_SINGLE);
+    const own = isTrack ? albumTrackList(a).rows.find(r => r.own) : null;
+    const th = drawTag(gr, x, y, iw, title, { track: isTrack ? (own ? own.no : "") : tr("ALL"), total: pad(al.tracks || 0, 2), arc: pad(a.no, 4), year: a.year, codec: (a.codec || "").toUpperCase(), artist: a.artist });
+    if (!th) {
+        const lines = gr.EstimateLineWrap(title, tf, iw - dp(24)), lh = dp(42);
+        for (let i = 0, ly = y; i < Math.min(4, lines.length); i += 2, ly += lh + dp(2)) {
+            let t = lines[i];
+            if (i === 2 && lines.length > 4) t = t.replace(/.?$/, "…");
+            const tw = Math.min(iw, Math.ceil(gr.CalcTextWidth(t, tf)) + dp(24));
+            gr.FillSolidRect(x, ly, tw, lh, C.fg);
+            gr.DrawText(t, tf, C.bg, x + dp(12), ly, tw - dp(12), lh, DT_SINGLE);
+        }
     }
-    y += dp(104);
+    y += th ? th + dp(14) : dp(104);
     // artist, year / tracks / length
     label(gr, fitLabel((a.artist || tr("UNKNOWN ARTIST")).toUpperCase(), st(AR_ST.artist, 0), iw), st(AR_ST.artist, C.fg), x, y);
     y += dp(22);

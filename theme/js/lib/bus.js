@@ -10,7 +10,8 @@ const BUS = "audio-archive";
 const BUS_HANDLERS = {};
 const STATE = { view: "playlists", preset: "album", reduce: false, boot: true, skin: "white", grain: true,
                 lyricsSource: "auto", lyricsTrans: "off", lyricsNeteaseAuto: false,
-                textScale: 1, arrayScale: 1, inspectScale: 1.3, wallpaper: null, halftone: "bottom", halftoneLevel: "mid" };
+                textScale: 1, arrayScale: 1, inspectScale: 1.3, wallpaper: null, halftone: "bottom", halftoneLevel: "mid",
+                emblem: "ring", tag: "plastic", tagShape: "tab", tagColours: "scheme", tagCustom: null, tagOpacity: 50, tagBody: "solid", font: "geist" };
 
 // text size, Array scale and inspection size: the choices offered in MENU › Audio Archive and the Style view (frame.js keeps the value)
 const TEXT_SCALES = [.9, 1, 1.1, 1.2, 1.35, 1.5], ARRAY_SCALES = [.8, .9, 1, 1.15, 1.3], INSPECT_SCALES = [1, 1.15, 1.3, 1.5];
@@ -53,6 +54,20 @@ const lyrFixed = () => STATE.lyricsSource === "lrclib" || STATE.lyricsSource ===
 // permission, with the old lyricsNetease default (on for a Chinese Windows, off elsewhere), so AUTO does not start
 // contacting NetEase for everyone.
 const lyrNetease = () => STATE.lyricsSource === "netease" || (STATE.lyricsSource === "auto" && !!STATE.lyricsNeteaseAuto);
+// the header's emblem (05 STYLE, lib/emblem.js): the Möbius ring or nested triangles
+const EMBLEMS = [["ring", "RING"], ["delta", "DELTA"]];
+const pickEmblem = v => EMBLEMS.some(f => f[0] === v) ? v : "ring";
+// the title tag on the signal profile card and the album file (05 STYLE, lib/tag.js): its finish, or off (plain text),
+// its shape and where its colours come from (TAG_SHAPES, TAG_COLOUR_SOURCES in lib/tag.js)
+const TAGS = [["off", "OFF"], ["plastic", "PLASTIC"], ["paper", "PAPER"], ["metal", "BRUSHED METAL"], ["frosted", "TRANSLUCENT"], ["clear", "TRANSPARENT"], ["tide", "TIDE GLASS"], ["aurora", "AURORA GLASS"]];
+const pickTag = v => TAGS.some(f => f[0] === v) ? v : "plastic";
+const pickTagShape = v => ["tab", "notch", "round", "ticket"].includes(v) ? v : "tab";
+const pickTagColours = v => ["scheme", "case", "custom"].includes(v) ? v : "scheme";
+const pickTagOpacity = v => [25, 50, 75].includes(+v) ? +v : 50;
+const pickTagBody = v => ["solid", "frosted", "clear"].includes(v) ? v : "solid";
+// the interface font (05 STYLE › FONT, lib/tokens.js FONT_FAMILIES)
+const FONTS = [["geist", "GEIST MONO"], ["oxanium", "OXANIUM"], ["chakra", "CHAKRA PETCH"]];
+const pickFont = v => FONTS.some(f => f[0] === v) ? v : "geist";
 const pickScale = (v, list) => list.reduce((a, b) => Math.abs(b - v) < Math.abs(a - v) ? b : a, 1);
 
 function send(type, data = null) { window.NotifyOthers(BUS, JSON.stringify({ type, data })); }
@@ -73,8 +88,8 @@ function on_notify_data(name, info) {
     if (m.type === "state") {
         Object.assign(STATE, m.data);
         REDUCE_MOTION = !!STATE.reduce;
-        // a new text size: caches that hold drawn text are dropped like after a colour change
-        if (setTextScale(STATE.textScale)) { TOKEN_LISTENERS.forEach(f => f()); window.Repaint(); }
+        // a new text size or font: caches that hold drawn text are dropped like after a colour change
+        if (setTextScale(STATE.textScale) | setFontFamily(STATE.font)) { TOKEN_LISTENERS.forEach(f => f()); window.Repaint(); }
     }
     (BUS_HANDLERS[m.type] || []).forEach(fn => fn(m.data));
 }

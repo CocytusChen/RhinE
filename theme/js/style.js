@@ -102,23 +102,25 @@ function drawMock(gr, x, y, w, h, t) {
     gr.FillSolidRect(x + u * 10 + Math.round((w - u * 14) * .4), by + u * 2, Math.max(1, u), u * 4, c("accent"));
 }
 
-// card size: as large as the width allows and the height still fits every skin row plus the scheme row
-function styleGeom(nSkins = 10, nSchemes = 5) {
+// card size: as large as the width allows and the height still fits every skin row, the scheme row and the tag row
+function styleGeom(nSkins = 10, nSchemes = 5, nTags = 0) {
     const m = dp(48), top = dp(62), gap = dp(16), lx1 = Math.round(W * .62), lw = lx1 - m;
     const cols = Math.max(5, Math.min(9, Math.max(Math.ceil(nSkins / 2), nSchemes)));   // the schemes in one row
-    const rows = Math.ceil(nSkins / cols), srows = Math.ceil(nSchemes / cols);
+    const rows = Math.ceil(nSkins / cols), srows = Math.ceil(nSchemes / cols), trows = Math.ceil(nTags / cols), heads = nTags ? 4 : 3;
     const byW = (lw - (cols - 1) * gap) / cols;
-    // three section heads, then the DISPLAY rows (as many as they wrap into)
-    const avail = H - top - dp(24) - dp(30) * 3 - dp(10) * 2 - drawScaleRow(null, 0, 0, lw) - dp(22) - dp(24);
-    const byH = (avail - (rows + srows) * gap) / (rows * 1.02 + srows * .86);
+    // the section heads, then the DISPLAY rows (as many as they wrap into)
+    const avail = H - top - dp(24) - dp(30) * heads - dp(10) * (heads - 1) - drawScaleRow(null, 0, 0, lw) - dp(22) - dp(24);
+    const byH = (avail - (rows + srows + trows) * gap) / (rows * 1.02 + srows * .86 + trows * TAG_CARD_H);
     const cw = Math.floor(Math.max(dp(56), Math.min(byW, byH)));
-    return { m, top, gap, lx1, cols, cw, skinH: Math.round(cw * 1.02), schemeH: Math.round(cw * .86) };
+    return { m, top, gap, lx1, cols, cw, skinH: Math.round(cw * 1.02), schemeH: Math.round(cw * .86), tagH: Math.round(cw * TAG_CARD_H) };
 }
 
 // the skin cards: every skin, and the custom case's card while it has not been made yet
 const styleSkins = () => listSkins().some(s => s.id === "custom") ? listSkins() : listSkins().concat([{ id: "custom", dir: null, name: "CUSTOM" }]);
+// the tag cards: every finish (OFF is in the TITLE TAG row); the cards are this much as tall as wide
+const TAG_CARD_H = .62, styleTags = () => TAGS.filter(([id]) => id !== "off" && tagFinish(id));
 function drawStyle(gr) {
-    const skins = styleSkins(), ids = Object.keys(TOKENS.schemes), g = styleGeom(skins.length, ids.length);
+    const skins = styleSkins(), ids = Object.keys(TOKENS.schemes), tags = styleTags(), g = styleGeom(skins.length, ids.length, tags.length);
     for (const [x, y] of [[dp(16), dp(16)], [W - dp(27), dp(16)], [dp(16), H - dp(27)], [W - dp(27), H - dp(27)]]) regCross(gr, x, y);
     // ■ STYLE · 05   [MARBLE · ARCHIVE]          TEXT [90% … 120%]   ARRAY [80% … 130%]   ▶ PLAY INTRO   MODE [LIGHT | DARK]
     gr.FillSolidRect(g.m, dp(32), dp(5), dp(5), C.fg);
@@ -142,6 +144,13 @@ function drawStyle(gr) {
     y += dp(30);
     ids.forEach((id, i) => drawSchemeCard(gr, id, i, g.m + (i % g.cols) * (g.cw + g.gap), y + Math.floor(i / g.cols) * (g.schemeH + g.gap), g.cw, g.schemeH));
     y += Math.ceil(ids.length / g.cols) * (g.schemeH + g.gap) + dp(10);
+    // TITLE TAG: each finish in the chosen shape and colours
+    if (tags.length) {
+        label(gr, `${tr("TITLE TAG")}  ·  ${pad(tags.length, 2)}`, st(STY_ST.sec, C.fg), g.m, y);
+        y += dp(30);
+        tags.forEach(([id, name], i) => drawTagCard(gr, id, name, g.m + (i % g.cols) * (g.cw + g.gap), y + Math.floor(i / g.cols) * (g.tagH + g.gap), g.cw, g.tagH));
+        y += Math.ceil(tags.length / g.cols) * (g.tagH + g.gap) + dp(10);
+    }
     // DISPLAY: text size, Archive array scale, inspection size, Archive floor, halftone, wallpaper (the count is of those shown)
     label(gr, `${tr("DISPLAY")}  ·  ${pad(scaleGroups().length + 1, 2)}`, st(STY_ST.sec, C.fg), g.m, y);
     drawScaleRow(gr, g.m, y + dp(30), g.lx1);
@@ -202,6 +211,22 @@ function drawSchemeCard(gr, id, i, x, y, w, h) {
     hits.add("sty-scheme", x, y, w, h, id);
 }
 
+// a tag card: the finish as the card and the album file would show it, its name under it
+function drawTagCard(gr, id, name, x, y, w, h) {
+    const ih = h - dp(40), inUse = id === STATE.tag, hov = STY.hover && STY.hover.kind === "tag" && STY.hover.id === id;
+    gr.FillSolidRect(x, y, w, h, C.panel);
+    const tw = w - dp(18), th = tagHeight(tw, id);
+    gr.PushClip(x, y, w, ih);
+    drawTag(gr, x + dp(9), y + Math.round((ih - th) / 2), tw, tr("Over the Signal"), { track: "03", total: "12", arc: "0269" }, C.panel, id);
+    gr.PopClip();
+    gr.FillSolidRect(x, y + ih, w, HAIR, C["line-faint"]);
+    const t = tr(name), ns = labelWidth(t, st(STY_ST.name, 0)) <= w - dp(18) ? STY_ST.name : STY_ST.nameS;
+    label(gr, fitLabel(t, st(ns, C.fg, C.panel), w - dp(18)), st(ns, C.fg, C.panel), x + dp(10), y + ih + Math.round((dp(40) - labelHeight(ns)) / 2));
+    if (inUse) chip(gr, tr("IN USE"), x + w - dp(8) - labelWidth(tr("IN USE"), st(STY_ST.tiny, 0)) - dp(16), y + dp(8), dp(16), "inv", 8);
+    cardFrame(gr, x, y, w, h, inUse, hov);
+    hits.add("sty-tagcard", x, y, w, h, id);
+}
+
 // MODE [■ LIGHT | □ DARK], right-aligned at x
 function drawModeToggle(gr, xr, y) {
     const items = [["light", tr("LIGHT")], ["dark", tr("DARK")]], hh = dp(22), s = st(STY_ST.tog, 0);
@@ -232,14 +257,34 @@ function drawIntroButton(gr, xr, y) {
 }
 
 // TEXT [90% … 120%]   ARRAY [80% … 130%]   INSPECT [100% … 150%]   FLOOR [PLAIN | LAB DECK]
-// HALFTONE [OFF | BOTTOM | CORNER]   DOTS [FAINT | MEDIUM | STRONG]
+// HALFTONE [OFF | BOTTOM | CORNER]   DOTS [FAINT | MEDIUM | STRONG]   FONT [GEIST MONO | OXANIUM | CHAKRA PETCH]
+// EMBLEM [RING | DELTA]   TITLE TAG [OFF | PLASTIC | …]   TAG SHAPE [TAB | …]   TAG COLOURS [SCHEME | CASE | CUSTOM] ■ ■ ■   TAG BODY [SOLID | TRANSLUCENT | TRANSPARENT]   TAG OPACITY [25% | 50% | 75%]
 // from x, wrapping to a second row before x1
 const pct = v => `${Math.round(v * 100)}%`;
 const scaleGroups = () => {
     const scales = list => list.map(v => [v, pct(v)]);
     return [["TEXT", scales(TEXT_SCALES), STATE.textScale, "sty-text"], ["ARRAY", scales(ARRAY_SCALES), STATE.arrayScale, "sty-array"],
             ["INSPECT", scales(INSPECT_SCALES), STATE.inspectScale, "sty-inspect"], ["FLOOR", FLOORS, STATE.floor, "sty-floor"],
-            ["HALFTONE", HALFTONES, STATE.halftone, "sty-ht"], ...(STATE.halftone === "off" ? [] : [["DOTS", HALFTONE_LEVELS, STATE.halftoneLevel, "sty-htl"]])];
+            ["HALFTONE", HALFTONES, STATE.halftone, "sty-ht"], ...(STATE.halftone === "off" ? [] : [["DOTS", HALFTONE_LEVELS, STATE.halftoneLevel, "sty-htl"]]),
+            ["FONT", FONTS.filter(([id]) => FONT_FAMILIES[id].ok), STATE.font, "sty-font"], ["EMBLEM", EMBLEMS, STATE.emblem, "sty-emblem"],
+            ["TITLE TAG", TAGS, STATE.tag, "sty-tag"], ...(STATE.tag === "off" ? [] : [["TAG SHAPE", TAG_SHAPES, STATE.tagShape, "sty-tagshape"]]),
+            ...(tagRecolours() ? [["TAG COLOURS", TAG_COLOUR_SOURCES, STATE.tagColours, "sty-tagcol"]] : []),
+            ...(STATE.tag !== "off" && !TAG_SEE_KIND[STATE.tag] ? [["TAG BODY", TAG_BODIES, STATE.tagBody, "sty-tagbody"]] : []),
+            ...(tagSeesThrough() ? [["TAG OPACITY", TAG_OPACITIES, STATE.tagOpacity, "sty-tagop"]] : [])];
+};
+// the tag's colours can be chosen (its finish is not one of the glass ones, which keep theirs)
+const tagRecolours = () => STATE.tag !== "off" && !["tide", "aurora"].includes(STATE.tag);
+// the custom tag colours: TOP ■ BODY ■ BOTTOM ■, each opens the colour picker. Returns the width.
+const TAG_BANDS = ["TOP", "BODY", "BOTTOM"];
+function drawTagSwatches(gr, x, y) {
+    const s = st(GRID_ST.count, C.fg, C.bg), cols = tagCustom(), sw = dp(22);
+    let cx = x;
+    TAG_BANDS.forEach((t, i) => {
+        if (gr) cx += label(gr, tr(t), s, cx, y + Math.round((sw - labelHeight(GRID_ST.count)) / 2)) + dp(6); else cx += labelWidth(tr(t), s) + dp(6);
+        if (gr) { gr.FillSolidRect(cx, y, sw, sw, tagArgb(cols[i])); box(gr, cx, y, sw, sw, C["line-dim"]); hits.add("sty-tagc", cx, y, sw, sw, i); }
+        cx += sw + dp(14);
+    });
+    return cx - x - dp(14);
 };
 // toggle groups [title, items, cur, hit id, marks] in a row from x, wrapping before x1: where each one's right edge
 // goes ({ at: [[xr, y, group]], y: the last row's, xl: where that row ends })
@@ -260,6 +305,13 @@ function drawScaleRow(gr, x, y, x1) {
     if (gr) for (const [xr, gy, [title, items, cur, id]] of wg.at) segToggle(gr, xr, gy, title, items, cur, id);
     let xl = wg.xl;
     y = wg.y;
+    // the custom tag colours, after the TAG COLOURS toggle
+    if (tagRecolours() && STATE.tagColours === "custom") {
+        const tw = drawTagSwatches(null, 0, 0);
+        if (xl > x && xl + tw > x1) { xl = x; y += dp(34); }
+        if (gr) drawTagSwatches(gr, xl, y);
+        xl += tw + dp(28);
+    }
     // WALLPAPER · IMG.JPG ›: opens its editor on the right
     const b = STATE.wallpaper || WP_START, on = STY.edit === "wallpaper", hov = STY.wpHover === "open";
     const wt = `${tr("WALLPAPER")}  ·  ${b.path ? b.path.slice(b.path.lastIndexOf("\\") + 1).toUpperCase() : tr("NONE")}  ›`;
@@ -355,6 +407,7 @@ function drawStylePreview(gr, g, skins) {
         }
         return;
     }
+    if (hv && hv.kind === "tag") { drawTagPreview(gr, hv.id, x0, y0 + dp(30), w, y1); return; }
     if (!hv && STY.edit === "wallpaper") { drawWallpaperEditor(gr, x0, y0 + dp(30), w, y1); return; }
     if (!hv && (STY.making || (STATE.skin === "custom" && STY.edit !== "scheme"))) { drawCaseEditor(gr, x0, y0 + dp(30), w, y1); return; }
     if (!hv && SCHEME === "custom") { drawCustomEditor(gr, x0, y0 + dp(30), w, y1); return; }
@@ -378,6 +431,45 @@ function drawStylePreview(gr, g, skins) {
     const ay = ty + dp(14) + labelHeight(STY_ST.big) + dp(6);
     text(gr, tr(SKIN_ABOUT[s.id] || ""), 10, 500, C["fg-soft"], x0, ay, w, Math.round(dp(18) * TEXT_SCALE));
     label(gr, `${tr("CASE SKIN")}  ${pad(skins.indexOf(s) + 1, 2)} / ${pad(skins.length, 2)}`, st(STY_ST.tiny, C["text-muted"]), x0, ay + Math.round(dp(26) * TEXT_SCALE));
+}
+
+// The tag card under the mouse: the tag large, with the playing (else the focused) track's title, then as large as
+// the signal profile card shows it, then its name, what it is and the shape, colours and opacity it is shown in.
+const TAG_ABOUT = {
+    "plastic": "Glossy plastic, coloured band by band.",
+    "paper": "Matte card stock, its fibres showing.",
+    "metal": "Brushed aluminium: its grain along the tag, the light a band across it.",
+    "frosted": "A milky plate: the panel shows through it, blurred.",
+    "clear": "Clear acrylic: the panel shows through, tinted by the band colours.",
+    "tide": "The Tide case's blue gradient glass, see-through.",
+    "aurora": "The Aurora case's pastel gradient glass, see-through.",
+};
+const TF_TAG_TITLE = fb.TitleFormat("%title%");
+function drawTagPreview(gr, id, x0, y, w, y1) {
+    const h0 = fb.GetNowPlaying() || fb.GetFocusItem(), title = h0 ? TF_TAG_TITLE.EvalWithMetadb(h0) : tr("Over the Signal");
+    const vals = { track: "03", total: "12", arc: "0269" }, pad_ = dp(22);
+    // large: as wide as the panel allows
+    const bw = w - 2 * pad_, bh = tagHeight(bw, id);
+    gr.FillSolidRect(x0, y, w, bh + 2 * pad_, C.panel);
+    drawTag(gr, x0 + pad_, y + pad_, bw, title, vals, C.panel, id);
+    y += bh + 2 * pad_ + dp(18);
+    // as the signal profile card shows it (its 296 dp column)
+    label(gr, tr("ON THE SIGNAL PROFILE CARD"), st(STY_ST.tiny, C["text-muted"]), x0, y);
+    y += dp(20);
+    const cw = Math.min(dp(296), w - 2 * pad_), ch = tagHeight(cw, id);
+    gr.FillSolidRect(x0, y, cw + 2 * pad_, ch + 2 * pad_, C.panel);
+    drawTag(gr, x0 + pad_, y + pad_, cw, title, vals, C.panel, id);
+    // name, what it is, how it is shown
+    const ty = Math.max(y + ch + 2 * pad_ + dp(24), y1 - dp(104));
+    gr.FillSolidRect(x0, ty, w, dp(3), C.fg);
+    const name = (TAGS.find(t => t[0] === id) || [id, id])[1];
+    label(gr, tr(name), st(STY_ST.big, C.fg), x0, ty + dp(14));
+    const ay = ty + dp(14) + labelHeight(STY_ST.big) + dp(6);
+    text(gr, tr(TAG_ABOUT[id] || ""), 10, 500, C["fg-soft"], x0, ay, w, Math.round(dp(18) * TEXT_SCALE));
+    const shape = tr((TAG_SHAPES.find(t => t[0] === STATE.tagShape) || ["", ""])[1]);
+    const colours = TAG_SEE_KIND[id] === "glass" ? tr("ITS OWN COLOURS") : tr((TAG_COLOUR_SOURCES.find(t => t[0] === STATE.tagColours) || ["", ""])[1]);
+    const how = [shape, colours, tagSeesThrough(id) ? `${STATE.tagOpacity}%` : ""].filter(Boolean).join("  ·  ");
+    label(gr, how, st(STY_ST.tiny, C["text-muted"]), x0, ay + Math.round(dp(26) * TEXT_SCALE));
 }
 
 // The custom scheme's editor: for light and for dark, a preview and the three colours to pick (Windows' colour
@@ -487,7 +579,7 @@ function styleMouseMove(a) {
     if (wh !== (STY.wpHover || null)) { STY.wpHover = wh; window.Repaint(); }
     const cp = a && a.id === "sty-cpick" ? a.data : null;
     if (cp !== (STY.cpick || null)) { STY.cpick = cp; window.Repaint(); }
-    const h = a && (a.id === "sty-skin" || a.id === "sty-scheme") ? { kind: a.id === "sty-skin" ? "skin" : "scheme", id: a.data }
+    const h = a && (a.id === "sty-skin" || a.id === "sty-scheme" || a.id === "sty-tagcard") ? { kind: { "sty-skin": "skin", "sty-scheme": "scheme", "sty-tagcard": "tag" }[a.id], id: a.data }
         : a && a.id === "sty-intro" ? { kind: "intro", id: "" } : null;
     const o = STY.hover;
     if ((h && (!o || o.kind !== h.kind || o.id !== h.id)) || (!h && o)) { STY.hover = h; window.Repaint(); }
@@ -515,6 +607,18 @@ function styleClick(a) {
     else if (a.id === "sty-floor" && a.data !== STATE.floor) send("floor", a.data);
     else if (a.id === "sty-ht" && a.data !== STATE.halftone) send("halftone", a.data);
     else if (a.id === "sty-htl" && a.data !== STATE.halftoneLevel) send("halftone-level", a.data);
+    else if (a.id === "sty-emblem" && a.data !== STATE.emblem) send("emblem", a.data);
+    else if (a.id === "sty-tag" && a.data !== STATE.tag) send("tag", a.data);
+    else if (a.id === "sty-tagshape" && a.data !== STATE.tagShape) send("tag-shape", a.data);
+    else if (a.id === "sty-tagcol" && a.data !== STATE.tagColours) send("tag-colours", a.data);
+    else if (a.id === "sty-tagop" && a.data !== STATE.tagOpacity) send("tag-opacity", a.data);
+    else if (a.id === "sty-tagbody" && a.data !== STATE.tagBody) send("tag-body", a.data);
+    else if (a.id === "sty-tagcard" && a.data !== STATE.tag) send("tag", a.data);
+    else if (a.id === "sty-font" && a.data !== STATE.font) send("font", a.data);
+    else if (a.id === "sty-tagc") {
+        const cols = tagCustom().slice(), c = utils.ColourPicker(window.ID, tagArgb(cols[a.data]));
+        if (typeof c === "number" && c !== -1) { cols[a.data] = "#" + (c & 0xFFFFFF).toString(16).padStart(6, "0"); send("tag-custom", cols); }
+    }
     else if (a.id === "sty-hearth") send("scheme", "hearth");
     else if (a.id === "sty-cpick") {
         const [m, k] = a.data.split("|"), u = customChoice(), c = utils.ColourPicker(window.ID, argb(u[m][k]));

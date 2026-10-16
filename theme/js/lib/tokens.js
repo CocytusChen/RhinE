@@ -32,9 +32,21 @@ function mix(a, b, t) {
 }
 const withAlpha = (c, alpha) => (((Math.round(alpha * 255) & 255) << 24) | (c & 0xFFFFFF)) >>> 0;
 
-// Geist Mono is installed per user by install.ps1; loading the files privately as well keeps the panels correct if
-// it was removed or the theme was copied by hand.
-for (const w of ["Light", "Regular", "Medium", "SemiBold", "Bold"]) utils.LoadFont(THEME_ROOT + `assets\\fonts\\GeistMono-${w}.ttf`);
+// The interface font (05 STYLE › FONT): Geist Mono, Oxanium or Chakra Petch (all SIL OFL, in assets/fonts). Static
+// TTFs, so each weight is its own family name (700 is the regular family with the bold flag). Geist Mono is installed
+// per user by install.ps1; loading every file privately as well keeps the panels correct if it was removed or the theme
+// was copied by hand. A family whose files are missing falls back to Geist Mono.
+const FONT_FAMILIES = {
+    geist: { file: "GeistMono", name: "Geist Mono" },
+    oxanium: { file: "Oxanium", name: "Oxanium" },
+    chakra: { file: "ChakraPetch", name: "Chakra Petch" },
+};
+for (const [id, F] of Object.entries(FONT_FAMILIES)) {
+    F.ok = id === "geist" || utils.IsFile(THEME_ROOT + `assets\\fonts\\${F.file}-Regular.ttf`);
+    if (F.ok) for (const w of ["Light", "Regular", "Medium", "SemiBold", "Bold"]) utils.LoadFont(THEME_ROOT + `assets\\fonts\\${F.file}-${w}.ttf`);
+}
+// each panel reads the setting itself, so it starts in the right font before the root panel's first state message
+let FONT_FAMILY = (id => FONT_FAMILIES[id] && FONT_FAMILIES[id].ok ? id : "geist")(getSetting("font", "geist"));
 
 let MODE = "dark", SCHEME = "archive";
 const C = {};                 // token name -> ARGB of the active scheme and mode, e.g. C.bg, C["text-muted"]
@@ -52,7 +64,7 @@ function refreshTokens() {
 }
 refreshTokens();
 
-// Geist Mono has no CJK; those strings use the system's CJK UI font
+// none of the interface fonts has CJK; those strings use the system's CJK UI font
 const isCJK = s => /[⺀-鿿가-힯豈-﫿＀-￯]/.test(s);
 const FONT_CACHE = new Map();
 // Text size (MENU › Audio Archive › Text size, or the Style view): every font of the scripted panels is scaled by it,
@@ -66,12 +78,22 @@ function setTextScale(s) {
     FONT_CACHE.clear();
     return true;
 }
-// font(13, 600) -> D2DFont of Geist Mono at 13 dp (× the text size), weight 600 (static TTFs: the weight picks the family)
+// a new interface font: true when it changed (the caller then drops the caches that hold drawn text, as for the text size)
+function setFontFamily(id) {
+    id = FONT_FAMILIES[id] && FONT_FAMILIES[id].ok ? id : "geist";
+    if (id === FONT_FAMILY) return false;
+    FONT_FAMILY = id;
+    FONT_CACHE.clear();
+    if (typeof TEXT_CACHE !== "undefined") TEXT_CACHE.clear();
+    return true;
+}
+// font(13, 600) -> D2DFont of the interface font at 13 dp (× the text size), weight 600 (static TTFs: the weight picks
+// the family)
 function font(sizeDp, weight = 400, cjk = false) {
     const key = sizeDp + "/" + weight + (cjk ? "/cjk" : "");
     if (!FONT_CACHE.has(key)) {
-        const family = cjk ? "Microsoft YaHei UI"
-            : { 300: "Geist Mono Light", 400: "Geist Mono", 500: "Geist Mono Medium", 600: "Geist Mono SemiBold", 700: "Geist Mono" }[weight] || "Geist Mono";
+        const n = FONT_FAMILIES[FONT_FAMILY].name;
+        const family = cjk ? "Microsoft YaHei UI" : { 300: n + " Light", 400: n, 500: n + " Medium", 600: n + " SemiBold", 700: n }[weight] || n;
         FONT_CACHE.set(key, d2d.Font(family, dp(sizeDp * TEXT_SCALE), weight >= 700 || (cjk && weight >= 600) ? 1 : 0));
     }
     return FONT_CACHE.get(key);

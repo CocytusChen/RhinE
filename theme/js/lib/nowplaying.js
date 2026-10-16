@@ -71,8 +71,10 @@ function nextTitle() {
 // ------------------------------------------------------------------------------------------------------ the card
 // kind "pager": ends in the previous / current / next pager (Lyrics view, fixed height cardHeight());
 // kind "queue": ends in QUEUE / NEXT, as many rows as fit in h (Playlists view)
-const CARD_TOP = 14 + 16 + 6 + 250 + 18 + 10 + 54 + 10 + 32 + 12 + 18 + 90;
-function cardHeight() { return dp(CARD_TOP + 14 + 10 + 16); }
+// (the title's block, 54 + 10 dp, is as tall as the title tag when one is shown: cardTitleH)
+const CARD_TOP = 14 + 16 + 6 + 250 + 18 + 10 + 32 + 12 + 18 + 90;
+const cardTitleH = iw => { const th = tagHeight(iw); return th ? th + dp(12) : dp(54 + 10); };
+function cardHeight(w = dp(328)) { return dp(CARD_TOP + 14 + 10 + 16) + cardTitleH(w - dp(32)); }
 // profile: the card from its top to the end of the profile table (a click inspects the album in the Archive)
 const CARD_HITS = { pager: [], queue: [], profile: null, folder: null, rate: null };
 function hitsCard(ox, oy) {
@@ -93,7 +95,7 @@ function drawCard(gr, w, h, kind = "pager", ghost = "INFO") {
     const I = T.info, px = dp(16), iw = w - 2 * px;
     // ghost type behind the content, low on the right
     const gf = font(140, 700), gw = gr.CalcTextWidth(ghost, gf);
-    gr.DrawStrokedText(ghost, gf, withAlpha(C["line-faint"], .45), HAIR, 0, w - gw + dp(30), Math.min(h, cardHeight()) - dp(205), gw + dp(10), dp(170));
+    gr.DrawStrokedText(ghost, gf, withAlpha(C["line-faint"], .45), HAIR, 0, w - gw + dp(30), Math.min(h, cardHeight(w)) - dp(205), gw + dp(10), dp(170));
     let y = dp(14);
     // top row: ■ SIGNAL PROFILE ——— [FILE 003]
     gr.FillSolidRect(px, y + dp(5.5), dp(5), dp(5), C.fg);
@@ -117,10 +119,12 @@ function drawCard(gr, w, h, kind = "pager", ghost = "INFO") {
         if (I.track) chip(gr, `${I.track}${I.total ? " / " + I.total : ""}`, tx, y, dp(18), "", 9);
     }
     y += dp(18 + 10);
-    // title (plain, up to two lines)
+    // title: on the title tag (05 STYLE), or plain, up to two lines
     const title = I ? (T.title ? scrambleText(T.title) : I.title) : tr("NO SIGNAL");
-    gr.DrawText(title, fontFor(title, 19, 600), C.fg, px, y, iw, dp(54), 0x00000800 | 0x00000010 | 0x00008000 | 0x00040000);   // NOPREFIX | WORDBREAK | END_ELLIPSIS | EDITCONTROL
-    y += dp(54 + 10);
+    const tagVals = I ? { track: I.track, total: I.total, arc: T.no ? pad(T.no, 4) : "", year: I.year, codec: I.codec, artist: I.artist, file: T.file ? pad(T.file, 3) : "" } : {};
+    if (!drawTag(gr, px, y, iw, title, tagVals, C.panel))
+        gr.DrawText(title, fontFor(title, 19, 600), C.fg, px, y, iw, dp(54), 0x00000800 | 0x00000010 | 0x00008000 | 0x00040000);   // NOPREFIX | WORDBREAK | END_ELLIPSIS | EDITCONTROL
+    y += cardTitleH(iw);
     // track information loaded
     label(gr, tr(I ? "TRACK INFORMATION LOADED" : "AWAITING SIGNAL"), npSt(NP_ST.loaded, C["fg-soft"]), px, y);
     if (I) {

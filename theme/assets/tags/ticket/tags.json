@@ -1,0 +1,344 @@
+{
+ "canvas": {
+  "w": 1116,
+  "h": 415,
+  "tag": [
+   78,
+   78,
+   960,
+   259.4595
+  ]
+ },
+ "shape": {
+  "aspect": 3.7,
+  "outline": [
+   [
+    0,
+    0.045
+   ],
+   [
+    0.0004,
+    0.0334
+   ],
+   [
+    0.0016,
+    0.0225
+   ],
+   [
+    0.0036,
+    0.0132
+   ],
+   [
+    0.0061,
+    0.006
+   ],
+   [
+    0.009,
+    0.0015
+   ],
+   [
+    0.0122,
+    0
+   ],
+   [
+    0.7757,
+    0
+   ],
+   [
+    0.7775,
+    0.0344
+   ],
+   [
+    0.7828,
+    0.0636
+   ],
+   [
+    0.7907,
+    0.0831
+   ],
+   [
+    0.8,
+    0.09
+   ],
+   [
+    0.8093,
+    0.0831
+   ],
+   [
+    0.8172,
+    0.0636
+   ],
+   [
+    0.8225,
+    0.0344
+   ],
+   [
+    0.8243,
+    0
+   ],
+   [
+    0.9878,
+    0
+   ],
+   [
+    0.991,
+    0.0015
+   ],
+   [
+    0.9939,
+    0.006
+   ],
+   [
+    0.9964,
+    0.0132
+   ],
+   [
+    0.9984,
+    0.0225
+   ],
+   [
+    0.9996,
+    0.0334
+   ],
+   [
+    1,
+    0.045
+   ],
+   [
+    1,
+    0.955
+   ],
+   [
+    0.9996,
+    0.9666
+   ],
+   [
+    0.9984,
+    0.9775
+   ],
+   [
+    0.9964,
+    0.9868
+   ],
+   [
+    0.9939,
+    0.994
+   ],
+   [
+    0.991,
+    0.9985
+   ],
+   [
+    0.9878,
+    1
+   ],
+   [
+    0.8243,
+    1
+   ],
+   [
+    0.8225,
+    0.9656
+   ],
+   [
+    0.8172,
+    0.9364
+   ],
+   [
+    0.8093,
+    0.9169
+   ],
+   [
+    0.8,
+    0.91
+   ],
+   [
+    0.7907,
+    0.9169
+   ],
+   [
+    0.7828,
+    0.9364
+   ],
+   [
+    0.7775,
+    0.9656
+   ],
+   [
+    0.7757,
+    1
+   ],
+   [
+    0.0122,
+    1
+   ],
+   [
+    0.009,
+    0.9985
+   ],
+   [
+    0.0061,
+    0.994
+   ],
+   [
+    0.0036,
+    0.9868
+   ],
+   [
+    0.0016,
+    0.9775
+   ],
+   [
+    0.0004,
+    0.9666
+   ],
+   [
+    0,
+    0.955
+   ]
+  ],
+  "hole": {
+   "x": 0.9514,
+   "y": 0.55,
+   "r": 0.075
+  },
+  "eyelet": true
+ },
+ "bands": {
+  "top": 0.28,
+  "bottom": 0.925
+ },
+ "title": {
+  "box": [
+   0.085,
+   0.35,
+   0.6,
+   0.375
+  ],
+  "align": "left",
+  "valign": "bottom",
+  "max": 0.19,
+  "min": 0.1,
+  "lines": 2,
+  "weight": 700,
+  "band": "body"
+ },
+ "small": [
+  {
+   "text": "ARC-{arc} \u00b7 NO.{track}",
+   "x": 0.28,
+   "y": 0.8202,
+   "size": 0.0385,
+   "align": "right",
+   "weight": 600,
+   "track": 0.08,
+   "alpha": 0.85,
+   "band": "body"
+  }
+ ],
+ "print": {
+  "top": "print-top.png",
+  "body": "print-body.png",
+  "bottom": "print-bottom.png",
+  "static": "print-static.png"
+ },
+ "finishes": {
+  "plastic": {
+   "shade": "plastic-shade.png",
+   "gloss": "plastic-gloss.png",
+   "white": 0.851,
+   "cover": 1.0
+  },
+  "paper": {
+   "shade": "paper-shade.png",
+   "gloss": "paper-gloss.png",
+   "white": 0.847,
+   "cover": 1.0
+  },
+  "metal": {
+   "shade": "metal-shade.png",
+   "gloss": "metal-gloss.png",
+   "white": 0.537,
+   "cover": 1.0
+  },
+  "frosted": {
+   "shade": "frosted-shade.png",
+   "gloss": "frosted-gloss.png",
+   "white": 0.757,
+   "cover": 0.624,
+   "mask": "frosted-mask.png"
+  },
+  "tide": {
+   "shade": "tide-shade.png",
+   "fixed": true,
+   "bands": [
+    "#328cf6",
+    "#3188ee",
+    "#2d7cdf"
+   ]
+  },
+  "aurora": {
+   "shade": "aurora-shade.png",
+   "fixed": true,
+   "bands": [
+    "#8da5ff",
+    "#8aa3ff",
+    "#87a0fb"
+   ]
+  },
+  "clear": {
+   "shade": "clear-shade.png",
+   "mask": "clear-mask.png",
+   "clear": true
+  }
+ },
+ "eyelet": "eyelet.png",
+ "studio": {
+  "shape": "ticket",
+  "aspect": 3.7,
+  "radius": 4.5,
+  "depth": 9.5,
+  "tabEnd": 29,
+  "notchA": 40,
+  "notchB": 76,
+  "lowA": 24,
+  "lowB": 85,
+  "split": 80,
+  "hole": "right",
+  "holeR": 7.5,
+  "holeIn": 18,
+  "holeY": 55,
+  "eyelet": true,
+  "topH": 28,
+  "botH": 7.5,
+  "marks": true,
+  "brand": "RHINE: AUDIO ARCHIVE",
+  "stripText": "LISTENING TERMINAL",
+  "barcode": true,
+  "bars": true,
+  "hatch": true,
+  "block": true,
+  "rule": true,
+  "code": true,
+  "codeText": "\u6863\u6848",
+  "boxText": "SIGNAL",
+  "colours": "scheme",
+  "paper": "#f4f3ef",
+  "inkC": "#1c1d1e",
+  "accent": "#fff100",
+  "cTop": "#f4f3ef",
+  "cBody": "#2a2f3a",
+  "cBot": "#ff7a01",
+  "finish": "plastic",
+  "grain": 0.35,
+  "shadow": 0.55,
+  "showTitle": true,
+  "title": "SAMPLE NAME",
+  "titleMax": 19,
+  "titleMin": 10,
+  "smallA": "ARC-{arc} \u00b7 NO.{track}",
+  "preview": "dark",
+  "backdrop": "plain",
+  "seed": 7
+ }
+}

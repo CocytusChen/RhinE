@@ -1,5 +1,32 @@
 ﻿"use strict";
-// The header plate's small vector Möbius emblem: the ring's centreline (art/mobius.py, two circles of radius 1 with
+// The header plate's small vector emblem, as chosen in 05 STYLE (STATE.emblem): the Möbius ring ("ring", the default)
+// or nested triangles ("delta"). Both turn slowly while music plays.
+//
+// DELTA: equilateral triangles about one centre, each 0.88 × the size of the one outside it and turned 4° further, ~50
+// deep. They flow inwards without end: every one shrinks and turns into the place of the next, a new one fades in at
+// the outside and the innermost fade out below a pixel.
+const DELTA = { ratio: .88, turn: 4 * Math.PI / 180, speed: .32 };   // speed: steps per second
+function drawDelta(gr, t, x, y, w, h, sc, colour, reveal = 1) {
+    const X = x + w / 2, Y = y + h / 2 + sc * .2, R0 = sc * 1.95, p = (t * DELTA.speed) % 1, lw = Math.max(1, .8 * SCALE);
+    const n = Math.max(3, Math.round(60 * reveal));
+    for (let k = -1; k < n; k++) {
+        const u = k + p, r = R0 * Math.pow(DELTA.ratio, u);
+        if (u < 0) continue;
+        if (r < SCALE) break;
+        // fade in over the first step, out as the triangles get smaller than a few pixels
+        const a = Math.min(1, u) * clamp((r - SCALE) / (7 * SCALE), 0, 1);
+        if (a <= .01) continue;
+        const th = -Math.PI / 2 + u * DELTA.turn, pts = [];
+        for (let i = 0; i < 3; i++) { const q = th + i * TAU / 3; pts.push(X + r * Math.cos(q), Y + r * Math.sin(q)); }
+        gr.DrawPolygon(withAlpha(colour, a), lw, pts);
+    }
+}
+function drawEmblem(gr, t, x, y, w, h, sc, colour, reveal = 1) {
+    if (STATE.emblem === "delta") drawDelta(gr, t, x, y, w, h, sc, colour, reveal);
+    else drawMobius(gr, t, x, y, w, h, sc, colour, reveal);
+}
+
+// RING: the Möbius ring's centreline (art/mobius.py, two circles of radius 1 with
 // centres at ±1.42 joined by tangent diagonals) carries a twisting ribbon drawn as ~110 short slats, shaded by how
 // much each slat faces the viewer. Monochrome on the inverse plate; it turns slowly while music plays.
 
@@ -20,7 +47,7 @@ const INF = (() => {
 })();
 
 // draws the emblem centred in (x, y, w, h); t = seconds of animation time, sc = px per unit, reveal 0..1
-function drawEmblem(gr, t, x, y, w, h, sc, colour, reveal = 1) {
+function drawMobius(gr, t, x, y, w, h, sc, colour, reveal = 1) {
     const N = Math.max(4, Math.floor(110 * reveal)), cy_ = Math.cos(.5 * Math.sin(t * .2)), sy_ = Math.sin(.5 * Math.sin(t * .2));
     const cp = Math.cos(.32), spn = Math.sin(.32), segs = [], X = x + w / 2, Y = y + h / 2;
     const rot = (a, b, c) => { const x1 = a * cy_ + c * sy_, z1 = -a * sy_ + c * cy_; return [x1, b * cp - z1 * spn, b * spn + z1 * cp]; };

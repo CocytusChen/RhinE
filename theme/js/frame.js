@@ -34,6 +34,14 @@ STATE.floor = pickFloor(getSetting("floor", "plain"));
 STATE.wallpaper = pickWallpaper(getSetting("wallpaper", null));
 STATE.halftone = pickHalftone(getSetting("halftone", "bottom"));
 STATE.halftoneLevel = pickHalftoneLevel(getSetting("halftoneLevel", "mid"));
+STATE.emblem = pickEmblem(getSetting("emblem", "ring"));
+STATE.tag = pickTag(getSetting("tag", "plastic"));
+STATE.tagShape = pickTagShape(getSetting("tagShape", "tab"));
+STATE.tagColours = pickTagColours(getSetting("tagColours", "scheme"));
+STATE.tagCustom = getSetting("tagCustom", null);
+STATE.tagOpacity = pickTagOpacity(getSetting("tagOpacity", 50));
+STATE.tagBody = pickTagBody(getSetting("tagBody", "solid"));
+STATE.font = pickFont(getSetting("font", "geist"));
 REDUCE_MOTION = STATE.reduce;
 RELOAD_ON_LANG = false;   // see lib/bus.js
 const P = {};          // child name -> PanelObject
@@ -42,7 +50,8 @@ let ready = false;
 const broadcast = () => send("state", { view: STATE.view, preset: STATE.preset, reduce: STATE.reduce, boot: STATE.boot, skin: STATE.skin, grain: STATE.grain,
                                    lyricsSource: STATE.lyricsSource, lyricsTrans: STATE.lyricsTrans, lyricsNeteaseAuto: STATE.lyricsNeteaseAuto,
                                    textScale: STATE.textScale, arrayScale: STATE.arrayScale, inspectScale: STATE.inspectScale, floor: STATE.floor, wallpaper: STATE.wallpaper,
-                                   halftone: STATE.halftone, halftoneLevel: STATE.halftoneLevel });
+                                   halftone: STATE.halftone, halftoneLevel: STATE.halftoneLevel, emblem: STATE.emblem, tag: STATE.tag,
+                                   tagShape: STATE.tagShape, tagColours: STATE.tagColours, tagCustom: STATE.tagCustom, tagOpacity: STATE.tagOpacity, tagBody: STATE.tagBody, font: STATE.font });
 
 // One-off: settings written before this change kept three switches for the lyrics (lyricsOnline, lyricsNetease,
 // lyricsTranslate). They map onto lyricsSource and lyricsTrans, and lyricsNeteaseAuto keeps the permission the old
@@ -259,6 +268,14 @@ onMessage("array-scale", v => { STATE.arrayScale = pickScale(+v, ARRAY_SCALES); 
 onMessage("floor", v => { STATE.floor = pickFloor(v); setSetting("floor", STATE.floor); broadcast(); });
 onMessage("halftone", v => { STATE.halftone = pickHalftone(v); setSetting("halftone", STATE.halftone); broadcast(); });
 onMessage("halftone-level", v => { STATE.halftoneLevel = pickHalftoneLevel(v); setSetting("halftoneLevel", STATE.halftoneLevel); broadcast(); });
+onMessage("emblem", v => { STATE.emblem = pickEmblem(v); setSetting("emblem", STATE.emblem); broadcast(); });
+onMessage("tag", v => { STATE.tag = pickTag(v); setSetting("tag", STATE.tag); broadcast(); });
+onMessage("tag-shape", v => { STATE.tagShape = pickTagShape(v); setSetting("tagShape", STATE.tagShape); broadcast(); });
+onMessage("tag-colours", v => { STATE.tagColours = pickTagColours(v); setSetting("tagColours", STATE.tagColours); broadcast(); });
+onMessage("tag-body", v => { STATE.tagBody = pickTagBody(v); setSetting("tagBody", STATE.tagBody); broadcast(); });
+onMessage("tag-opacity", v => { STATE.tagOpacity = pickTagOpacity(v); setSetting("tagOpacity", STATE.tagOpacity); broadcast(); });
+onMessage("tag-custom", v => { STATE.tagCustom = Array.isArray(v) ? v : null; setSetting("tagCustom", STATE.tagCustom, true); broadcast(); });
+onMessage("font", v => { STATE.font = pickFont(v); setSetting("font", STATE.font); setFontFamily(STATE.font); broadcast(); layout(); });
 // the wallpaper's settings, changed in part (05 STYLE)
 onMessage("wallpaper", w => { STATE.wallpaper = pickWallpaper(Object.assign({}, STATE.wallpaper, w)); setSetting("wallpaper", STATE.wallpaper, true); broadcast(); });
 onMessage("grain", on => { STATE.grain = !!on; setSetting("grain", STATE.grain); broadcast(); window.Repaint(); });

@@ -176,8 +176,8 @@ let arrayScaleWas = STATE.arrayScale;
 let halftoneWas = "";
 onMessage("state", () => {
     if (stageSkin() !== CASE_SKIN && loadSkin(stageSkin())) dirty.card = true;
-    // another halftone (05 STYLE): the album file and the card are drawn again
-    const ht = STATE.halftone + STATE.halftoneLevel;
+    // another halftone, title tag, font or case (05 STYLE): the album file and the card are drawn again
+    const ht = [STATE.halftone, STATE.halftoneLevel, STATE.tag, STATE.tagShape, STATE.tagColours, JSON.stringify(STATE.tagCustom), STATE.tagOpacity, STATE.tagBody, STATE.font, stageSkin()].join("|");
     if (ht !== halftoneWas) { halftoneWas = ht; AR.dirtyInfo = dirty.card = true; }
     const on = STATE.view === "archive";
     if (on !== ARCHIVE_ON) { ARCHIVE_ON = on; if (on) requestVisibleThumbs(); else archiveHidden(); }
