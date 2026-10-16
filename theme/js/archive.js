@@ -661,7 +661,8 @@ function drawRailSlot(gr, it, sx, sy, k, aw) {
     const img = accentShift(ARIMG.rail[it.rail]), [rw, rh] = RAIL_META.res, ox = sx - RAIL_META.origin[0] * k, oy = sy - RAIL_META.origin[1] * k;
     if (ox > aw || ox + rw * k < 0 || oy > H || oy + rh * k < 0) return;
     const alpha = rowAlpha(it.pos), f = rowTint(it.pos);
-    gr.DrawImage(f > 0 ? tinted(img, f, "rail-" + it.rail) : img, ox, oy, rw * k, rh * k, 0, 0, rw, rh, 0, alpha);
+    const im = f > 0 ? tinted(img, f, "rail-" + it.rail) : img;
+    gr.DrawImage(im, ox, oy, rw * k, rh * k, 0, 0, im.Width, im.Height, 0, alpha);
     // the row's number on the front end's label plate
     if (it.rail === "front" && f < .5) {
         const q = RAIL_META.label;
@@ -816,12 +817,13 @@ function drawArrayCase(gr, it, sx, sy, k, aw, I) {
     else gr.FillPolygon(withAlpha(C.well, alpha / 255), 0, quadPts(meta.cover, ox, oy, k));
     if (f > 0) {
         gr.FillPolygon(withAlpha(fadeBg(), f * alpha / 255), 0, quadPts(meta.cover, ox, oy, k));
-        gr.DrawImage(fadedSprite(f), ox, oy, S, S, 0, 0, sz, sz, 0, alpha);
+        const fs = fadedSprite(f);
+        gr.DrawImage(fs, ox, oy, S, S, 0, 0, fs.Width, fs.Height, 0, alpha);
     } else {
         const cl = clamp(it.c.clear.x, 0, 1);
         if (t && cl > .01) quadImage(gr, t.img, meta.cover, ox, oy, k, Math.round(alpha * cl));
-        if (cl < .99) gr.DrawImage(I.frost, ox, oy, S, S, 0, 0, sz, sz, 0, Math.round(alpha * (1 - cl)));
-        if (cl > .01) gr.DrawImage(I.clear, ox, oy, S, S, 0, 0, sz, sz, 0, Math.round(alpha * cl));
+        if (cl < .99) gr.DrawImage(I.frost, ox, oy, S, S, 0, 0, I.frost.Width, I.frost.Height, 0, Math.round(alpha * (1 - cl)));
+        if (cl > .01) gr.DrawImage(I.clear, ox, oy, S, S, 0, 0, I.clear.Width, I.clear.Height, 0, Math.round(alpha * cl));
         if (it.active) drawSpineLabel(gr, meta.label, ox, oy, k, it.a.no, alpha);
     }
     if (AR.topTitles && f < .5) drawTopTitle(gr, it.a, ox, oy, k, alpha, f);

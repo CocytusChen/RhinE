@@ -51,7 +51,8 @@ function cover(handle, onLoad) {
         if (r && r.image) {
             // cut square from the middle like the library thumbnails, so a cover that is not square is not
             // squeezed, and the inspected case does not change shape when the large cover replaces the thumbnail
-            const s = 640, src = r.image, w = src.Width, h = src.Height, m = Math.min(w, h);
+            // 640 px, or 1280 px on a screen scaled above 125 % (the inspected case draws its cover over 1000 px wide there)
+            const s = SCALE > 1.25 ? 1280 : 640, src = r.image, w = src.Width, h = src.Height, m = Math.min(w, h);
             const sq = w === h ? src : src.Clone(Math.floor((w - m) / 2), Math.floor((h - m) / 2), m, m);
             entry.img = m > s ? sq.Resize(s, s) : sq;
             const b = entry.img.Resize(128, 128);
@@ -79,8 +80,8 @@ function drawHeroCase(gr, x, y, w, h, cov, clearK, no) {
         gr.DrawImage(cov.blur, cx, cy, cw, ch, 0, 0, cov.blur.Width, cov.blur.Height);
         if (clearK > 0) gr.DrawImage(cov.img, cx, cy, cw, ch, 0, 0, cov.img.Width, cov.img.Height, 0, Math.round(255 * clearK));
     } else gr.FillSolidRect(cx, cy, cw, ch, C.well);
-    if (clearK < 1) gr.DrawImage(I.frost, ox, oy, iw * s, ih * s, 0, 0, iw, ih, 0, Math.round(255 * (1 - clearK)));
-    if (clearK > 0) gr.DrawImage(I.clear, ox, oy, iw * s, ih * s, 0, 0, iw, ih, 0, Math.round(255 * clearK));
+    if (clearK < 1) gr.DrawImage(I.frost, ox, oy, iw * s, ih * s, 0, 0, I.frost.Width, I.frost.Height, 0, Math.round(255 * (1 - clearK)));
+    if (clearK > 0) gr.DrawImage(I.clear, ox, oy, iw * s, ih * s, 0, 0, I.clear.Width, I.clear.Height, 0, Math.round(255 * clearK));
     // album number on the spine label
     const L = m.label, lx = ox + L[0][0] * s, ly = oy + L[0][1] * s, lw = (L[1][0] - L[0][0]) * s, lh = (L[2][1] - L[0][1]) * s;
     if (no) gr.DrawText(`ARC\n${pad(no, 4)}`, font(Math.max(5, lh / SCALE * .28), 600), 0xFF2B2B29, lx, ly, lw, lh, 0x00000800 | 0x00000001 | 0x00000004 | 0x00000010);

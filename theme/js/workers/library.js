@@ -5,7 +5,8 @@
 //                                    written to the SQLite cache (only rows that changed) → { type: "catalog", albums,
 //                                    items (one per track), ... }
 //   { type: "covers", gen, list }    cover thumbnails for these albums, nearest first; the list replaces any earlier
-//                                    one (the panel asks only for albums it has no thumbnail for). Each thumbnail is cut square, scaled to 256 px and cached on disk as JPEG;
+//                                    one (the panel asks only for albums it has no thumbnail for). Each thumbnail is cut square, scaled to 256 px (512 px
+//                                    when the index message asks: a high-DPI screen) and cached on disk as JPEG;
 //                                    a small blurred copy goes with it → { type: "cover", key, img, blur } (transferred)
 // While nothing is asked for, the worker warms the disk cache: one album at a time it extracts the covers not cached
 // yet, so browsing a large library (the grid above all) finds them at once. An album without artwork gets a small
@@ -13,9 +14,10 @@
 // (or "Re-index library" asks for a fresh look).
 
 const CACHE_DIR = fb.ProfilePath + "audio-archive-cache\\";
-const COVER_DIR = CACHE_DIR + "covers\\";
+const BARE_DIR = CACHE_DIR + "covers\\";   // the 256 px thumbnails, and the markers of albums without artwork
+let COVER_DIR = BARE_DIR, THUMB = 256;      // the 512 px ones have a folder of their own (covers-512)
 const DB_FILE = CACHE_DIR + "library.db";
-const THUMB = 256, BLUR = 48;
+const BLUR = 48;
 
 const TF = fb.TitleFormat([
     "[%album%]", "%path%", "[$meta(album artist,0)]", "[%artist%]", "[$meta(genre,0)]", "[$left(%date%,4)]", "[%codec%]",
@@ -127,7 +129,7 @@ function writeCache(albums) {
 let queue = [], busy = 0, warm = [], fresh = false;
 const inFlight = new Set();
 const TF_MTIME = fb.TitleFormat("[%last_modified%]");
-const coverFile = key => COVER_DIR + fnv(key) + ".jpg", noneFile = key => COVER_DIR + fnv(key) + ".none";
+const coverFile = key => COVER_DIR + fnv(key) + ".jpg", noneFile = key => BARE_DIR + fnv(key) + ".none";
 // true when the album is known to have no artwork (and its first track has not changed since)
 function knownBare(job) {
     if (fresh || !utils.IsFile(noneFile(job.key)) || !handles || job.i < 0 || job.i >= handles.Count) return false;
@@ -150,7 +152,7 @@ async function loadCover(job) {
     }
     if (!img && handles && job.i >= 0 && job.i < handles.Count && !knownBare(job)) {
         const h = handles[job.i], r = await utils.GetAlbumArtAsyncV2(0, h, 0, false, false, false).catch(() => null);
-        if (!utils.IsDirectory(COVER_DIR)) utils.CreateFolder(COVER_DIR);
+        for (const d of [BARE_DIR, COVER_DIR]) if (!utils.IsDirectory(d)) utils.CreateFolder(d);
         if (r && r.image) {
             img = square(r.image, THUMB);
             img.SaveAs(file, "image/jpeg");
@@ -184,6 +186,7 @@ onmessage = function (event) {
         const t0 = performance.now();
         gen = m.gen;
         handles = m.handles;
+        if (m.thumb === 512 || m.thumb === 256) { THUMB = m.thumb; COVER_DIR = THUMB === 256 ? BARE_DIR : CACHE_DIR + `covers-${THUMB}\\`; }
         queue = [];
         if (m.fresh) fresh = true;
         const { albums, tracks } = buildAlbums(handles), t1 = performance.now();

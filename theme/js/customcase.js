@@ -83,3 +83,18 @@ function makeCustomCase(cc, onStep, onDone) {
     window.SetTimeout(step, 0);
     return true;
 }
+
+// A custom case made from older WHITE renders (other sizes: 1.8.0 renders the array sprites and the inspection frames
+// at twice the pixels) is made again from the current ones, in the colours it was made in, a few seconds after the start
+function refreshCustomCase() {
+    if (!customCaseMade()) return;
+    let made, white;
+    try { made = JSON.parse(utils.ReadTextFile(CC_DIR + "case.json", 65001)); white = JSON.parse(utils.ReadTextFile(CC_WHITE + "case.json", 65001)); }
+    catch (e) { return; }
+    const sizes = m => `${m.inspect_res}|${m.array_pixels || 1}`;
+    if (sizes(made) === sizes(white)) return;
+    makeCustomCase((made.skin && made.skin.made) || customCase(), () => {}, ok => {
+        if (ok && STATE.skin === "custom") { reloadSkin("custom"); send("skin-reload", "custom"); }
+    });
+}
+window.SetTimeout(refreshCustomCase, 3000);

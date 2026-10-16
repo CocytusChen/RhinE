@@ -8,14 +8,16 @@
 // title-format pass on its own thread; library changes re-run it after a short pause and only changed rows are
 // written. Albums are grouped by genre, decade, artist initial or not at all, and sorted within each group by artist,
 // title, year or date added. SHOW TRACKS lists every track as its own item instead (LIB.unit), with its album's cover.
-// Covers: 256 px thumbnails with a blurred 48 px copy, made by the worker and cached on disk; at most THUMB_MAX are
-// kept in memory (least recently drawn go first).
+// Covers: 256 px thumbnails (512 px on a screen scaled above 125 %, where the cases draw them larger) with a blurred
+// 48 px copy, made by the worker and cached on disk; at most THUMB_MAX are kept in memory (least recently drawn go
+// first).
 
 const LIB = { albums: [], groups: [], live: false, gen: 0, tracks: 0, ms: null, source: "library",
               groupBy: getSetting("archiveGroup", "genre"), sortBy: getSetting("archiveSort", "artist"),
               unit: getSetting("archiveUnit", "albums"), items: [], albumMap: new Map() };
 const LIB_LISTENERS = [];   // fn(kind): "catalog" when the albums or groups changed, "cover" when a thumbnail arrived
 const LIB_DB = fb.ProfilePath + "audio-archive-cache\\library.db";
+const THUMB_PX = SCALE > 1.25 ? 512 : 256;
 let libHandles = null, libWorker = null, libTimer = 0;
 const libNotify = kind => LIB_LISTENERS.forEach(f => f(kind));
 
@@ -52,7 +54,7 @@ function libIndex(fresh = false) {
         list = fb.GetLibraryItems();
     }
     LIB.source = list && list.Count ? "library" : "playlists";
-    const gen = ++LIB.gen, post = handles => { libHandles = handles; libWorker.postMessage({ type: "index", gen, handles, fresh: fresh === true }); };
+    const gen = ++LIB.gen, post = handles => { libHandles = handles; libWorker.postMessage({ type: "index", gen, handles, fresh: fresh === true, thumb: THUMB_PX }); };
     withCueTracks(LIB.source === "library" ? list : playlistItems(), gen, post);
 }
 
@@ -301,7 +303,8 @@ let THUMB_MAX = 160;
 const thumbPending = new Set();
 const THUMB_KEEP = new Set();   // keys drawn in the current frame are never evicted
 const coverKey = a => a.cover || a.key;
-const setThumbBudget = n => { THUMB_MAX = clamp(n, 160, 720); };
+// (720 thumbnails of 256 px take ≈ 190 MB; the 512 px ones four times as much each, so half as many are kept)
+const setThumbBudget = n => { THUMB_MAX = clamp(n, 160, THUMB_PX > 256 ? 360 : 720); };
 
 // the thumbnail of `a` if loaded (marks it as recently used); undefined while unknown
 function thumbOf(a) {
