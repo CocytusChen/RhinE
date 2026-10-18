@@ -36,7 +36,7 @@ const PITCH = 1.0, ROWP = 4.7;     // case spacing along a row and between rows,
 const CLOSE = [.45, -.62, .64];    // "towards the viewer", for back-to-front sorting
 const INFO_W = 456, ARCHIVE_PLAYLIST = "Archive · Album";
 const LIFT_OUT = 2.2;              // how far the inspected case rises out of its row, in case.json axis units
-const FLY_T = .75;                 // how long a case takes to its new place as the shelves are re-sorted (s; see reshelve)
+const RESHELVE_DROP = 1.6;         // how high above its place a case starts as the shelves are re-sorted (AR.reshelve)
 const INSP_LIFT = .32, INSP_TURN = .72, INSPECT_ZOOM = 2.05;   // stage durations (s); size at the end of the turn
 
 const HOVER_MODES = ["outline", "label", "none"];
@@ -62,8 +62,7 @@ const AR = {
     hoverMode: HOVER_MODES.includes(getSetting("caseHover", "outline")) ? getSetting("caseHover", "outline") : "outline",   // the case under the mouse: outlined, titled or left as is (the context menu)
     infoPlates: [],     // the info plates to draw this frame, over every shelf: the selected case's, and one going
     hoverPlate: null,   // the case to label this frame (hoverMode "label"): drawn after the shelf, over its neighbours
-    reshelve: null,     // while a new sort, grouping or unit is laid out: where every case was (casePlaces)
-    leaving: [],        // the cases shown before it with none in their place now: flying to it and fading (see reshelve)
+    reshelve: false,    // the next placeSelection comes from a new sort, grouping or unit: its cases drop into place
 };
 let ARCHIVE_ON = false;
 const PICK = { steps: null, t: 0, after: false };   // RANDOM PICK's run (see randomPick)
@@ -153,73 +152,12 @@ function placeSelection(key) {
     }
     selectionChanged(false);
     // the rows and their cases at once: a paint before the next step would find the array empty (a blink)
-    AR.leaving = [];
-    if (ARCHIVE_ON && AR.layout !== "grid" && R.length) {
-        archiveUpdate(0);
-        if (AR.reshelve) leaveCases(AR.reshelve);
-    }
+    if (ARCHIVE_ON && AR.layout !== "grid" && R.length) archiveUpdate(0);
 }
 
-// A new sort, grouping or unit (fn): every case moves from where it was to its new place. Where each one is is noted
-// first (casePlaces); the shelves fn rebuilds (synchronously, through the catalog listener) make their cases there
-// (archiveUpdate), and those that had a case in view and have none now fly to their new place and fade (leaveCases).
-// A track goes from its album's place and back to it, so the tracks come out of the album case and go into it.
-function reshelve(fn) {
-    AR.reshelve = ARCHIVE_ON && AR.layout !== "grid" && !REDUCE_MOTION ? casePlaces() : null;
-    try { fn(); } finally { AR.reshelve = null; }
-}
-// a case's place on its way from where it was (c.fly): its shelf's place, its place along it and its height, rising
-// over the cases between and coming down at the end
-function flyAt(c, pos, y, z) {
-    const f = c.fly;
-    if (!f) return { pos, y, z };
-    const e = easeInOut(clamp(f.t / FLY_T, 0, 1)), u = 1 - e;
-    return { pos: pos + u * f.dp, y: y + u * f.dy, z: z + u * f.dz + 4 * e * u * f.h };
-}
-const flight = (from, to, wait = 0) => {
-    const dp = from.pos - to.pos, dy = from.y - to.y, dz = from.z - to.z, d = Math.hypot(dp * ROWP, dy);
-    return d < .01 && Math.abs(dz) < .01 ? null : { t: -wait, dp, dy, dz, h: Math.min(2, d * .2) };
-};
-// where every item of the array is on screen now (its case's place, else where its shelf would put it), by key and
-// by "album:" its album (a track in view first), and which are in view (vis)
-function casePlaces() {
-    const G = arRows(), at = new Map(), vis = [], start = arrayStart(), F = frontRows(), count = arrayGeom().count;
-    const put = (key, p) => { const o = at.get(key); if (!o || (p.vis && !o.vis)) at.set(key, p); };
-    G.forEach((row, gi) => {
-        const r = AR.rows.get(gi), scroll = r ? r.scroll.x : scrollTarget(selIndexOf(gi), row), pos = r ? r.pos.x : gi - start;
-        row.albums.forEach((a, i) => {
-            const c = r && r.cases.get(i), y = (slotOf(row, i) - scroll) * PITCH;
-            const p = c ? flyAt(c, pos, y + c.gap.x, c.lift.x) : { pos, y, z: 0 };
-            p.a = a; p.vis = !!c && c.appear.x > 0 && p.pos > -1 - F && p.pos < count;
-            put(a.key, p);
-            if (a.album) put("album:" + a.album, p);
-            if (p.vis) vis.push(p);
-        });
-    });
-    for (const g of AR.leaving) { const p = flyAt(g, g.to.pos, g.to.y, g.to.z); p.a = g.a; p.vis = true; put(g.a.key, p); vis.push(p); }
-    return { at, vis };
-}
-// the cases in view before a reshelve with none in their place now: off to their item's new place (or its album's, or
-// its album's first track's), fading on the way
-function leaveCases(snap) {
-    const G = arRows(), shown = new Set(), where = new Map(), start = arrayStart();
-    for (const [gi, r] of AR.rows) for (const i of r.cases.keys()) shown.add(G[gi].albums[i].key);
-    G.forEach((row, gi) => row.albums.forEach((a, i) => {
-        where.set(a.key, [gi, i]);
-        if (a.album && !where.has("album:" + a.album)) where.set("album:" + a.album, [gi, i]);
-    }));
-    AR.leaving = [];
-    for (const p of snap.vis) {
-        if (shown.has(p.a.key)) continue;
-        const w = where.get(p.a.key) || (p.a.album && where.get(p.a.album)) || where.get("album:" + p.a.key);
-        let to = { pos: p.pos, y: p.y, z: 0 };
-        if (w) {
-            const [gi, i] = w, row = G[gi], r = AR.rows.get(gi);
-            to = { pos: r ? r.pos.x : gi - start, y: (slotOf(row, i) - (r ? r.scroll.x : scrollTarget(selIndexOf(gi), row))) * PITCH, z: 0 };
-        }
-        AR.leaving.push({ a: p.a, to, fly: flight(p, to) || { t: 0, dp: 0, dy: 0, dz: 0, h: 0 }, c: { clear: { x: 0 }, near: { x: 0 }, hov: { x: 0 }, plate: { x: 0 }, appear: { x: 1 } } });
-    }
-}
+// a new sort, grouping or unit (fn): the shelves it rebuilds (synchronously, through the catalog listener) drop their
+// cases into place; nothing is left waiting when fn changes nothing
+function reshelve(fn) { AR.reshelve = true; try { fn(); } finally { AR.reshelve = false; } }
 
 function selIndexOf(gi) {
     const g = arRows()[gi], key = g && AR.selKey.get(g.name);
@@ -478,26 +416,19 @@ function archiveUpdate(dt) {
             const t = caseTargets(i, r, active, G[gi], gi === AR.hoverRow ? AR.hover : -1, nd);
             let c = r.cases.get(i);
             if (!c) {
-                // re-sorted shelves (reshelve): the case comes from where its item was, or its album; the ones near
-                // the selected case go first. One with no place to come from fades in.
-                const S = AR.reshelve, a = G[gi].albums[i];
-                const from = S && (S.at.get(a.key) || (a.album && S.at.get(a.album)) || S.at.get("album:" + a.key));
-                c = { lift: Spring(t.lift, 13), clear: Spring(t.clear, 8), gap: Spring(t.gap, 11), near: Spring(t.near, 10), hov: Spring(t.hov, 14), plate: Spring(t.plate, 12), appear: Spring(S && !from ? 0 : 1, 11), fly: null };
+                // re-sorted shelves: the cases drop into place one after another, outwards from the selected one
+                const drop = AR.reshelve && !REDUCE_MOTION;
+                c = { lift: Spring(t.lift, 13), clear: Spring(t.clear, 8), gap: Spring(t.gap, 11), near: Spring(t.near, 10), hov: Spring(t.hov, 14), plate: Spring(t.plate, 12), appear: Spring(drop ? 0 : 1, 11), wait: drop ? Math.min(.45, nd * .025) : 0 };
                 c.appear.to = 1;
-                if (from) c.fly = flight(from, { pos: r.pos.x, y: (slotOf(G[gi], i) - r.scroll.x) * PITCH + t.gap, z: t.lift }, Math.min(.25, nd * .015));
                 r.cases.set(i, c);
             }
             c.lift.to = t.lift; c.lift.w = active ? 13 : 7; c.clear.to = t.clear; c.gap.to = t.gap; c.near.to = t.near; c.hov.to = t.hov; c.plate.to = t.plate;
             const m1 = stepSpring(c.lift, dt), m2 = stepSpring(c.clear, dt), m3 = stepSpring(c.gap, dt), m4 = stepSpring(c.near, dt), m5 = stepSpring(c.hov, dt), m6 = stepSpring(c.plate, dt);
-            const m7 = stepSpring(c.appear, dt);
-            if (c.fly && (c.fly.t += dt) >= FLY_T) c.fly = null;
-            more = more || m1 || m2 || m3 || m4 || m5 || m6 || m7 || !!c.fly;
+            let m7 = c.wait > 0;
+            if (m7) c.wait -= dt; else m7 = stepSpring(c.appear, dt);
+            more = more || m1 || m2 || m3 || m4 || m5 || m6 || m7;
         }
     }
-    // the cases on their way out (reshelve)
-    for (const g of AR.leaving) { g.fly.t += dt; g.c.appear.x = 1 - easeInOut(clamp(g.fly.t / FLY_T, 0, 1)); }
-    AR.leaving = AR.leaving.filter(g => g.fly.t < FLY_T);
-    if (AR.leaving.length) more = true;
     // album index marks
     const r = AR.rows.get(AR.group);
     if (r) {
@@ -992,48 +923,37 @@ function drawArchive(gr) {
     gr.PushClip(0, 0, aw, H);
     // Shelf by shelf, back to front: a shelf stands wholly behind the shelves in front of it (the camera looks along
     // +x), so each is drawn as one layer: its rail slots and cases back to front, then its front lip if the rail has one.
-    // A case on its way to a new place (reshelve) goes with the shelf nearest it, and is drawn with that shelf's look
-    // there (its place, pos, between the shelves').
     const R = railImages(), rows = [...AR.rows].filter(([, r]) => r.pos.x > -1 - frontRows() && r.pos.x < g.count).sort((p, q) => q[1].pos.x - p[1].pos.x);
     AR.hits = [];
     let selItem = null;
     if (!LABEL_LIVE) drawFloor(gr, rows, G, Ox, Oy, k, toScreen);   // the wallpaper takes the floor's place
-    const layers = rows.map(([gi, r]) => ({ gi, r, items: [] })), drawn = new Map(layers.map(L => [L.gi, L]));
-    const layerAt = (own, p) => own && own.r.pos.x === p ? own : layers.reduce((b, l) => Math.abs(l.r.pos.x - p) < Math.abs(b.r.pos.x - p) ? l : b);
-    // every row's cases: one on its way may be in view while its shelf is not
-    if (layers.length) for (const [gi, r] of AR.rows) {
-        const L = drawn.get(gi), row = G[gi], albums = row.albums, pos = r.pos.x, x = -pos * ROWP, active = gi === AR.group, [i0, i1] = caseWindow(r, row);
-        const nSlots = slotCount(row);
+    for (const [gi, r] of rows) {
+        const row = G[gi], albums = row.albums, pos = r.pos.x, x = -pos * ROWP, active = gi === AR.group, [i0, i1] = caseWindow(r, row);
+        const nSlots = slotCount(row), items = [];
         // a rail slot sorts just in front of the case behind it and behind the case standing in it
-        if (R && L) for (let s = -1; s <= nSlots; s++) {
+        if (R) for (let s = -1; s <= nSlots; s++) {
             const y = (s - r.scroll.x) * PITCH;
             if (y < -30 || y > 60) continue;
-            L.items.push({ rail: s < 0 ? "front" : s >= nSlots ? "back" : "mid", gi, pos, x, y, z: 0, close: CLOSE[1] * (y + .4) });
+            items.push({ rail: s < 0 ? "front" : s >= nSlots ? "back" : "mid", gi, pos, x, y, z: 0, close: CLOSE[1] * (y + .4) });
         }
         for (let i = i0; i <= i1; i++) {
             const c = r.cases.get(i);
-            if (!c || (!L && !c.fly)) continue;
+            if (!c) continue;
             const isSel = active && i === r.sel;
-            const f = flyAt(c, pos, (slotOf(row, i) - r.scroll.x) * PITCH + c.gap.x, c.lift.x + (isSel ? LIFT_OUT * lift : 0));
+            const y = (slotOf(row, i) - r.scroll.x) * PITCH + c.gap.x, z = c.lift.x + (isSel ? LIFT_OUT * lift : 0) + (1 - c.appear.x) * RESHELVE_DROP;
             // where the case rests without the hover lift: its click area (#7), so the lift under the mouse does not
             // move the case being aimed at
             const yr = (slotOf(row, i) - r.scroll.x) * PITCH + c.gap.to, zr = caseTargets(i, r, active, row, -1).lift + (isSel ? LIFT_OUT * lift : 0);
-            layerAt(L, f.pos).items.push({ gi, i, c, a: albums[i], active, isSel, pos: f.pos, x: -f.pos * ROWP, y: f.y, z: f.z, rx: x, yr, zr, close: CLOSE[1] * f.y + CLOSE[2] * f.z * .2 });
+            items.push({ gi, i, c, a: albums[i], active, isSel, pos, x, y, z, yr, zr, close: CLOSE[1] * y + CLOSE[2] * z * .2 });
         }
-    }
-    if (layers.length) for (const v of AR.leaving) {
-        const f = flyAt(v, v.to.pos, v.to.y, v.to.z);
-        layerAt(layers[0], f.pos).items.push({ leaving: true, c: v.c, a: v.a, pos: f.pos, x: -f.pos * ROWP, y: f.y, z: f.z, close: CLOSE[1] * f.y + CLOSE[2] * f.z * .2 });
-    }
-    for (const { gi, r, items } of layers) {
         items.sort((p, q) => p.close - q.close);
         for (const it of items) {
             const [sx, sy] = toScreen(it);
             if (it.rail) { drawRailSlot(gr, it, sx, sy, k, aw); continue; }
-            if (!it.leaving) it.rest = toScreen({ x: it.rx, y: it.yr, z: it.zr });
+            it.rest = toScreen({ x: it.x, y: it.yr, z: it.zr });
             selItem = drawArrayCase(gr, it, sx, sy, k, aw, I) || selItem;
         }
-        drawLip(gr, G[gi], gi, r, -r.pos.x * ROWP, toScreen, k);
+        drawLip(gr, row, gi, r, x, toScreen, k);
     }
     for (const p of AR.infoPlates) drawInfoPlate(gr, p);
     AR.infoPlates = [];
@@ -1094,8 +1014,8 @@ function drawArrayCase(gr, it, sx, sy, k, aw, I) {
     const ta = Math.max(titleShow(it.pos, f) * (SHELF_LOOK.sel.titles === "near" ? it.c.near.x : 1), clamp(it.c.hov.x, 0, 1));
     if (ta > .01) drawTopTitle(gr, it.a, ox, oy, k, Math.round(alpha * ta), f);
     // the whole case (front face and top edge) at its resting place answers the mouse, on every shelf in view (a case
-    // on another shelf switches to it); the one under it is outlined. A case leaving (reshelve) has no place to answer.
-    if (alpha > 0 && !it.leaving) {
+    // on another shelf switches to it); the one under it is outlined
+    if (alpha > 0) {
         const P = casePoly(), rx = it.rest[0] - meta.origin[0] * k, ry = it.rest[1] - meta.origin[1] * k;
         AR.hits.push({ i: it.i, gi: it.gi, quad: P.map(([px, py]) => [rx + px * k, ry + py * k]) });
         const hovered = it.i === AR.hover && it.gi === AR.hoverRow && !it.isSel && AR.insp === 0;
