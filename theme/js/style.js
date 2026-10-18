@@ -142,8 +142,9 @@ function drawStyle(gr) {
     y += dp(30);
     ids.forEach((id, i) => drawSchemeCard(gr, id, i, g.m + (i % g.cols) * (g.cw + g.gap), y + Math.floor(i / g.cols) * (g.schemeH + g.gap), g.cw, g.schemeH));
     y += Math.ceil(ids.length / g.cols) * (g.schemeH + g.gap) + dp(10);
-    // DISPLAY: text size, Archive array scale, inspection size, Archive floor, halftone, wallpaper (the count is of those shown)
-    label(gr, `${tr("DISPLAY")}  ·  ${pad(scaleGroups().length + 1, 2)}`, st(STY_ST.sec, C.fg), g.m, y);
+    // DISPLAY: text size, Archive array scale, inspection size, Archive floor, halftone, wallpaper, shelves (the count is
+    // of those shown)
+    label(gr, `${tr("DISPLAY")}  ·  ${pad(scaleGroups().length + 2, 2)}`, st(STY_ST.sec, C.fg), g.m, y);
     drawScaleRow(gr, g.m, y + dp(30), g.lx1);
     drawStylePreview(gr, g, skins);
 }
@@ -272,6 +273,17 @@ function drawScaleRow(gr, x, y, x1) {
         hits.add("sty-wp-open", xl, y, ww, wh);
     }
     xl += ww + dp(28);
+    // SHELVES ›: the look of the Archive's shelves, edited on the right
+    const lon = STY.edit === "shelves", lt = `${tr("SHELVES")}  ›`, ls = st(GRID_ST.count, lon ? C.bg : C.fg, lon ? C.fg : C.bg);
+    const lw = Math.min(x1 - x, labelWidth(lt, ls) + dp(24));
+    if (xl > x && xl + lw > x1) { xl = x; y += dp(34); }
+    if (gr) {
+        if (lon) gr.FillSolidRect(xl, y, lw, wh, C.fg);
+        box(gr, xl, y, lw, wh, STY.lkHover || lon ? C.accent : C["line-dim"]);
+        label(gr, lt, ls, xl + dp(12), y + Math.round((wh - labelHeight(GRID_ST.count)) / 2));
+        hits.add("sty-lk-open", xl, y, lw, wh);
+    }
+    xl += lw + dp(28);
     // REAL STYLE has its own colour scheme: offered next to the floor until it is in use
     if (STATE.floor === "real" && SCHEME !== "hearth" && TOKENS.schemes.hearth) {
         const t = tr("USE HEARTH, MADE FOR REAL STYLE"), s = st(GRID_ST.count, C.fg, C.bg), h = dp(22), w = dp(26) + labelWidth(t, s) + dp(10);
@@ -327,12 +339,42 @@ const wallpaperGroups = () => {
     return [["VIEWS", WP_VIEWS, b.views, "sty-wp-view", true], ["LOOK", WP_LOOKS, b.look, "sty-wp-look"], ["VEIL", WP_VEILS, b.veil, "sty-wp-veil"]];
 };
 
+// The shelves' look (archive.js, Shelf looks): the selected shelf, the shelves behind it and the shelves in front of it,
+// each a heading and its toggles, then BACK TO DEFAULT
+const shelfLookGroups = kind => {
+    // the settings the kinds share first, in the same order, so the rows line up; the front's own two after them
+    const L = SHELF_LOOK[kind], O = SHELF_LOOK_OPTS, id = key => `sty-lk-${kind}-${key}`, frost = ["FROSTED GLASS", lookOpts(kind, "frost"), L.frost, id("frost")];
+    if (kind === "sel") return [frost, ["TITLES", O.onOff, AR.topTitles, id("titles")]];
+    return [frost, ["FADE", O.fade, L.fade, id("fade")], ["TITLES", O.titles, L.titles, id("titles")],
+            ...(kind === "front" ? [["SHOWN", O.rows, L.rows, id("rows")], ["OPACITY", O.opacity, L.opacity, id("opacity")]] : [])];
+};
+function drawShelfLookEditor(gr, x0, y, w) {
+    const s = st(GRID_ST.count, 0), hh = dp(22);
+    label(gr, tr("SHELVES"), st(STY_ST.big, C.fg), x0, y);
+    y += labelHeight(STY_ST.big) + dp(6);
+    text(gr, tr("How the Archive draws the selected shelf, the shelves behind it and the shelves in front of it."), 10, 500, C["fg-soft"], x0, y, w, dp(36));
+    y += dp(48);
+    for (const [kind, head] of [["sel", "SELECTED SHELF"], ["back", "SHELVES BEHIND · UP LEFT"], ["front", "SHELVES IN FRONT · DOWN RIGHT"]]) {
+        label(gr, tr(head), st(STY_ST.sec, C.fg), x0, y);
+        y += dp(26);
+        const wg = wrapGroups(shelfLookGroups(kind), x0, y, x0 + w);
+        for (const [xr, gy, [title, items, cur, id]] of wg.at) segToggle(gr, xr, gy, title, items, cur, id);
+        y = wg.y + dp(46);
+    }
+    // BACK TO DEFAULT
+    const t = tr("BACK TO DEFAULT"), bw = labelWidth(t, s) + dp(24), hov = STY.lkHover === "reset";
+    box(gr, x0, y, bw, hh, hov ? C.accent : C["line-dim"]);
+    label(gr, t, st(GRID_ST.count, C.fg), x0 + dp(12), y + Math.round((hh - labelHeight(GRID_ST.count)) / 2));
+    hits.add("sty-lk-reset", x0, y, bw, hh);
+}
+
 // the preview of the card under the mouse, else of the skin and scheme in use
 function drawStylePreview(gr, g, skins) {
     const x0 = g.lx1 + dp(40), x1 = W - g.m, y0 = g.top + dp(24), y1 = H - dp(40), w = x1 - x0;
     if (w < dp(200)) return;
     gr.FillSolidRect(x0 - dp(20), g.top + dp(12), HAIR, y1 - g.top - dp(12), C["line-faint"]);
-    const hv = STY.hover && STY.hover.kind !== "intro" ? STY.hover : null;
+    // the SHELVES editor stays while the mouse crosses the cards (a click on one closes it, as it applies)
+    const hv = STY.hover && STY.hover.kind !== "intro" && STY.edit !== "shelves" ? STY.hover : null;
     label(gr, tr(hv ? "PREVIEW" : "IN USE"), st(STY_ST.sec, hv ? C.accent : C["text-muted"]), x0, y0);
     if (hv && hv.kind === "scheme") {
         const sc = TOKENS.schemes[hv.id], mh = Math.min(Math.round(w * .56), Math.round((y1 - y0 - dp(170)) / 2));
@@ -356,6 +398,7 @@ function drawStylePreview(gr, g, skins) {
         return;
     }
     if (!hv && STY.edit === "wallpaper") { drawWallpaperEditor(gr, x0, y0 + dp(30), w, y1); return; }
+    if (!hv && STY.edit === "shelves") { drawShelfLookEditor(gr, x0, y0 + dp(30), w); return; }
     if (!hv && (STY.making || (STATE.skin === "custom" && STY.edit !== "scheme"))) { drawCaseEditor(gr, x0, y0 + dp(30), w, y1); return; }
     if (!hv && SCHEME === "custom") { drawCustomEditor(gr, x0, y0 + dp(30), w, y1); return; }
     const s = hv ? skins.find(k => k.id === hv.id) : skins.find(k => k.id === STATE.skin);
@@ -485,6 +528,8 @@ function setCustom(u) {
 function styleMouseMove(a) {
     const wh = a && (a.id === "sty-wp-pick" || a.id === "sty-wp-off" || a.id === "sty-wp-open") ? a.id.slice(7) : null;
     if (wh !== (STY.wpHover || null)) { STY.wpHover = wh; window.Repaint(); }
+    const lh = a && (a.id === "sty-lk-open" || a.id === "sty-lk-reset") ? a.id.slice(7) : null;
+    if (lh !== (STY.lkHover || null)) { STY.lkHover = lh; window.Repaint(); }
     const cp = a && a.id === "sty-cpick" ? a.data : null;
     if (cp !== (STY.cpick || null)) { STY.cpick = cp; window.Repaint(); }
     const h = a && (a.id === "sty-skin" || a.id === "sty-scheme") ? { kind: a.id === "sty-skin" ? "skin" : "scheme", id: a.data }
@@ -501,9 +546,12 @@ function styleClick(a) {
         window.Repaint();
     }
     else if (a.id === "sty-wp-open") { STY.edit = STY.edit === "wallpaper" ? null : "wallpaper"; window.Repaint(); }
-    else if (a.id === "sty-skin" && a.data !== STATE.skin) { if (STY.edit === "wallpaper") STY.edit = null; send("skin", a.data); }
+    else if (a.id === "sty-lk-open") { STY.edit = STY.edit === "shelves" ? null : "shelves"; window.Repaint(); }
+    else if (a.id === "sty-lk-reset") resetShelfLook();
+    else if (a.id.startsWith("sty-lk-")) { const [kind, key] = a.id.slice(7).split("-"); setShelfLook(kind, key, a.data); }
+    else if (a.id === "sty-skin" && a.data !== STATE.skin) { if (STY.edit === "wallpaper" || STY.edit === "shelves") STY.edit = null; send("skin", a.data); }
     else if (a.id === "sty-scheme" && a.data === "custom") { STY.edit = "scheme"; if (SCHEME !== "custom") send("scheme", "custom"); window.Repaint(); }
-    else if (a.id === "sty-scheme" && a.data !== SCHEME) { if (STY.edit === "wallpaper") STY.edit = null; send("scheme", a.data); }
+    else if (a.id === "sty-scheme" && a.data !== SCHEME) { if (STY.edit === "wallpaper" || STY.edit === "shelves") STY.edit = null; send("scheme", a.data); }
     else if (a.id === "sty-cc") { const [k, c] = a.data.split("|"); STY.cc = Object.assign({}, STY.cc || customCase(), { [k]: c }); window.Repaint(); }
     else if (a.id === "sty-ccpat") { STY.cc = Object.assign({}, STY.cc || customCase(), { pattern: a.data }); window.Repaint(); }
     else if (a.id === "sty-ccmake") makeCase();

@@ -130,7 +130,7 @@ onMessage("state", () => {
     const ht = STATE.halftone + STATE.halftoneLevel;
     if (ht !== halftoneWas) { halftoneWas = ht; AR.dirtyInfo = dirty.card = true; }
     const on = STATE.view === "archive";
-    if (on !== ARCHIVE_ON) { ARCHIVE_ON = on; if (on) requestVisibleThumbs(); else archiveHidden(); }
+    if (on !== ARCHIVE_ON) { ARCHIVE_ON = on; if (on) { requestVisibleThumbs(); warmTints(); } else archiveHidden(); }
     if (on) inspectPending();
     // a new Array scale: the shelves hold another number of cases, so the selection is placed again
     if (STATE.arrayScale !== arrayScaleWas) { arrayScaleWas = STATE.arrayScale; placeSelection(curAlbum() ? curAlbum().key : AR.selAlbum); requestVisibleThumbs(); }

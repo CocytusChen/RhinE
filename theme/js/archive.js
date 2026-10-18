@@ -58,11 +58,6 @@ const AR = {
     dirtyInfo: true, info: null,
     topTitles: getSetting("caseTopTitles", true) !== false,   // the titles on the cases' top edges (the context menu)
     shelfPerGroup: getSetting("shelfPerGroup", true) !== false,   // each group starts a shelf of its own (the context menu)
-    // the shelves' look (the context menu › Shelf look, see shelf looks below): the shelves other than the selected
-    // one faded towards the page; frosted glass on every case but the selected one ("all"), on the other shelves'
-    // cases only ("others") or on none
-    shelfFade: getSetting("shelfFade", true) !== false,
-    caseFrost: ["all", "others", "none"].includes(getSetting("caseFrost", "all")) ? getSetting("caseFrost", "all") : "all",
     hoverRow: -1,   // the shelf (row index) of the case under the mouse (AR.hover): the selected one or any other
     hoverMode: HOVER_MODES.includes(getSetting("caseHover", "outline")) ? getSetting("caseHover", "outline") : "outline",   // the case under the mouse: outlined, titled or left as is (the context menu)
     hoverPlate: null,   // the case to label this frame (hoverMode "label"): drawn after the shelf, over its neighbours
@@ -453,7 +448,7 @@ function caseTargets(i, r, active, row, hover) {
     const hov = hover >= 0 ? (active ? .5 : .35) * Math.exp(-hd * hd / 2.2) : 0, isSel = active && i === r.sel;
     return {
         lift: (active ? 1.1 : .65) * bell + hov + (isSel ? 1.35 : 0),
-        clear: isSel || !frosted(active) ? 1 : 0,
+        clear: isSel ? 1 : 0,
         gap: active ? (i > r.sel ? .55 : i < r.sel ? -.25 : 0) : 0,
     };
 }
@@ -592,10 +587,11 @@ function drawFloor(gr, rows, G, Ox, Oy, k, toScreen) {
     const ax = CASE_META.axes.x, ay = CASE_META.axes.y, az = CASE_META.axes.z, fz = -F.meta.floor_z, det = ax[0] * ay[1] - ay[0] * ax[1];
     const zx = fz * az[0], zy = fz * az[1];   // the floor lies fz below the sprites' origin plane
     // "glow": false in floor.json: shade only (no reflections of the cases and strips in the floor)
-    const front = Math.min(0, ...rows.map(([, r]) => r.pos.x));   // the floor in front of a row shows before the front-most one only
     for (const layer of F.meta.glow === false ? ["shade-"] : ["shade-", "glow-"]) for (const [gi, r] of rows) for (const part of ["", "-far"]) {
         const row = G[gi], pos = r.pos.x, x = -pos * ROWP, n = slotCount(row);
-        const alpha = Math.round(rowAlpha(pos) * (1 - rowTint(pos)) * (part ? clamp(1 - (pos - front), 0, 1) : 1));
+        // the floor in front of a row shows as far as no row stands there: as the row in front fades out, it appears
+        const far = gi > 0 ? 1 - rowAlpha(pos - 1) / 255 : 1;
+        const alpha = Math.round(rowAlpha(pos) * (1 - rowTint(pos)) * (part ? far : 1));
         if (alpha <= 0) continue;
         for (const end of ["front", "back"]) {
             const [sx, sy] = toScreen({ x, y: ((end === "front" ? -1 : n) - r.scroll.x) * PITCH, z: 0 });
@@ -622,7 +618,37 @@ function arrayImages() {
     return ARIMG;
 }
 // the frost sprite tinted towards the background by f (0.1 steps), alpha kept: Direct2D colour matrix, made once
-const fadedSprite = f => tinted(arrayImages().frost, f, "case" + CASE_DIR);
+// src tinted towards the background by f: src as it is, then its silhouette in the background colour (tinted at 1, made
+// once) over it at f, so the tint follows f smoothly as a row moves. Opaque parts come out exactly as a sprite tinted
+// by f; half-clear ones (the frosted glass) a little more opaque, by the same amount at every f. (Two cached tint
+// steps laid one on the other instead made the glass jump in opacity at every 0.1 step.) (sw, sh): the part of src drawn
+function drawTinted(gr, src, name, f, x, y, w, h, sw, sh, alpha) {
+    gr.DrawImage(src, x, y, w, h, 0, 0, sw, sh, 0, alpha);
+    const a = Math.round(alpha * f);
+    if (a > 0) gr.DrawImage(tinted(src, 1, name), x, y, w, h, 0, 0, sw, sh, 0, a);
+}
+// The silhouettes (drawTinted) are made when first drawn and dropped while the Archive is hidden, and the first shelf
+// switch after the Archive was shown needed several at once, which stalled it. So once it is shown they are made
+// ahead, one every few frames (the sprites are looked up again for each, so a skin, floor or scheme changed meanwhile
+// is the one warmed): the clear and frosted cases' and the rail's.
+const TINT_WARM = { timer: 0 };
+function warmTints() {
+    window.ClearTimeout(TINT_WARM.timer);
+    const kinds = ["clear", "frost", ...(RAIL_META ? ["mid", "front", "back"] : [])];
+    const jobs = [];
+    for (const kind of kinds) jobs.push([kind, 1]);
+    const step = () => {
+        TINT_WARM.timer = 0;
+        if (!ARCHIVE_ON) return;
+        if (AR.layout !== "grid") {
+            const [kind, f] = jobs.shift(), I = arrayImages();
+            if (kind === "frost" || kind === "clear") { if (I[kind]) tinted(I[kind], f, (kind === "frost" ? "case" : "case-clear") + CASE_DIR); }
+            else { const R = railImages(); if (R && R[kind]) tinted(accentShift(R[kind]), f, "rail-" + kind); }
+        }
+        if (jobs.length) TINT_WARM.timer = window.SetTimeout(step, 40);
+    };
+    TINT_WARM.timer = window.SetTimeout(step, 600);   // after the view's own transition
+}
 function tinted(src, f, name) {
     const key = MODE + f + name;
     let img = ARIMG.faded.get(key);
@@ -694,16 +720,17 @@ function drawRailSlot(gr, it, sx, sy, k, aw) {
     const img = accentShift(ARIMG.rail[it.rail]), [rw, rh] = RAIL_META.res, ox = sx - RAIL_META.origin[0] * k, oy = sy - RAIL_META.origin[1] * k;
     if (ox > aw || ox + rw * k < 0 || oy > H || oy + rh * k < 0) return;
     const alpha = rowAlpha(it.pos), f = rowTint(it.pos);
-    gr.DrawImage(f > 0 ? tinted(img, f, "rail-" + it.rail) : img, ox, oy, rw * k, rh * k, 0, 0, rw, rh, 0, alpha);
-    // the row's number on the front end's label plate
-    if (it.rail === "front" && f < .5) {
+    drawTinted(gr, img, "rail-" + it.rail, f, ox, oy, rw * k, rh * k, rw, rh, alpha);
+    // the row's number on the front end's label plate, fading out as the row fades past half
+    const la = Math.round(alpha * clamp((.5 - f) / .1, 0, 1));
+    if (it.rail === "front" && la > 0) {
         const q = RAIL_META.label;
         QM[0] = (q[1][0] - q[0][0]) * k / 100; QM[1] = (q[1][1] - q[0][1]) * k / 100;
         QM[2] = (q[3][0] - q[0][0]) * k / 20; QM[3] = (q[3][1] - q[0][1]) * k / 20;
         QM[4] = ox + q[0][0] * k; QM[5] = oy + q[0][1] * k;
         if (!LABEL_FONTS.row) LABEL_FONTS.row = d2d.Font("Geist Mono SemiBold", 12, 0);
         gr.SetTransform(QM);
-        gr.DrawText(`ROW ${pad(it.gi + 1, 2)}`, LABEL_FONTS.row, withAlpha(0xFF1B1C18, alpha / 255), 6, 1, 94, 18, DT_SINGLE);
+        gr.DrawText(`ROW ${pad(it.gi + 1, 2)}`, LABEL_FONTS.row, withAlpha(0xFF1B1C18, la / 255), 6, 1, 94, 18, DT_SINGLE);
         gr.ResetTransform();
     }
 }
@@ -843,18 +870,27 @@ function drawArrayCase(gr, it, sx, sy, k, aw, I) {
     let selItem = null;
     if (it.isSel) { AR.from = [ox + meta.center[0] * k, oy + meta.center[1] * k]; selItem = { ox, oy }; }
     if (it.isSel && inspTurn() > 0) return selItem;                   // drawn by the inspection
-    const alpha = rowAlpha(it.pos), f = rowTint(it.pos), t = thumbOf(it.a), cl = clamp(it.c.clear.x, 0, 1);
-    // cover, under the case: blurred behind frosted glass, sharp as the glass clears
+    const alpha = rowAlpha(it.pos), f = rowTint(it.pos), t = thumbOf(it.a);
+    // how frosted the case is: its shelf's frost at its place (frostAt), cleared as it is selected (it.c.clear)
+    const fr = frostAt(it.pos) * (1 - clamp(it.c.clear.x, 0, 1));
+    // cover, under the case: blurred behind frosted glass, the sharp one over it as the glass clears
     if (t) {
-        if (cl < .99) quadImage(gr, t.blur, meta.cover, ox, oy, k, alpha);
-        if (cl > .01) quadImage(gr, t.img, meta.cover, ox, oy, k, Math.round(alpha * cl));
+        if (fr > .01) quadImage(gr, t.blur, meta.cover, ox, oy, k, alpha);
+        if (fr < .99) quadImage(gr, t.img, meta.cover, ox, oy, k, Math.round(alpha * (1 - fr)));
     } else gr.FillPolygon(withAlpha(C.well, alpha / 255), 0, quadPts(meta.cover, ox, oy, k));
     if (f > 0) gr.FillPolygon(withAlpha(fadeBg(), f * alpha / 255), 0, quadPts(meta.cover, ox, oy, k));
-    if (cl < .99) gr.DrawImage(f > 0 ? fadedSprite(f) : I.frost, ox, oy, S, S, 0, 0, sz, sz, 0, Math.round(alpha * (1 - cl)));
-    if (cl > .01) gr.DrawImage(f > 0 ? tinted(I.clear, f, "case-clear" + CASE_DIR) : I.clear, ox, oy, S, S, 0, 0, sz, sz, 0, Math.round(alpha * cl));
-    if (it.active && f === 0) drawSpineLabel(gr, meta.label, ox, oy, k, it.a.no, alpha);
-    // no titles on the shelves in front, which stand over the selected one
-    if (AR.topTitles && f < .5 && it.pos > -.5) drawTopTitle(gr, it.a, ox, oy, k, alpha, f);
+    // the case: the clear sprite, the frosted one over it at fr. Where the case is opaque (the same in both) this is
+    // exact at every fr; its glass is clear at 0 and at 1 a touch denser than the frosted sprite alone (alphas about
+    // 0.12 and 0.63: 0.67), and in between it goes smoothly from one to the other. (Drawing the two at 1 - fr and fr
+    // instead let the page show through the whole case halfway.)
+    drawTinted(gr, I.clear, "case-clear" + CASE_DIR, f, ox, oy, S, S, sz, sz, alpha);
+    const fa = Math.round(alpha * fr);
+    if (fa > 0) drawTinted(gr, I.frost, "case" + CASE_DIR, f, ox, oy, S, S, sz, sz, fa);
+    // the spine labels belong to the selected shelf: they fade with its place, as a shelf moves into it or out of it
+    const la = Math.round(alpha * selness(it.pos));
+    if (la > 0) drawSpineLabel(gr, meta.label, ox, oy, k, it.a.no, la);
+    const ta = titleShow(it.pos, f);
+    if (ta > .01) drawTopTitle(gr, it.a, ox, oy, k, Math.round(alpha * ta), f);
     // the whole case (front face and top edge) at its resting place answers the mouse, on every shelf in view (a case
     // on another shelf switches to it); the one under it is outlined
     if (alpha > 0) {
@@ -892,32 +928,94 @@ function casePoly() {
     return CASE_POLY;
 }
 
-// Shelf looks. Every shelf in view is drawn, each by where it stands:
-//   the selected shelf   in full; its cases frosted but for the selected one (caseFrost "all"), or all clear
-//   shelves behind       up and to the left: faded towards the page the further back they are (shelfFade), frosted
-//                        unless caseFrost is "none"; titles while they are faded less than half
-//   shelves in front     down and to the right (FRONT_ROWS of them, not on an ultrawide array, which shows its shelves
-//                        side by side): see-through (FRONT_ALPHA) and faded like the ones behind, without titles,
-//                        so the selected shelf behind them stays in sight
+// Shelf looks. Every shelf in view is drawn, each by where it stands, as set in the Style view (SHELVES ›) and kept in
+// the setting "shelfLook" (SHELF_LOOK_START is the look the theme ships with):
+//   sel    the selected shelf: frost (how frosted its cases are but for the selected one, 0 clear … 1 the frosted
+//          sprite; the titles are the context menu's "Titles on the cases' top edges", which also turns them off
+//          everywhere)
+//   back   the shelves behind, up and to the left: frost, or "distance": from the selected shelf's frost up to full
+//          FROST_DISTANCE shelves away; fade (towards the page, the further back the more: 0 none … 1.5 strong);
+//          titles ("auto": while faded less than half)
+//   front  the shelves in front, down and to the right: frost, fade and titles as behind, then how many (rows; not on
+//          an ultrawide array, which shows its shelves side by side) and how see-through (opacity)
 // Any case on any of them can be hovered and clicked: a click on another shelf's case switches to it.
-const FRONT_ROWS = 2, FRONT_ALPHA = .6;
-const frontRows = () => arrayGeom().wide ? 0 : FRONT_ROWS;
-const frosted = active => AR.caseFrost === "all" || (AR.caseFrost === "others" && !active);
+const SHELF_LOOK_START = { sel: { frost: 1 }, back: { frost: 1, fade: 1, titles: "auto" },
+                           front: { frost: 1, fade: 1, titles: "off", rows: 2, opacity: .6 } };
+const FROST_DISTANCE = 3;
+// what each setting can be: [value, label] (the Style view's toggles); the other shelves' frost can also go by
+// distance (lookOpts)
+const SHELF_LOOK_OPTS = {
+    frost: [[0, "OFF"], [.35, "FAINT"], [.65, "MEDIUM"], [1, "STRONG"]],
+    onOff: [[true, "ON"], [false, "OFF"]],
+    fade: [[0, "OFF"], [.5, "FAINT"], [1, "MEDIUM"], [1.5, "STRONG"]],
+    titles: [["auto", "AUTO"], ["on", "ON"], ["off", "OFF"]],
+    rows: [[0, "0"], [1, "1"], [2, "2"], [3, "3"]],
+    opacity: [[.3, "30%"], [.45, "45%"], [.6, "60%"], [.8, "80%"], [1, "100%"]],
+};
+const lookOpts = (kind, key) => key === "frost" && kind !== "sel" ? SHELF_LOOK_OPTS.frost.concat([["distance", "BY DISTANCE"]]) : SHELF_LOOK_OPTS[key];
+const SHELF_LOOK = (() => {
+    const look = JSON.parse(JSON.stringify(SHELF_LOOK_START));
+    let saved = {};
+    try { saved = JSON.parse(getSetting("shelfLook", "{}")) || {}; } catch (e) { /* the look the theme ships with */ }
+    for (const kind in look) for (const key in look[kind]) {
+        let v = saved[kind] && saved[kind][key];
+        if (key === "frost" && typeof v === "boolean") v = v ? 1 : 0;   // frost was on or off before it had strengths
+        if (lookOpts(kind, key).some(([o]) => o === v)) look[kind][key] = v;
+    }
+    return look;
+})();
+// kind: sel, back or front; key: one of its settings (sel's titles: the context menu's setting); returns false when
+// the value is not one it can be
+function setShelfLook(kind, key, v) {
+    if (kind === "sel" && key === "titles") { AR.topTitles = !!v; setSetting("caseTopTitles", AR.topTitles); }
+    else if (!SHELF_LOOK[kind] || !(key in SHELF_LOOK[kind]) || !lookOpts(kind, key).some(([o]) => o === v)) return false;
+    else { SHELF_LOOK[kind][key] = v; setSetting("shelfLook", JSON.stringify(SHELF_LOOK)); }
+    if (ARCHIVE_ON) requestVisibleThumbs();
+    clock.wake(); window.Repaint();
+    return true;
+}
+function resetShelfLook() {
+    for (const kind in SHELF_LOOK_START) Object.assign(SHELF_LOOK[kind], SHELF_LOOK_START[kind]);
+    setShelfLook("sel", "titles", true);
+    setSetting("shelfLook", JSON.stringify(SHELF_LOOK));
+}
+const frontRows = () => arrayGeom().wide ? 0 : SHELF_LOOK.front.rows;
 // rows fade in at the back; in front they turn see-through, then fade out beyond the last one shown
 const rowAlpha = pos => {
-    const n = frontRows(), front = pos >= 0 ? 1 : !n ? clamp(1 + pos, 0, 1) : lerp(1, FRONT_ALPHA, clamp(-pos, 0, 1)) * clamp(n + 1 + pos, 0, 1);
+    const n = frontRows(), front = pos >= 0 ? 1 : !n ? clamp(1 + pos, 0, 1) : lerp(1, SHELF_LOOK.front.opacity, clamp(-pos, 0, 1)) * clamp(n + 1 + pos, 0, 1);
     return Math.round(255 * front * clamp((arrayGeom().count - pos) / .8, 0, 1));
 };
-// how far a row is tinted towards the background (0.1 steps): by its distance from the front row (the selected one),
-// or on an ultrawide array from the selected row; the floor may fade them less (floor.json "tint"); none with
-// shelfFade off
+// how much of the front shelves' look a row has: 0 behind the selected shelf (and the selected one), 1 a shelf or
+// more in front of it, in between while it moves from one to the other (so its fade and titles change smoothly)
+const frontness = pos => clamp(AR.group - arrayStart() - pos, 0, 1);
+// how far a row is tinted towards the background, smoothly as it moves (drawTinted draws the sprites between their
+// 0.1 steps): by its distance from the front row (the selected one), or on an ultrawide array from the selected row,
+// times its kind's fade; the floor may fade them less (floor.json "tint")
 const rowTint = pos => {
-    if (!AR.shelfFade) return 0;
+    const mul = lerp(SHELF_LOOK.back.fade, SHELF_LOOK.front.fade, frontness(pos));
+    if (!mul) return 0;
     const g = arrayGeom(), floor = FLOOR.meta && FLOOR.meta.tint != null ? FLOOR.meta.tint : 1;
-    if (!g.wide) { const d = Math.abs(pos); return Math.round(clamp(.38 * Math.min(d, 1) + .14 * d, 0, .8) * floor * 10) / 10; }
+    if (!g.wide) { const d = Math.abs(pos); return clamp((.38 * Math.min(d, 1) + .14 * d) * mul, 0, .9) * floor; }
     const distance = Math.abs(pos - (AR.group - arrayStart()));
-    return Math.round(clamp(.32 * Math.min(distance, 1) + .24 * distance / Math.max(1, g.count - 1), 0, .6) * floor * 10) / 10;
+    return clamp((.32 * Math.min(distance, 1) + .24 * distance / Math.max(1, g.count - 1)) * mul, 0, .9) * floor;
 };
+// how much a row is in the selected shelf's place: 1 there, 0 half a shelf or more away (on an ultrawide array, whose
+// rows do not move to it, it is the selected one or not)
+const selness = pos => clamp(1 - Math.abs(pos - (AR.group - arrayStart())) * 2, 0, 1);
+// how much the titles on a case's top edge show (0 … 1) at tint f: "auto" while the row is faded less than half,
+// fading out from 0.4 to 0.5 rather than going at once; a row moving between the selected shelf's place, behind and
+// in front blends their settings
+// how frosted a shelf's cases are (0 … 1) at its place, blending the kinds' settings as a shelf moves between them
+function frostAt(pos) {
+    const L = SHELF_LOOK, sel = L.sel.frost, d = Math.abs(pos - (AR.group - arrayStart()));
+    const of = v => v === "distance" ? lerp(sel, 1, clamp(d / FROST_DISTANCE, 0, 1)) : v;
+    return lerp(lerp(of(L.back.frost), of(L.front.frost), frontness(pos)), sel, selness(pos));
+}
+function titleShow(pos, f) {
+    if (!AR.topTitles) return 0;
+    const auto = clamp((.5 - f) / .1, 0, 1), of = m => m === "on" ? 1 : m === "auto" ? auto : 0;
+    return lerp(lerp(of(SHELF_LOOK.back.titles), of(SHELF_LOOK.front.titles), frontness(pos)), auto, selness(pos));
+}
 
 // The shelf's front lip, an optional look (lip-*.png, described by rail.json → lip; the shipped rail has none, so this
 // draws nothing), drawn after everything standing on the shelf, then its print on the pale face panel, mapped like the spine label (100 units per world unit along the row,
@@ -1550,11 +1648,9 @@ function archiveMenu(x, y) {
     so.AppendTo(m, 0, tr("Sort by"));
     m.AppendMenuItem(showTracks() ? 0x8 : 0, 10, tr("Show every track as its own item"));
     m.AppendMenuItem((AR.shelfPerGroup ? 0x8 : 0) | (LIB.groupBy === "none" ? 1 : 0), 15, tr("Each group on its own shelf"));
-    const lk = window.CreatePopupMenu(), frosts = ["all", "others", "none"];
-    lk.AppendMenuItem(AR.shelfFade ? 0x8 : 0, 16, tr("Fade the other shelves"));
-    lk.AppendMenuSeparator();
-    ["Frosted glass on every case but the selected one", "Frosted glass on the other shelves only", "No frosted glass"].forEach((t, i) => lk.AppendMenuItem(0, 700 + i, tr(t)));
-    lk.CheckMenuRadioItem(700, 702, 700 + frosts.indexOf(AR.caseFrost));
+    const lk = window.CreatePopupMenu();
+    lk.AppendMenuItem(0, 16, tr("Customise in STYLE …"));
+    lk.AppendMenuItem(0, 17, tr("Back to the default look"));
     lk.AppendTo(m, 0, tr("Shelf look"));
     m.AppendMenuSeparator();
     m.AppendMenuItem(0, 7, tr("Case array") + "\tG");
@@ -1590,8 +1686,8 @@ function archiveMenu(x, y) {
     else if (id === 14) setInfoPage(AR.page === "tracks" ? "file" : "tracks");
     else if (id >= 600 && ratingMenuPick(id, 600)) { AR.listVer++; AR.dirtyInfo = true; window.Repaint(); }
     else if (id === 10) setUnit(showTracks() ? "albums" : "tracks");
-    else if (id === 16) { AR.shelfFade = !AR.shelfFade; setSetting("shelfFade", AR.shelfFade); clock.wake(); window.Repaint(); }
-    else if (id >= 700 && frosts[id - 700]) { AR.caseFrost = frosts[id - 700]; setSetting("caseFrost", AR.caseFrost); clock.wake(); window.Repaint(); }
+    else if (id === 16) { STY.edit = "shelves"; send("view", "style"); }
+    else if (id === 17) resetShelfLook();
     else if (id === 15) { AR.shelfPerGroup = !AR.shelfPerGroup; setSetting("shelfPerGroup", AR.shelfPerGroup); placeSelection(AR.selAlbum); clock.wake(); window.Repaint(); }
     else if (id === 5) openAlbum();
     else if (id === 6) libIndex(true);
