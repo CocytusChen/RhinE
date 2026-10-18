@@ -344,7 +344,8 @@ const wallpaperGroups = () => {
 const shelfLookGroups = kind => {
     // the settings the kinds share first, in the same order, so the rows line up; the front's own two after them
     const L = SHELF_LOOK[kind], O = SHELF_LOOK_OPTS, id = key => `sty-lk-${kind}-${key}`, frost = ["FROSTED GLASS", lookOpts(kind, "frost"), L.frost, id("frost")];
-    if (kind === "sel") return [frost, ["TITLES", O.onOff, AR.topTitles, id("titles")]];
+    if (kind === "sel") return [frost, ["TITLES", O.selTitles.concat([["off", "OFF"]]), AR.topTitles ? L.titles : "off", id("titles")],
+                                ["TITLE STYLE", O.style, L.style, id("style")]];
     return [frost, ["FADE", O.fade, L.fade, id("fade")], ["TITLES", O.titles, L.titles, id("titles")],
             ...(kind === "front" ? [["SHOWN", O.rows, L.rows, id("rows")], ["OPACITY", O.opacity, L.opacity, id("opacity")]] : [])];
 };

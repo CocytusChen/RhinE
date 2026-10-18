@@ -148,7 +148,7 @@ Running it again keeps the foobar2000 folder and installs the theme again.
 | Archive: album / row | hover and click a case (a case on another shelf switches to that shelf); `↓` `↑` beside the album index; `←` `→` beside the row name; wheel (up = up the shelf, the next album) | `↑` `↓` album (`↑` up the shelf), `←` `→` row, `PgUp` `PgDn` `Home` `End` (Archive) |
 | Archive: inspect the album | click the selected case | `Enter`; `Esc` or click to return |
 | Archive: play / open the album | `PLAY ALBUM` / `OPEN ALBUM`; while inspecting, click the case to play it (and put it back), anywhere else to put it back | `Enter` while inspecting plays; `Space` is play / pause, as everywhere |
-| Archive: group by genre, decade, artist initial or none | `GROUP` in the Archive's top bar, or right-click | — |
+| Archive: group by genre, decade, artist initial, album or none | `GROUP` in the Archive's top bar, or right-click | — |
 | Archive: sort albums by artist, title, year or date added | `SORT` in the Archive's top bar, or right-click | — |
 | Archive: next shelf (behind, on the left) / previous shelf (in front) | `← SHELF 04 / 31 →` under the array, or `Shift` + wheel (a sideways wheel too; in the grid it jumps a section) | `←` `→` |
 | Archive: pick an album from the index under the shelf | hover it to see the album's name; click, or hold and drag along it and release | — |

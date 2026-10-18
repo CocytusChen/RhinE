@@ -303,12 +303,14 @@ const sameTrack = (h, k) => !!(h && k && h.RawPath === k.RawPath && h.SubSong ==
 function albumTracks(a, max) {
     const key = `${a.key}|${LIB.live}|${max}`;
     if (AR.tracks.key === key) return AR.tracks;
-    const list = albumHandles(a), np = fb.GetNowPlaying(), own = itemTrack(a);
+    const list = albumHandles(a), np = fb.GetNowPlaying(), own = itemTrack(a), alb = (albumOf(a) || a).key, prev = AR.tracks;
     let rows = [], first = 0;
     if (list) {
-        // a track item further down its album: start the window so it is in view
+        // a track item further down its album: start the window so it is in view (where it was, when another track of
+        // the same album was selected and this one is in view there: a click on a row does not move the rows)
         const at = own ? [...Array(list.Count).keys()].find(i => sameTrack(list[i], own)) : -1;
-        first = at > max - 2 ? Math.max(0, Math.min(at - 1, list.Count - max)) : 0;
+        first = prev.album === alb && prev.max === max && at >= prev.first && at < prev.first + max ? prev.first
+            : at > max - 2 ? Math.max(0, Math.min(at - 1, list.Count - max)) : 0;
         const n = Math.min(max, list.Count - first), sub = fb.CreateHandleList();
         for (let i = 0; i < n; i++) sub.Add(list[first + i]);
         rows = TF_AR_TRACK.EvalWithMetadbs(sub).map((s, k) => {
@@ -316,7 +318,7 @@ function albumTracks(a, max) {
             return { i, no: no ? pad(parseInt(no) || 0, 2) : pad(i + 1, 2), title, len: +len || 0, playing: sameTrack(h, np), own: sameTrack(h, own) };
         });
     }
-    AR.tracks = { key, rows, first, total: list ? list.Count : (albumOf(a) || a).tracks };
+    AR.tracks = { key, rows, first, total: list ? list.Count : (albumOf(a) || a).tracks, album: alb, max };
     return AR.tracks;
 }
 
@@ -374,18 +376,21 @@ function archiveUpdate(dt) {
         r.pos.to = gi - start;
         if (r.pos.x <= -1 - F || r.pos.x >= count) AR.rows.delete(gi);
     }
+    // the selected case's place along its row, for the titles near it (titleDistance)
+    const ra = AR.rows.get(AR.group), selY = ra && G[AR.group] ? slotOf(G[AR.group], ra.sel) - ra.scroll.to : 0;
     for (const [gi, r] of AR.rows) {
         more = stepSpring(r.pos, dt) || more;
         more = stepSpring(r.scroll, dt) || more;
         const active = gi === AR.group, [i0, i1] = caseWindow(r, G[gi]);
         for (const i of [...r.cases.keys()]) if (i < i0 || i > i1) r.cases.delete(i);
         for (let i = i0; i <= i1; i++) {
-            const t = caseTargets(i, r, active, G[gi], gi === AR.hoverRow ? AR.hover : -1);
+            const nd = titleDistance(slotOf(G[gi], i) - r.scroll.to - selY, gi - AR.group);
+            const t = caseTargets(i, r, active, G[gi], gi === AR.hoverRow ? AR.hover : -1, nd);
             let c = r.cases.get(i);
-            if (!c) { c = { lift: Spring(t.lift, 13), clear: Spring(t.clear, 8), gap: Spring(t.gap, 11) }; r.cases.set(i, c); }
-            c.lift.to = t.lift; c.lift.w = active ? 13 : 7; c.clear.to = t.clear; c.gap.to = t.gap;
-            const m1 = stepSpring(c.lift, dt), m2 = stepSpring(c.clear, dt), m3 = stepSpring(c.gap, dt);
-            more = more || m1 || m2 || m3;
+            if (!c) { c = { lift: Spring(t.lift, 13), clear: Spring(t.clear, 8), gap: Spring(t.gap, 11), near: Spring(t.near, 10), hov: Spring(t.hov, 14) }; r.cases.set(i, c); }
+            c.lift.to = t.lift; c.lift.w = active ? 13 : 7; c.clear.to = t.clear; c.gap.to = t.gap; c.near.to = t.near; c.hov.to = t.hov;
+            const m1 = stepSpring(c.lift, dt), m2 = stepSpring(c.clear, dt), m3 = stepSpring(c.gap, dt), m4 = stepSpring(c.near, dt), m5 = stepSpring(c.hov, dt);
+            more = more || m1 || m2 || m3 || m4 || m5;
         }
     }
     // album index marks
@@ -442,14 +447,21 @@ function stepInspection(dt) {
     return true;
 }
 // hover: the case of this row under the mouse, which lifts its neighbours a little (-1: none, as for the cases'
-// resting places)
-function caseTargets(i, r, active, row, hover) {
+// resting places); nd: how far the case is from the selected one for the titles "near" it (see titleDistance; by
+// default its slots from its own row's selected case)
+function caseTargets(i, r, active, row, hover, nd) {
     const d = slotOf(row, i) - slotOf(row, r.sel), bell = Math.exp(-d * d / 4.5) - .32 * Math.exp(-d * d / 18), hd = i - hover;
-    const hov = hover >= 0 ? (active ? .5 : .35) * Math.exp(-hd * hd / 2.2) : 0, isSel = active && i === r.sel;
+    const hb = hover >= 0 ? Math.exp(-hd * hd / 2.2) : 0, hov = (active ? .8 : 1.2) * hb, isSel = active && i === r.sel;
     return {
         lift: (active ? 1.1 : .65) * bell + hov + (isSel ? 1.35 : 0),
         clear: isSel ? 1 : 0,
         gap: active ? (i > r.sel ? .55 : i < r.sel ? -.25 : 0) : 0,
+        // its title with the titles "near" the selection: whole within TITLE_NEAR[0] of the selected case, gone from
+        // TITLE_NEAR[1] on
+        near: clamp((TITLE_NEAR[1] - (nd === undefined ? Math.abs(d) : nd)) / (TITLE_NEAR[1] - TITLE_NEAR[0]), 0, 1),
+        // the cases under the mouse show their titles as much as they are lifted for it (the one under it whole, its
+        // neighbours less), even where titles are off or far from the selection
+        hov: hb,
     };
 }
 
@@ -756,40 +768,109 @@ function drawSpineLabel(gr, q, ox, oy, k, no, alpha = 255) {
 // case's left end to the index tab (case model units: x along the case, y across it, the top at z); it is mapped
 // like the spine label, 100 units per model unit, the text's top towards the back of the case.
 const TOP_STRIP = { x0: -1.80, x1: 1.10, y: .15, z: 3.5 }, TOP_PAPER = 0xFFE9E6DD, TOP_INK = 0xFF1B1C18;
+// The titles are finished like the case they are on (the Style view's SHELVES › TITLE STYLE › BY MATERIAL), each drawn
+// once into the strip's bitmap, transparent but for the lettering, so the case's rendered top shows around and
+// through it:
+//   print    pad-printed ink, as on a cassette shell, with a printed accent bar (ink: "dark" or "light")
+//   engrave  cut into the surface: the groove in shade, its lower wall catching the light
+//   etch     frosted into it, as glass is etched: milky letters with a soft glow, over a dark edge (edge: its strength,
+//            0 for a dark case where it would not show; glow, core: the letters' alphas)
+//   label    the paper strip, at TOP_ALPHA (the light and shade of the top show through it), its ink TOP_SOFT of the way
+//            to the paper: kept for the striped HAZARD top, and for every case with TITLE STYLE › LABEL
+// The finishes were chosen against the cases' renders (the top's colour measured from array-clear.png). A skin can
+// name its own in case.json ("skin": { "topStyle": { "kind": … } }); a hand-made skin with a paper colour of its own
+// (topPaper) keeps the label, others are printed; the custom case is printed in ink that suits its colour.
+const TOP_ALPHA = .82, TOP_SOFT = .3, TITLE_NEAR = [2, 6];
+const ETCH = { kind: "etch", edge: 130, glow: 235, core: 205 };
+const TOP_STYLES = {
+    white: { kind: "print", ink: "dark" }, marble: { kind: "engrave" }, frost: { kind: "engrave" }, glass: ETCH,
+    blackout: { kind: "etch", edge: 0, glow: 120, core: 150 }, hazard: { kind: "label" }, red: ETCH,
+    blue: { kind: "print", ink: "light" }, coral: ETCH, tide: ETCH, aurora: ETCH,
+};
+let TOP_LOOK = null;   // the finish in use (see topLook); made again for another skin, scheme or setting
+function topLook() {
+    if (TOP_LOOK) return TOP_LOOK;
+    const sk = CASE_META && CASE_META.skin || {};
+    let st = SHELF_LOOK.sel.style === "label" ? { kind: "label" } : sk.topStyle || TOP_STYLES[CASE_SKIN];
+    if (!st && CASE_SKIN === "custom") {
+        const c = argb(customCase().base), lum = (((c >>> 16) & 255) * .2126 + ((c >>> 8) & 255) * .7152 + (c & 255) * .0722) / 255;
+        st = { kind: "print", ink: lum >= .5 ? "dark" : "light" };
+    }
+    if (!st) st = sk.topPaper ? { kind: "label" } : { kind: "print", ink: "dark" };
+    TOP_LOOK = Object.assign({ paper: skinInk("topPaper", TOP_PAPER), ink: skinInk("topInk", TOP_INK) }, st);
+    TOP_LOOK.key = JSON.stringify(TOP_LOOK);
+    return TOP_LOOK;
+}
 function drawTopTitle(gr, a, ox, oy, k, alpha, f) {
     const m = CASE_META.array.origin, ax = CASE_META.axes, T = TOP_STRIP;
     const at = (x, y) => [ox + (m[0] + x * ax.x[0] + y * ax.y[0] + T.z * ax.z[0]) * k, oy + (m[1] + x * ax.x[1] + y * ax.y[1] + T.z * ax.z[1]) * k];
     const o = at(T.x0, T.y), u = at(T.x0 + 1, T.y), v = at(T.x0, T.y - 1);
     if (Math.hypot(v[0] - o[0], v[1] - o[1]) * T.y * 2 < 5) return;   // too small to read
     QM[0] = (u[0] - o[0]) / 100; QM[1] = (u[1] - o[1]) / 100; QM[2] = (v[0] - o[0]) / 100; QM[3] = (v[1] - o[1]) / 100; QM[4] = o[0]; QM[5] = o[1];
-    const img = topStrip((a.title || tr("UNTITLED")).toUpperCase(), skinInk("topPaper", TOP_PAPER), skinInk("topInk", TOP_INK)), w = (T.x1 - T.x0) * 100, h = T.y * 200;
+    const look = topLook(), img = topStrip((a.title || tr("UNTITLED")).toUpperCase(), look), w = (T.x1 - T.x0) * 100, h = T.y * 200;
     gr.SetTransform(QM);
-    gr.DrawImage(img, 0, 0, w, h, 0, 0, img.Width, img.Height, 0, alpha);
-    if (f > 0) gr.FillSolidRect(0, 0, w, h, withAlpha(fadeBg(), f * alpha / 255));   // tinted like the row
+    if (look.kind === "label") {
+        const sa = alpha * TOP_ALPHA;
+        gr.DrawImage(img, 0, 0, w, h, 0, 0, img.Width, img.Height, 0, Math.round(sa));
+        if (f > 0) gr.FillSolidRect(0, 0, w, h, withAlpha(fadeBg(), f * sa / 255));   // tinted like the row
+    } else gr.DrawImage(img, 0, 0, w, h, 0, 0, img.Width, img.Height, 0, Math.round(alpha * (1 - f)));   // lettering only: it fades with the tint
     gr.ResetTransform();
 }
 // Each title is drawn once into a small bitmap (the strip at TOP_RES px per unit) and that is mapped onto the case: a
 // screen of shelves (a dozen on an ultrawide array) lays out no text while it moves. Kept for the most recent titles.
 const TOP_RES = 1.5, TOP_KEEP = 320, TOP_IMG = new Map();
-function topStrip(t, paper = TOP_PAPER, ink = TOP_INK) {
-    const key = `${t}|${paper}|${ink}`;
+function topStrip(t, look) {
+    const key = `${t}|${look.key}`;
     let img = TOP_IMG.get(key);
     if (img) { TOP_IMG.delete(key); TOP_IMG.set(key, img); return img; }
-    const T = TOP_STRIP, w = (T.x1 - T.x0) * 100, h = T.y * 200;
-    if (!LABEL_FONTS.top) { LABEL_FONTS.top = d2d.Font("Geist Mono SemiBold", 17, 0); LABEL_FONTS.topC = d2d.Font("Microsoft YaHei UI", 18, 1); }
-    img = d2d.CreateImage(Math.ceil(w * TOP_RES), Math.ceil(h * TOP_RES));
+    const T = TOP_STRIP, w = (T.x1 - T.x0) * 100, h = T.y * 200, W2 = Math.ceil(w * TOP_RES), H2 = Math.ceil(h * TOP_RES);
+    if (!LABEL_FONTS.top) {
+        LABEL_FONTS.top = d2d.Font("Geist Mono Medium", 15, 0); LABEL_FONTS.topB = d2d.Font("Geist Mono SemiBold", 15, 0);
+        LABEL_FONTS.topC = d2d.Font("Microsoft YaHei UI", 16, 1);
+    }
+    const cjk = isCJK(t), face = cjk ? LABEL_FONTS.topC : look.kind === "engrave" ? LABEL_FONTS.topB : LABEL_FONTS.top;
+    const SC = new Float32Array([TOP_RES, 0, 0, TOP_RES, 0, 0]);
+    // the title in colour c, shifted by (dx, dy) units, on g
+    const text = (g, c, dx = 0, dy = 0) => g.DrawText(t, face, c, 12 + dx, dy, w - 20, h, DT_SINGLE | DT_ELLIPSIS);
+    const ink = (c, a) => ((Math.round(a) & 255) << 24 | (c & 0xFFFFFF)) >>> 0;
+    img = d2d.CreateImage(W2, H2);
     const g = img.GetGraphics();
-    g.SetTransform(new Float32Array([TOP_RES, 0, 0, TOP_RES, 0, 0]));
-    g.FillSolidRect(0, 0, w, h, paper);
-    g.FillSolidRect(0, 0, 4, h, C.accent);
-    g.DrawText(t, isCJK(t) ? LABEL_FONTS.topC : LABEL_FONTS.top, ink, 12, 0, w - 20, h, DT_SINGLE | DT_ELLIPSIS);
+    if (look.kind === "etch") {
+        // the glow: the letters blurred in a bitmap of their own, laid under the crisp ones
+        const glow = d2d.CreateImage(W2, H2), gg = glow.GetGraphics();
+        gg.SetTransform(SC); text(gg, ink(0xFFFFFF, look.glow)); gg.ResetTransform();
+        glow.ReleaseGraphics(gg);
+        try { glow.StackBlur(2); } catch (e) { /* no blur: the glow stays crisp */ }
+        g.SetTransform(SC);
+        if (look.edge) text(g, ink(0, look.edge), 0, .9);
+        g.ResetTransform();
+        g.DrawImage(glow, 0, 0, W2, H2, 0, 0, W2, H2);
+        g.SetTransform(SC);
+        text(g, ink(0xFFFFFF, look.core));
+    } else {
+        g.SetTransform(SC);
+        if (look.kind === "label") {
+            g.FillSolidRect(0, 0, w, h, look.paper);
+            g.FillSolidRect(0, 0, 4, h, C.accent);
+            text(g, mix(look.ink, look.paper, TOP_SOFT));
+        } else if (look.kind === "engrave") {
+            text(g, ink(0xFFFFFF, 150), 0, 1.1);   // the lower wall, lit
+            text(g, ink(0, 110), 0, -.5);          // the upper wall, in shade
+            text(g, ink(0, 95));                   // the groove
+        } else {
+            g.FillSolidRect(0, 3, 3, h - 6, ink(C.accent, 235));
+            text(g, ink(look.ink === "light" ? 0xF4F2EC : TOP_INK, 230));
+        }
+    }
     g.ResetTransform();
     img.ReleaseGraphics(g);
     TOP_IMG.set(key, img);
     if (TOP_IMG.size > TOP_KEEP) TOP_IMG.delete(TOP_IMG.keys().next().value);
     return img;
 }
-TOKEN_LISTENERS.push(() => TOP_IMG.clear());   // the accent tab follows the scheme
+// the accent follows the scheme; another skin may be finished otherwise
+TOKEN_LISTENERS.push(() => { TOP_IMG.clear(); TOP_LOOK = null; });
+CASE_LISTENERS.push(() => { TOP_IMG.clear(); TOP_LOOK = null; });
 
 function drawArchive(gr) {
     THUMB_KEEP.clear();
@@ -889,7 +970,7 @@ function drawArrayCase(gr, it, sx, sy, k, aw, I) {
     // the spine labels belong to the selected shelf: they fade with its place, as a shelf moves into it or out of it
     const la = Math.round(alpha * selness(it.pos));
     if (la > 0) drawSpineLabel(gr, meta.label, ox, oy, k, it.a.no, la);
-    const ta = titleShow(it.pos, f);
+    const ta = Math.max(titleShow(it.pos, f) * (SHELF_LOOK.sel.titles === "near" ? it.c.near.x : 1), clamp(it.c.hov.x, 0, 1));
     if (ta > .01) drawTopTitle(gr, it.a, ox, oy, k, Math.round(alpha * ta), f);
     // the whole case (front face and top edge) at its resting place answers the mouse, on every shelf in view (a case
     // on another shelf switches to it); the one under it is outlined
@@ -931,28 +1012,31 @@ function casePoly() {
 // Shelf looks. Every shelf in view is drawn, each by where it stands, as set in the Style view (SHELVES ›) and kept in
 // the setting "shelfLook" (SHELF_LOOK_START is the look the theme ships with):
 //   sel    the selected shelf: frost (how frosted its cases are but for the selected one, 0 clear … 1 the frosted
-//          sprite; the titles are the context menu's "Titles on the cases' top edges", which also turns them off
-//          everywhere)
+//          sprite); titles: "all", or "near" the selection (on every shelf, around its own selected case); off is the
+//          context menu's "Titles on the cases' top edges", which turns them off everywhere; style: how the titles are
+//          finished, "material" (by the case: printed, engraved, etched) or "label" (see TOP_STYLES)
 //   back   the shelves behind, up and to the left: frost, or "distance": from the selected shelf's frost up to full
 //          FROST_DISTANCE shelves away; fade (towards the page, the further back the more: 0 none … 1.5 strong);
 //          titles ("auto": while faded less than half)
 //   front  the shelves in front, down and to the right: frost, fade and titles as behind, then how many (rows; not on
 //          an ultrawide array, which shows its shelves side by side) and how see-through (opacity)
 // Any case on any of them can be hovered and clicked: a click on another shelf's case switches to it.
-const SHELF_LOOK_START = { sel: { frost: 1 }, back: { frost: 1, fade: 1, titles: "auto" },
+const SHELF_LOOK_START = { sel: { frost: 1, titles: "near", style: "material" }, back: { frost: 1, fade: 1, titles: "auto" },
                            front: { frost: 1, fade: 1, titles: "off", rows: 2, opacity: .6 } };
 const FROST_DISTANCE = 3;
 // what each setting can be: [value, label] (the Style view's toggles); the other shelves' frost can also go by
 // distance (lookOpts)
 const SHELF_LOOK_OPTS = {
     frost: [[0, "OFF"], [.35, "FAINT"], [.65, "MEDIUM"], [1, "STRONG"]],
-    onOff: [[true, "ON"], [false, "OFF"]],
+    selTitles: [["all", "ALL"], ["near", "NEAR SELECTION"]],
+    style: [["material", "BY MATERIAL"], ["label", "LABEL"]],
     fade: [[0, "OFF"], [.5, "FAINT"], [1, "MEDIUM"], [1.5, "STRONG"]],
     titles: [["auto", "AUTO"], ["on", "ON"], ["off", "OFF"]],
     rows: [[0, "0"], [1, "1"], [2, "2"], [3, "3"]],
     opacity: [[.3, "30%"], [.45, "45%"], [.6, "60%"], [.8, "80%"], [1, "100%"]],
 };
-const lookOpts = (kind, key) => key === "frost" && kind !== "sel" ? SHELF_LOOK_OPTS.frost.concat([["distance", "BY DISTANCE"]]) : SHELF_LOOK_OPTS[key];
+const lookOpts = (kind, key) => kind === "sel" && key === "titles" ? SHELF_LOOK_OPTS.selTitles
+    : key === "frost" && kind !== "sel" ? SHELF_LOOK_OPTS.frost.concat([["distance", "BY DISTANCE"]]) : SHELF_LOOK_OPTS[key];
 const SHELF_LOOK = (() => {
     const look = JSON.parse(JSON.stringify(SHELF_LOOK_START));
     let saved = {};
@@ -964,20 +1048,25 @@ const SHELF_LOOK = (() => {
     }
     return look;
 })();
-// kind: sel, back or front; key: one of its settings (sel's titles: the context menu's setting); returns false when
-// the value is not one it can be
+// kind: sel, back or front; key: one of its settings (sel's titles also "off": the context menu's setting); returns
+// false when the value is not one it can be
 function setShelfLook(kind, key, v) {
-    if (kind === "sel" && key === "titles") { AR.topTitles = !!v; setSetting("caseTopTitles", AR.topTitles); }
+    if (kind === "sel" && key === "titles" && v === "off") { AR.topTitles = false; setSetting("caseTopTitles", false); }
     else if (!SHELF_LOOK[kind] || !(key in SHELF_LOOK[kind]) || !lookOpts(kind, key).some(([o]) => o === v)) return false;
-    else { SHELF_LOOK[kind][key] = v; setSetting("shelfLook", JSON.stringify(SHELF_LOOK)); }
+    else {
+        SHELF_LOOK[kind][key] = v;
+        setSetting("shelfLook", JSON.stringify(SHELF_LOOK));
+        if (key === "style") TOP_LOOK = null;
+        if (kind === "sel" && key === "titles") { AR.topTitles = true; setSetting("caseTopTitles", true); }
+    }
     if (ARCHIVE_ON) requestVisibleThumbs();
     clock.wake(); window.Repaint();
     return true;
 }
 function resetShelfLook() {
     for (const kind in SHELF_LOOK_START) Object.assign(SHELF_LOOK[kind], SHELF_LOOK_START[kind]);
-    setShelfLook("sel", "titles", true);
-    setSetting("shelfLook", JSON.stringify(SHELF_LOOK));
+    TOP_LOOK = null;
+    setShelfLook("sel", "titles", SHELF_LOOK_START.sel.titles);
 }
 const frontRows = () => arrayGeom().wide ? 0 : SHELF_LOOK.front.rows;
 // rows fade in at the back; in front they turn see-through, then fade out beyond the last one shown
@@ -1002,6 +1091,11 @@ const rowTint = pos => {
 // how much a row is in the selected shelf's place: 1 there, 0 half a shelf or more away (on an ultrawide array, whose
 // rows do not move to it, it is the selected one or not)
 const selness = pos => clamp(1 - Math.abs(pos - (AR.group - arrayStart())) * 2, 0, 1);
+// How far a case is from the selected one, for the titles "near" the selection: along the rows in slots (dy: the
+// difference of their places on screen, scrolls taken in), across them TITLE_ROW slots a shelf (dr), so the titles
+// cluster round the selected case on its own shelf and the ones by it, rather than round every shelf's own selection.
+const TITLE_ROW = 3;
+const titleDistance = (dy, dr) => Math.hypot(dy, dr * TITLE_ROW);
 // how much the titles on a case's top edge show (0 … 1) at tint f: "auto" while the row is faded less than half,
 // fading out from 0.4 to 0.5 rather than going at once; a row moving between the selected shelf's place, behind and
 // in front blends their settings
@@ -1214,7 +1308,9 @@ function drawInspection(gr, e) {
             const y2 = Math.round(top - dp(16) - labelHeight(AR_ST.inspM)), y1 = y2 - dp(6) - labelHeight(AR_ST.insp);
             label(gr, `${tr("INSPECTION")}  ·  ARC-${pad(a.no, 4)}`, st(AR_ST.insp, C.fg), left, y1);
             const sub = a.album ? (albumOf(a) || {}).title || "" : tr("{0} TRACKS", pad(a.tracks, 2));
-            label(gr, `${fmtChip(a)}  ·  ${sub}  ·  ${a.grp || ""}`, st(AR_ST.inspM, C["text-muted"]), left, y2);
+            // the group by its shown name (an album's is keyed with its artist); grouped by album it is the album, said already
+            const grp = LIB.groupBy === "album" || !a.grp ? "" : `  ·  ${groupName(a.grp)}`;
+            label(gr, `${fmtChip(a)}  ·  ${sub}${grp}`, st(AR_ST.inspM, C["text-muted"]), left, y2);
             // ← RETURN TO ARCHIVE
             const bx = left, by = Math.round(bottom + dp(16)), bs = st(AR_ST.btn, C.fg), bw = labelWidth("←  RETURN TO ARCHIVE", bs) + dp(22), bh = dp(26);
             gr.FillSolidRect(bx, by, bw, bh, C.bg);
@@ -1409,8 +1505,13 @@ function drawInfoTracks(gr, a, x, y, iw, w, h) {
         for (const r of L.rows) { if (L.discs > 1 && r.disc !== disc) { disc = r.disc; D.push({ head: r.disc }); } D.push(r); }
         const fit = Math.max(1, Math.floor(listH / rowH));
         AR.listMax = Math.max(0, D.length - fit);
-        // a new album opens on its selected track item (else at the top)
-        if (AR.listKey !== a.key) { AR.listKey = a.key; const at = D.findIndex(r => r.own); AR.listScroll = at > fit - 2 ? at - 1 : 0; }
+        // a new album opens on its selected track item (else at the top); another track of the same album selected stays
+        // where it is when its row is in view
+        if (AR.listKey !== a.key) {
+            const at = D.findIndex(r => r.own), alb = (albumOf(a) || a).key;
+            if (AR.listAlbum !== alb || at < AR.listScroll || at >= AR.listScroll + fit) AR.listScroll = at > fit - 2 ? at - 1 : 0;
+            AR.listKey = a.key; AR.listAlbum = alb;
+        }
         AR.listScroll = clamp(AR.listScroll, 0, AR.listMax);
         D.slice(AR.listScroll, AR.listScroll + fit).forEach((r, k) => {
             const ry = y + k * rowH;
@@ -1457,6 +1558,20 @@ function loadAlbum(a) {
     return pl;
 }
 // plays the selected item's album from track `at` (default: the item's own track, else the first)
+// a track of the album file clicked while every track is its own item: that track's case is selected too, on whichever
+// shelf (or grid section) it stands (with albums, the album is the one selected already)
+function selectTrackItem(at) {
+    if (!showTracks()) return;
+    const list = albumHandles(curAlbum()), h = list && at < list.Count ? list[at] : null;
+    if (!h) return;
+    const key = `t|${h.Path.toLowerCase()}|${h.SubSong}`, R = arRows();
+    for (let gi = 0; gi < R.length; gi++) {
+        const i = R[gi].albums.findIndex(x => x.key === key);
+        if (i < 0) continue;
+        if (AR.layout === "grid") gridSelect(gi, i); else selectCase(gi, i);
+        return;
+    }
+}
 function playAlbum(at) {
     const a = curAlbum(), list = albumHandles(a);
     if (!list || !list.Count) return;
@@ -1558,7 +1673,7 @@ function archiveClick(x, y, a) {
         switch (a.id) {
             case "ar-play": playAlbum(); return;
             case "ar-addmusic": addMusicFolder(); return;
-            case "ar-track": playAlbum(a.data); return;
+            case "ar-track": selectTrackItem(a.data); playAlbum(a.data); return;
             case "ar-rate": {
                 const L = AR.list, h = L && L.handles ? L.handles[a.data.i] : null;
                 if (h) setRating(h, ratingAt(x, a.x + a.data.pad, a.data.size));
@@ -1640,8 +1755,9 @@ function archiveKey(vk) {
 }
 function archiveMenu(x, y) {
     const m = window.CreatePopupMenu(), by = ["genre", "decade", "artist", "none"], sorts = SORT_BY.map(([k]) => k);
-    ["Group by genre", "Group by decade", "Group by artist initial", "No groups"].forEach((t, i) => m.AppendMenuItem(0, 1 + i, tr(t)));
-    m.CheckMenuRadioItem(1, 4, 1 + Math.max(0, by.indexOf(LIB.groupBy)));
+    // (checked rather than a radio group: "album" came later and has an id of its own, out of the run 1 – 4)
+    [["genre", "Group by genre", 1], ["decade", "Group by decade", 2], ["artist", "Group by artist initial", 3], ["album", "Group by album", 18], ["none", "No groups", 4]]
+        .forEach(([k, t, id]) => m.AppendMenuItem(LIB.groupBy === k ? 0x8 : 0, id, tr(t)));
     const so = window.CreatePopupMenu();
     ["Artist", "Album title", "Year", "Date added (newest first)"].forEach((t, i) => so.AppendMenuItem(0, 400 + i, tr(t)));
     so.CheckMenuRadioItem(400, 403, 400 + Math.max(0, sorts.indexOf(LIB.sortBy)));
@@ -1677,6 +1793,7 @@ function archiveMenu(x, y) {
     m.AppendMenuItem(0, 6, tr("Re-index library"));
     const id = m.TrackPopupMenu(x, y);
     if (id >= 1 && id <= 4) setGroupBy(by[id - 1]);
+    else if (id === 18) setGroupBy("album");
     else if (id >= 400 && sorts[id - 400]) setSortBy(sorts[id - 400]);
     else if (id === 9) playAlbum();
     else if (id === 11) randomPick();

@@ -199,11 +199,13 @@ function setAlbums(albums, items = []) {
     groupAlbums();
 }
 
-const GROUP_BY = [["genre", "GENRE"], ["decade", "DECADE"], ["artist", "A–Z"], ["none", "NONE"]];
+const GROUP_BY = [["genre", "GENRE"], ["decade", "DECADE"], ["artist", "A–Z"], ["album", "ALBUM"], ["none", "NONE"]];
 const SORT_BY = [["artist", "ARTIST"], ["title", "TITLE"], ["year", "YEAR"], ["added", "ADDED"]];
-const GROUP_LABEL = { genre: "GENRE", decade: "DECADE", artist: "ARTIST", none: "ALL" };
-// a group's name as shown: the fixed ones and decades translated, genres as they are tagged
-const groupName = g => /^\d{3}0S$/.test(g) ? tr("{0}S", g.slice(0, 4)) : tr(g);
+const GROUP_LABEL = { genre: "GENRE", decade: "DECADE", artist: "ARTIST", album: "ALBUM", none: "ALL" };
+// a group's name as shown: the fixed ones and decades translated, genres as they are tagged, an album by its title (its
+// group is keyed "TITLE\u0001ARTIST", so two albums of one title stay apart); a shelf's name, its groups' names joined
+// (and a part's "2 / 3"), drops each one's artist alike
+const groupName = g => g.includes("\u0001") ? g.replace(/\u0001.*?(?=  ·  |  \d+ \/ \d+$|$)/g, "") : /^\d{3}0S$/.test(g) ? tr("{0}S", g.slice(0, 4)) : tr(g);
 function setGroupBy(by) {
     if (by === LIB.groupBy || !GROUP_LABEL[by]) return;
     LIB.groupBy = by;
@@ -258,10 +260,11 @@ function setArchiveFilter(q) {
 onMessage("archive-filter", setArchiveFilter);
 const filteredCount = () => LIB.groups.reduce((n, g) => n + g.albums.length, 0);
 
-// groups: [{ name, albums }], sorted by name with the catch-all group last; each album also gets its group's name
-// (a.grp), which the archive's shelves (several groups on one shelf) show
+// groups: [{ name, albums }], sorted by name with the catch-all group last (album groups: in the order the albums are
+// sorted in); each album also gets its group's name (a.grp), which the archive's shelves (several groups on one shelf)
+// show. Grouped by album, each album is a group: with every track as its own item, its tracks make a shelf of their own.
 function groupAlbums() {
-    const by = LIB.groupBy, map = new Map();
+    const by = LIB.groupBy, map = new Map(), albumOfGroup = new Map();
     const words = LIB.filter ? LIB.filter.split(/\s+/) : null;
     for (const a of showTracks() ? LIB.items : LIB.albums) {
         if (words) { const t = searchText(a); if (!words.every(w => t.includes(w))) continue; }
@@ -269,6 +272,7 @@ function groupAlbums() {
         if (by === "none") g = "ALL ALBUMS";
         else if (by === "decade") g = /^\d{4}$/.test(a.year) ? a.year.slice(0, 3) + "0S" : "UNDATED";
         else if (by === "artist") { const c = String(a.artist || "").trim().charAt(0).toUpperCase(); g = /[A-Z]/.test(c) ? c : /\d/.test(c) ? "0–9" : "OTHER"; }
+        else if (by === "album") { const al = albumOf(a) || a; g = `${al.title}\u0001${al.artist}`.toUpperCase(); if (!albumOfGroup.has(g)) albumOfGroup.set(g, al); }
         else g = String(a.genre || "").trim().toUpperCase() || "UNKNOWN";
         a.grp = g;
         if (!map.has(g)) map.set(g, []);
@@ -276,7 +280,7 @@ function groupAlbums() {
     }
     const last = new Set(["UNDATED", "OTHER", "UNKNOWN"]), order = albumOrder(LIB.sortBy);
     LIB.groups = [...map.entries()]
-        .sort(([x], [y]) => (last.has(x) - last.has(y)) || strCmp(x, y))
+        .sort(([x], [y]) => (by === "album" ? order(albumOfGroup.get(x), albumOfGroup.get(y)) : last.has(x) - last.has(y)) || strCmp(x, y))
         .map(([name, albums]) => ({ name, albums: albums.sort(order) }));
     libNotify("catalog");
 }
