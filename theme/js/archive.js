@@ -57,6 +57,13 @@ const AR = {
     rulerStart: Spring(0, 14), ticks: new Map(),
     dirtyInfo: true, info: null,
     topTitles: getSetting("caseTopTitles", true) !== false,   // the titles on the cases' top edges (the context menu)
+    shelfPerGroup: getSetting("shelfPerGroup", true) !== false,   // each group starts a shelf of its own (the context menu)
+    // the shelves' look (the context menu › Shelf look, see shelf looks below): the shelves other than the selected
+    // one faded towards the page; frosted glass on every case but the selected one ("all"), on the other shelves'
+    // cases only ("others") or on none
+    shelfFade: getSetting("shelfFade", true) !== false,
+    caseFrost: ["all", "others", "none"].includes(getSetting("caseFrost", "all")) ? getSetting("caseFrost", "all") : "all",
+    hoverRow: -1,   // the shelf (row index) of the case under the mouse (AR.hover): the selected one or any other
     hoverMode: HOVER_MODES.includes(getSetting("caseHover", "outline")) ? getSetting("caseHover", "outline") : "outline",   // the case under the mouse: outlined, titled or left as is (the context menu)
     hoverPlate: null,   // the case to label this frame (hoverMode "label"): drawn after the shelf, over its neighbours
 };
@@ -65,37 +72,49 @@ const PICK = { steps: null, t: 0, after: false };   // RANDOM PICK's run (see ra
 try { AR.selAlbum = String(JSON.parse(getSetting("archiveSel", "{}")).key || ""); } catch (e) { /* none */ }
 
 // ------------------------------------------------------------------------------------------------------ shelves
-// The array's rows are shelves of SHELF_SLOTS slots. The groups follow one another along them: a group that fits
-// where the shelf has room goes there, right after the previous one (the shelf's name below the array and the file
-// panel say which group a case belongs to), a larger one fills the shelf and
-// continues on the next, so every shelf but the last is full.
+// The array's rows are shelves of SHELF_MIN to SHELF_MAX cases. A group of up to SHELF_MAX stands on one shelf; a
+// larger one is shared out evenly over as few shelves as hold it (45: 23 + 22, never 30 + 15 or 20 + 20 + 5). By
+// default each group starts a shelf of its own. With "Each group on its own shelf" off (the context menu) a group that
+// fits beside the ones before it (SHELF_MAX in all) joins their shelf, and a shelf left short of SHELF_MIN is topped up
+// from the next group before that one goes on to shelves of its own (the shelf's name below the array and the file
+// panel say which group a case belongs to). A shelf's rail is as long as its cases, SHELF_MIN slots at least.
 // shelf: { name, albums, slot (each album's slot), slots, segs: [{ gi, name, from, n, slot, part, parts, total }] }
 // The grid's sections are the plain groups; both layouts share the selected album.
-const SHELF_SLOTS = 20;
-let SHELVES = [];
+const SHELF_MIN = 10, SHELF_MAX = 30;
+let SHELVES = [], SHELF_SPAN = SHELF_MIN;   // SHELF_SPAN: the longest shelf's slots (the ultrawide array's spacing)
 function buildShelves() {
     const out = [], parts = new Map();
     let cur = null;
-    const open = () => { cur = { albums: [], slot: [], slots: SHELF_SLOTS, segs: [], used: 0 }; out.push(cur); };
+    const open = () => { cur = { albums: [], slot: [], slots: 0, segs: [], used: 0 }; out.push(cur); };
+    // n cases of group g, from its case `from` on, onto the current shelf
+    const put = (g, gi, from, n) => {
+        const seg = { gi, name: g.name, from: cur.albums.length, n, slot: cur.used, total: g.albums.length };
+        for (let k = 0; k < n; k++) { cur.albums.push(g.albums[from + k]); cur.slot.push(seg.slot + k); }
+        cur.used += n;
+        cur.segs.push(seg);
+        if (!parts.has(gi)) parts.set(gi, []);
+        parts.get(gi).push(seg);
+    };
     LIB.groups.forEach((g, gi) => {
-        for (let i = 0; i < g.albums.length;) {
-            if (!cur || cur.used >= SHELF_SLOTS) open();
-            const room = SHELF_SLOTS - cur.used, left = g.albums.length - i, n = Math.min(left, room);
-            const seg = { gi, name: g.name, from: cur.albums.length, n, slot: cur.used, total: g.albums.length };
-            for (let k = 0; k < n; k++) { cur.albums.push(g.albums[i + k]); cur.slot.push(seg.slot + k); }
-            cur.used = seg.slot + n;
-            cur.segs.push(seg);
-            if (!parts.has(gi)) parts.set(gi, []);
-            parts.get(gi).push(seg);
-            i += n;
+        const N = g.albums.length;
+        let i = 0;
+        if (!AR.shelfPerGroup && cur) {
+            if (cur.used + N <= SHELF_MAX) { put(g, gi, 0, N); return; }   // beside the groups before it
+            // a short shelf is topped up (the rest is then more than SHELF_MIN: N > SHELF_MAX - used)
+            if (cur.used < SHELF_MIN) { i = SHELF_MIN - cur.used; put(g, gi, 0, i); }
         }
+        // the rest on shelves of its own, shared out evenly
+        const left = N - i, k = Math.ceil(left / SHELF_MAX);
+        for (let s = 0; s < k; s++) { const n = Math.floor(left / k) + (s < left % k ? 1 : 0); open(); put(g, gi, i, n); i += n; }
     });
     for (const list of parts.values()) list.forEach((s, k) => { s.part = k + 1; s.parts = list.length; });
     out.forEach(s => {
+        s.slots = Math.max(SHELF_MIN, s.used);
         const one = s.segs[0];
         s.name = s.segs.length > 1 ? s.segs.map(g => g.name).join("  ·  ") : one ? one.name + (one.parts > 1 ? `  ${one.part} / ${one.parts}` : "") : "";
     });
     SHELVES = out;
+    SHELF_SPAN = Math.max(SHELF_MIN, ...out.map(s => s.slots));
 }
 // the rows of the layout in use: shelves (array) or groups (grid)
 const arRows = () => AR.layout === "grid" ? LIB.groups : SHELVES;
@@ -208,6 +227,17 @@ function moveGroup(d) {
     AR.group = gi;
     AR.ticks.clear();
     rowState(gi);
+    selectionChanged();
+}
+// a case clicked on another shelf: that shelf becomes the selected one, with the case selected on it
+function selectCase(gi, i) {
+    const g = arRows()[gi];
+    if (!g || !g.albums[i] || AR.inspOn || AR.insp > 0) return;
+    AR.group = gi;
+    AR.ticks.clear();
+    const r = rowState(gi);
+    r.sel = i;
+    r.scroll.to = scrollTarget(i, g);
     selectionChanged();
 }
 
@@ -340,13 +370,14 @@ function archiveUpdate(dt) {
     more = pickUpdate(dt) || more;
     // Keep a full viewport near the end of the library, plus a row at each edge for animation.
     const start = arrayStart(), count = arrayGeom().count;
-    for (let gi = start - 1; gi <= start + count; gi++) if (gi >= 0 && gi < G.length) rowState(gi).pos.to = gi - start;
+    const F = frontRows();
+    for (let gi = start - 1 - F; gi <= start + count; gi++) if (gi >= 0 && gi < G.length) rowState(gi).pos.to = gi - start;
     // a row out of that range goes on with the strip and is let go once it has left the view (not while it is still
     // on its way out, where it would vanish)
     for (const [gi, r] of [...AR.rows]) {
-        if (gi >= start - 1 && gi <= start + count) continue;
+        if (gi >= start - 1 - F && gi <= start + count) continue;
         r.pos.to = gi - start;
-        if (r.pos.x <= -1 || r.pos.x >= count) AR.rows.delete(gi);
+        if (r.pos.x <= -1 - F || r.pos.x >= count) AR.rows.delete(gi);
     }
     for (const [gi, r] of AR.rows) {
         more = stepSpring(r.pos, dt) || more;
@@ -354,7 +385,7 @@ function archiveUpdate(dt) {
         const active = gi === AR.group, [i0, i1] = caseWindow(r, G[gi]);
         for (const i of [...r.cases.keys()]) if (i < i0 || i > i1) r.cases.delete(i);
         for (let i = i0; i <= i1; i++) {
-            const t = caseTargets(i, r, active, G[gi]);
+            const t = caseTargets(i, r, active, G[gi], gi === AR.hoverRow ? AR.hover : -1);
             let c = r.cases.get(i);
             if (!c) { c = { lift: Spring(t.lift, 13), clear: Spring(t.clear, 8), gap: Spring(t.gap, 11) }; r.cases.set(i, c); }
             c.lift.to = t.lift; c.lift.w = active ? 13 : 7; c.clear.to = t.clear; c.gap.to = t.gap;
@@ -415,13 +446,14 @@ function stepInspection(dt) {
     AR.insp = dir > 0 ? Math.min(next, target) : Math.max(next, target);
     return true;
 }
-// hover: the case under the mouse, which lifts its neighbours a little (-1: none, as for the cases' resting places)
-function caseTargets(i, r, active, row, hover = AR.hover) {
+// hover: the case of this row under the mouse, which lifts its neighbours a little (-1: none, as for the cases'
+// resting places)
+function caseTargets(i, r, active, row, hover) {
     const d = slotOf(row, i) - slotOf(row, r.sel), bell = Math.exp(-d * d / 4.5) - .32 * Math.exp(-d * d / 18), hd = i - hover;
-    const hov = active && hover >= 0 ? .5 * Math.exp(-hd * hd / 2.2) : 0, isSel = active && i === r.sel;
+    const hov = hover >= 0 ? (active ? .5 : .35) * Math.exp(-hd * hd / 2.2) : 0, isSel = active && i === r.sel;
     return {
         lift: (active ? 1.1 : .65) * bell + hov + (isSel ? 1.35 : 0),
-        clear: isSel ? 1 : 0,
+        clear: isSel || !frosted(active) ? 1 : 0,
         gap: active ? (i > r.sel ? .55 : i < r.sel ? -.25 : 0) : 0,
     };
 }
@@ -433,12 +465,12 @@ const arrayW = () => Math.max(dp(300), infoX() - dp(24));
 let ARRAY_GEOM = null;
 function arrayGeom() {
     const aw = arrayW(), total = arRows().length;
-    const key = [W, H, CASE_DIR, STATE.arrayScale, total].join("|");
+    const key = [W, H, CASE_DIR, STATE.arrayScale, total, SHELF_SPAN].join("|");
     if (ARRAY_GEOM && ARRAY_GEOM.key === key) return ARRAY_GEOM;
     const g = { key, wide: aw > H * 2, count: 4, x: Math.round(aw * .37), y: H - dp(87), sx: 1, sy: 1 };
     if (g.wide) {
         const k = arK(), ax = CASE_META.axes, meta = CASE_META.array, sz = CASE_META.array_res[0];
-        const pad = dp(48), along = (SHELF_SLOTS - 1) * PITCH;
+        const pad = dp(48), along = (SHELF_SPAN - 1) * PITCH;
         const span = (along * ax.y[0] + sz) * k, pitch = ROWP * ax.x[0] * k;
         const capacity = clamp(Math.floor((aw - pad * 2 - span) / pitch) + 1, 4, 24);
         g.count = Math.max(1, Math.min(total || 1, capacity));
@@ -560,9 +592,10 @@ function drawFloor(gr, rows, G, Ox, Oy, k, toScreen) {
     const ax = CASE_META.axes.x, ay = CASE_META.axes.y, az = CASE_META.axes.z, fz = -F.meta.floor_z, det = ax[0] * ay[1] - ay[0] * ax[1];
     const zx = fz * az[0], zy = fz * az[1];   // the floor lies fz below the sprites' origin plane
     // "glow": false in floor.json: shade only (no reflections of the cases and strips in the floor)
+    const front = Math.min(0, ...rows.map(([, r]) => r.pos.x));   // the floor in front of a row shows before the front-most one only
     for (const layer of F.meta.glow === false ? ["shade-"] : ["shade-", "glow-"]) for (const [gi, r] of rows) for (const part of ["", "-far"]) {
         const row = G[gi], pos = r.pos.x, x = -pos * ROWP, n = slotCount(row);
-        const alpha = Math.round(rowAlpha(pos) * (1 - rowTint(pos)) * (part ? clamp(1 - pos, 0, 1) : 1));
+        const alpha = Math.round(rowAlpha(pos) * (1 - rowTint(pos)) * (part ? clamp(1 - (pos - front), 0, 1) : 1));
         if (alpha <= 0) continue;
         for (const end of ["front", "back"]) {
             const [sx, sy] = toScreen({ x, y: ((end === "front" ? -1 : n) - r.scroll.x) * PITCH, z: 0 });
@@ -630,7 +663,7 @@ function requestVisibleThumbs() {
     if (AR.layout === "grid") { gridThumbs(); return; }
     const G = arRows(), list = [];
     const start = arrayStart(), count = arrayGeom().count;
-    const order = Array.from({ length: Math.min(count, G.length - start) }, (_, i) => start + i);
+    const first = Math.max(0, start - frontRows()), order = Array.from({ length: Math.min(count, G.length - start) + start - first }, (_, i) => first + i);
     order.sort((a, b) => Math.abs(a - AR.group) - Math.abs(b - AR.group));
     for (const gi of order) {
         const r = rowState(gi), albums = G[gi].albums, [i0, i1] = caseWindow(r, G[gi], gi - start, r.scroll.to);
@@ -743,7 +776,7 @@ function drawArchive(gr) {
     gr.PushClip(0, 0, aw, H);
     // Shelf by shelf, back to front: a shelf stands wholly behind the shelves in front of it (the camera looks along
     // +x), so each is drawn as one layer: its rail slots and cases back to front, then its front lip if the rail has one.
-    const R = railImages(), rows = [...AR.rows].filter(([, r]) => r.pos.x > -1 && r.pos.x < g.count).sort((p, q) => q[1].pos.x - p[1].pos.x);
+    const R = railImages(), rows = [...AR.rows].filter(([, r]) => r.pos.x > -1 - frontRows() && r.pos.x < g.count).sort((p, q) => q[1].pos.x - p[1].pos.x);
     AR.hits = [];
     let selItem = null;
     if (!LABEL_LIVE) drawFloor(gr, rows, G, Ox, Oy, k, toScreen);   // the wallpaper takes the floor's place
@@ -770,7 +803,7 @@ function drawArchive(gr) {
         for (const it of items) {
             const [sx, sy] = toScreen(it);
             if (it.rail) { drawRailSlot(gr, it, sx, sy, k, aw); continue; }
-            if (it.active) it.rest = toScreen({ x: it.x, y: it.yr, z: it.zr });
+            it.rest = toScreen({ x: it.x, y: it.yr, z: it.zr });
             selItem = drawArrayCase(gr, it, sx, sy, k, aw, I) || selItem;
         }
         drawLip(gr, row, gi, r, x, toScreen, k);
@@ -810,26 +843,24 @@ function drawArrayCase(gr, it, sx, sy, k, aw, I) {
     let selItem = null;
     if (it.isSel) { AR.from = [ox + meta.center[0] * k, oy + meta.center[1] * k]; selItem = { ox, oy }; }
     if (it.isSel && inspTurn() > 0) return selItem;                   // drawn by the inspection
-    const alpha = rowAlpha(it.pos), f = rowTint(it.pos), t = thumbOf(it.a);
-    // cover, under the case
-    if (t) quadImage(gr, t.blur, meta.cover, ox, oy, k, alpha);
-    else gr.FillPolygon(withAlpha(C.well, alpha / 255), 0, quadPts(meta.cover, ox, oy, k));
-    if (f > 0) {
-        gr.FillPolygon(withAlpha(fadeBg(), f * alpha / 255), 0, quadPts(meta.cover, ox, oy, k));
-        gr.DrawImage(fadedSprite(f), ox, oy, S, S, 0, 0, sz, sz, 0, alpha);
-    } else {
-        const cl = clamp(it.c.clear.x, 0, 1);
-        if (t && cl > .01) quadImage(gr, t.img, meta.cover, ox, oy, k, Math.round(alpha * cl));
-        if (cl < .99) gr.DrawImage(I.frost, ox, oy, S, S, 0, 0, sz, sz, 0, Math.round(alpha * (1 - cl)));
-        if (cl > .01) gr.DrawImage(I.clear, ox, oy, S, S, 0, 0, sz, sz, 0, Math.round(alpha * cl));
-        if (it.active) drawSpineLabel(gr, meta.label, ox, oy, k, it.a.no, alpha);
-    }
-    if (AR.topTitles && f < .5) drawTopTitle(gr, it.a, ox, oy, k, alpha, f);
-    // the whole case (front face and top edge) at its resting place answers the mouse; the one under it is outlined
-    if (it.active) {
+    const alpha = rowAlpha(it.pos), f = rowTint(it.pos), t = thumbOf(it.a), cl = clamp(it.c.clear.x, 0, 1);
+    // cover, under the case: blurred behind frosted glass, sharp as the glass clears
+    if (t) {
+        if (cl < .99) quadImage(gr, t.blur, meta.cover, ox, oy, k, alpha);
+        if (cl > .01) quadImage(gr, t.img, meta.cover, ox, oy, k, Math.round(alpha * cl));
+    } else gr.FillPolygon(withAlpha(C.well, alpha / 255), 0, quadPts(meta.cover, ox, oy, k));
+    if (f > 0) gr.FillPolygon(withAlpha(fadeBg(), f * alpha / 255), 0, quadPts(meta.cover, ox, oy, k));
+    if (cl < .99) gr.DrawImage(f > 0 ? fadedSprite(f) : I.frost, ox, oy, S, S, 0, 0, sz, sz, 0, Math.round(alpha * (1 - cl)));
+    if (cl > .01) gr.DrawImage(f > 0 ? tinted(I.clear, f, "case-clear" + CASE_DIR) : I.clear, ox, oy, S, S, 0, 0, sz, sz, 0, Math.round(alpha * cl));
+    if (it.active && f === 0) drawSpineLabel(gr, meta.label, ox, oy, k, it.a.no, alpha);
+    // no titles on the shelves in front, which stand over the selected one
+    if (AR.topTitles && f < .5 && it.pos > -.5) drawTopTitle(gr, it.a, ox, oy, k, alpha, f);
+    // the whole case (front face and top edge) at its resting place answers the mouse, on every shelf in view (a case
+    // on another shelf switches to it); the one under it is outlined
+    if (alpha > 0) {
         const P = casePoly(), rx = it.rest[0] - meta.origin[0] * k, ry = it.rest[1] - meta.origin[1] * k;
-        AR.hits.push({ i: it.i, quad: P.map(([px, py]) => [rx + px * k, ry + py * k]) });
-        const hovered = it.i === AR.hover && !it.isSel && AR.insp === 0;
+        AR.hits.push({ i: it.i, gi: it.gi, quad: P.map(([px, py]) => [rx + px * k, ry + py * k]) });
+        const hovered = it.i === AR.hover && it.gi === AR.hoverRow && !it.isSel && AR.insp === 0;
         if (hovered && AR.hoverMode === "label") AR.hoverPlate = { a: it.a, ox, oy, k, alpha };
         if (hovered && AR.hoverMode === "outline") gr.DrawPolygon(withAlpha(C.accent, alpha / 255), Math.max(HAIR, dp(1.5)), P.flatMap(([px, py]) => [ox + px * k, oy + py * k]));
     }
@@ -861,13 +892,29 @@ function casePoly() {
     return CASE_POLY;
 }
 
-// rows fade out towards the viewer and in at the back; rows behind are tinted towards the page (0.1 steps)
-const rowAlpha = pos => Math.round(255 * clamp(1 + pos, 0, 1) * clamp((arrayGeom().count - pos) / .8, 0, 1));
-// how far a row is tinted towards the background (0.1 steps): by its place behind the front row, or on an ultrawide
-// array by its distance from the selected row; the floor may fade them less (floor.json "tint")
+// Shelf looks. Every shelf in view is drawn, each by where it stands:
+//   the selected shelf   in full; its cases frosted but for the selected one (caseFrost "all"), or all clear
+//   shelves behind       up and to the left: faded towards the page the further back they are (shelfFade), frosted
+//                        unless caseFrost is "none"; titles while they are faded less than half
+//   shelves in front     down and to the right (FRONT_ROWS of them, not on an ultrawide array, which shows its shelves
+//                        side by side): see-through (FRONT_ALPHA) and faded like the ones behind, without titles,
+//                        so the selected shelf behind them stays in sight
+// Any case on any of them can be hovered and clicked: a click on another shelf's case switches to it.
+const FRONT_ROWS = 2, FRONT_ALPHA = .6;
+const frontRows = () => arrayGeom().wide ? 0 : FRONT_ROWS;
+const frosted = active => AR.caseFrost === "all" || (AR.caseFrost === "others" && !active);
+// rows fade in at the back; in front they turn see-through, then fade out beyond the last one shown
+const rowAlpha = pos => {
+    const n = frontRows(), front = pos >= 0 ? 1 : !n ? clamp(1 + pos, 0, 1) : lerp(1, FRONT_ALPHA, clamp(-pos, 0, 1)) * clamp(n + 1 + pos, 0, 1);
+    return Math.round(255 * front * clamp((arrayGeom().count - pos) / .8, 0, 1));
+};
+// how far a row is tinted towards the background (0.1 steps): by its distance from the front row (the selected one),
+// or on an ultrawide array from the selected row; the floor may fade them less (floor.json "tint"); none with
+// shelfFade off
 const rowTint = pos => {
+    if (!AR.shelfFade) return 0;
     const g = arrayGeom(), floor = FLOOR.meta && FLOOR.meta.tint != null ? FLOOR.meta.tint : 1;
-    if (!g.wide) return Math.round(clamp(.38 * clamp(pos, 0, 1) + .14 * Math.max(0, pos), 0, .8) * floor * 10) / 10;
+    if (!g.wide) { const d = Math.abs(pos); return Math.round(clamp(.38 * Math.min(d, 1) + .14 * d, 0, .8) * floor * 10) / 10; }
     const distance = Math.abs(pos - (AR.group - arrayStart()));
     return Math.round(clamp(.32 * Math.min(distance, 1) + .24 * distance / Math.max(1, g.count - 1), 0, .6) * floor * 10) / 10;
 };
@@ -966,14 +1013,15 @@ function drawSelectNumeral(gr) {
     gr.DrawText(`/ ${pad(g.albums.length, AR.selRoll.to.length)}`, font(16, 400), C["text-muted"], x + w + dp(12), y + dp(14) + h - dp(34), dp(120), dp(24), DT_SINGLE);
 }
 
-// album index: one mark per album (a window of them in long rows), ↑ ↓ at the ends
+// album index: one mark per album (a window of them in long rows), ↓ ↑ at the ends (as the keys: ↑ goes up the
+// shelf, to the next album)
 function drawRuler(gr) {
     const r = AR.rows.get(AR.group);
     if (!r) return;
     const n = curGroup().albums.length, M = rulerCount(), step = dp(RULER_STEP), x0 = rulerX0(), y0 = H - dp(48);
     const s0 = AR.rulerStart.x;
-    gr.DrawText("↑", font(16, 400), C.fg, x0 - dp(40), y0 - dp(16), dp(24), dp(24), DT_CENTER_SINGLE);
-    gr.DrawText("↓", font(16, 400), C.fg, x0 + Math.min(n, M) * step + dp(14), y0 - dp(16), dp(24), dp(24), DT_CENTER_SINGLE);
+    gr.DrawText("↓", font(16, 400), C.fg, x0 - dp(40), y0 - dp(16), dp(24), dp(24), DT_CENTER_SINGLE);
+    gr.DrawText("↑", font(16, 400), C.fg, x0 + Math.min(n, M) * step + dp(14), y0 - dp(16), dp(24), dp(24), DT_CENTER_SINGLE);
     hits.add("ar-prev", x0 - dp(44), y0 - dp(20), dp(32), dp(32));
     hits.add("ar-next", x0 + Math.min(n, M) * step + dp(10), y0 - dp(20), dp(32), dp(32));
     gr.PushClip(x0 - dp(4), y0 - dp(30), Math.min(n, M) * step + dp(4), dp(60));
@@ -1062,6 +1110,9 @@ function drawInspection(gr, e) {
             // the text above and the button below keep clear of the case's edges (the frame's crop is the case's box)
             const c = M1.crop, left = Math.round(c ? ox + c[0] * k : q[0][0]);
             const top = c ? oy + c[1] * k : q[0][1] - dp(40), bottom = c ? oy + (c[1] + c[3]) * k : q[3][1] + dp(20);
+            // the case itself: a click plays it and puts it back (a click anywhere else only puts it back)
+            if (c) hits.add("ar-inspected", ox + c[0] * k, oy + c[1] * k, c[2] * k, c[3] * k);
+            else { const xs = q.map(p => p[0]), ys = q.map(p => p[1]); hits.add("ar-inspected", Math.min(...xs), Math.min(...ys), Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)); }
             const y2 = Math.round(top - dp(16) - labelHeight(AR_ST.inspM)), y1 = y2 - dp(6) - labelHeight(AR_ST.insp);
             label(gr, `${tr("INSPECTION")}  ·  ARC-${pad(a.no, 4)}`, st(AR_ST.insp, C.fg), left, y1);
             const sub = a.album ? (albumOf(a) || {}).title || "" : tr("{0} TRACKS", pad(a.tracks, 2));
@@ -1122,16 +1173,14 @@ function drawInfoPages(gr, x, iw, h) {
     INFO_HITS.push(["ar-page", lx - dp(2), cy - dp(11), nw + dp(4), dp(22), INFO_PAGES[(at + 1) % 2][0]]);
 }
 
-// ▶ PLAY ALBUM / PLAY TRACK (inverse) · OPEN ALBUM ↗ (orange focus frame); the key that does the same (Space) is
-// printed on the button, dimmed. Returns its height.
+// ▶ PLAY ALBUM / PLAY TRACK (inverse) · OPEN ALBUM ↗ (orange focus frame). Space is play / pause everywhere, so the
+// button names no key (the case plays as it does with a click on it while inspected: Enter, Enter). Returns its height.
 function drawInfoButtons(gr, x, y, isTrack) {
     const bh = dp(40), bs = st(AR_ST.btn, C.bg, C.fg), playTxt = tr(isTrack ? "PLAY TRACK" : "PLAY ALBUM");
-    const ks = st(AR_ST.key, mix(C.bg, C.fg, .45), C.fg), kt = tr("SPACE"), kw = labelWidth(kt, ks);
-    const pw = dp(14) + dp(10) + dp(10) + labelWidth(playTxt, bs) + dp(14) + kw + dp(14);
+    const pw = dp(14) + dp(10) + dp(10) + labelWidth(playTxt, bs) + dp(18);
     gr.FillSolidRect(x, y, pw, bh, C.fg);
     icon(gr, "play", x + dp(19), y + bh / 2, 9, C.bg);
     label(gr, playTxt, bs, x + dp(34), y + Math.round((bh - labelHeight(AR_ST.btn)) / 2));
-    label(gr, kt, ks, x + pw - dp(14) - kw, y + Math.round((bh - labelHeight(AR_ST.key)) / 2));
     INFO_HITS.push(["ar-play", x, y, pw, bh]);
     const ox2 = x + pw + dp(10), os = st(AR_ST.btn, C.fg), ow = dp(14) + labelWidth(tr("OPEN ALBUM"), os) + dp(40) + dp(26);
     if (!LABEL_LIVE) gr.FillSolidRect(ox2, y, ow, bh, C.bg);   // over the halftone (a wallpaper shows through, as before)
@@ -1320,8 +1369,6 @@ function playAlbum(at) {
     plman.ExecutePlaylistDefaultAction(pl, clamp(at, 0, list.Count - 1));
     AR.tracks.key = "";
 }
-// the playing track is this item (a track item) or on this album
-function itemPlaying(a, np = fb.GetNowPlaying()) { return !!(a && np && (a.album ? sameTrack(itemTrack(a), np) : albumKey(np) === a.key)); }
 // Inspect from elsewhere: the transport's cover and the signal profile card ask for the playing (else focused) track.
 // The Archive opens on its album (or on the track itself while SHOW TRACKS is on) and inspects it once the view is
 // shown and the item is listed; the inspection belongs to the case array, so the grid gives way to it.
@@ -1371,6 +1418,15 @@ function inQuad(x, y, q) {   // any polygon
     }
     return inside;
 }
+// the case under the mouse: the selected shelf's first (a see-through shelf in front, drawn over it, does not take its
+// cases), then the other shelves', the one drawn last (nearest) first
+function caseAt(x, y) {
+    for (const own of [true, false]) for (let j = AR.hits.length - 1; j >= 0; j--) {
+        const c = AR.hits[j];
+        if ((c.gi === AR.group) === own && inQuad(x, y, c.quad)) return c;
+    }
+    return null;
+}
 function archiveMouseMove(x, y, a) {
     AR.mouseX = x;
     // the file panel's track rows highlight under the mouse; over a row's marks, the rating they would give shows
@@ -1381,23 +1437,25 @@ function archiveMouseMove(x, y, a) {
         window.RepaintRect(infoX() - dp(20), 0, W - infoX() + dp(20), H);
     }
     if (AR.layout === "grid") return gridMouseMove(x, y, a);
-    let h = -1;
-    if (!AR.inspOn && x < arrayW() && !a) for (let j = AR.hits.length - 1; j >= 0; j--) if (inQuad(x, y, AR.hits[j].quad)) { h = AR.hits[j].i; break; }
+    const c = !AR.inspOn && x < arrayW() && !a ? caseAt(x, y) : null, h = c ? c.i : -1, hg = c ? c.gi : -1;
     let ht = -1;
     if (a && a.id === "ar-ruler" && AR.rulerGeom) { const R = AR.rulerGeom; ht = clamp(Math.round((x - R.x0) / R.step + R.s0), 0, R.n - 1); }
-    if (h !== AR.hover || ht !== AR.hoverTick) { AR.hover = h; AR.hoverTick = ht; clock.wake(); }
+    if (h !== AR.hover || hg !== AR.hoverRow || ht !== AR.hoverTick) { AR.hover = h; AR.hoverRow = hg; AR.hoverTick = ht; clock.wake(); }
     return h >= 0;
 }
 function archiveMouseLeave() {
     if (AR.infoHover >= 0 || AR.rateHover) { AR.infoHover = -1; AR.rateHover = null; AR.dirtyInfo = true; window.Repaint(); }
     if (GRID.hover) { GRID.hover = null; window.Repaint(); }
     if (AR.rulerDrag) return;   // a drag along the album index goes on outside the panel
-    if (AR.hover >= 0 || AR.hoverTick >= 0) { AR.hover = -1; AR.hoverTick = -1; clock.wake(); }
+    if (AR.hover >= 0 || AR.hoverTick >= 0) { AR.hover = AR.hoverRow = -1; AR.hoverTick = -1; clock.wake(); }
 }
 function archiveClick(x, y, a) {
     if (a && a.id === "ar-pick") { randomPick(); return; }
     pickStop();
-    if (AR.inspOn) { AR.inspOn = false; clock.wake(); return; }
+    if (AR.inspOn) {
+        if (a && a.id === "ar-inspected") playAlbum();   // the inspected case: played, and put back
+        AR.inspOn = false; clock.wake(); return;
+    }
     if (a) {
         switch (a.id) {
             case "ar-play": playAlbum(); return;
@@ -1424,14 +1482,16 @@ function archiveClick(x, y, a) {
         }
     }
     if (AR.layout === "grid") { gridClick(x, y, a); return; }
+    if (AR.hover >= 0 && AR.hoverRow !== AR.group) { selectCase(AR.hoverRow, AR.hover); return; }
     if (AR.hover >= 0) {
         const r = AR.rows.get(AR.group);
         if (AR.hover === r.sel) { AR.inspOn = true; inspectImages(); clock.wake(); }
         else moveAlbum(AR.hover - r.sel);
     }
 }
-// the wheel: along the shelf (the array) or down the grid; over the TRACKS page, through its list. With Shift held
-// (or a sideways wheel, archiveWheelH) it switches shelves (the grid: sections), as ← → do.
+// the wheel: along the shelf (the array: up goes up the shelf, to the next album, as ↑) or down the grid; over the
+// TRACKS page, through its list. With Shift held (or a sideways wheel, archiveWheelH) it switches shelves (the grid:
+// sections), as ← → do.
 function archiveWheel(step) {
     pickStop();
     if (utils.IsKeyPressed(0x10)) { archiveShelf(step > 0 ? 1 : -1); return; }
@@ -1440,7 +1500,7 @@ function archiveWheel(step) {
         if (s !== AR.listScroll) { AR.listScroll = s; AR.dirtyInfo = true; AR.rateHover = null; window.RepaintRect(infoX() - dp(20), 0, W - infoX() + dp(20), H); }
         return;
     }
-    if (AR.layout === "grid") gridWheel(step); else moveAlbum(step > 0 ? -1 : 1);
+    if (AR.layout === "grid") gridWheel(step); else moveAlbum(step > 0 ? 1 : -1);
 }
 function archiveWheelH(step) { pickStop(); archiveShelf(step > 0 ? -1 : 1); }
 // d = 1: the next shelf back (the array: up and to the left, as ←), the grid: the section above; -1 the other way
@@ -1452,35 +1512,31 @@ function archiveShelf(d) {
 function archiveKey(vk) {
     if (vk === 0x52) { randomPick(); return true; }   // R
     if (vk === 0x46 && curAlbum()) { openFolder(itemTrack(curAlbum()) || albumFirst(curAlbum())); return true; }   // F: the selected item's folder
-    if (PICK.steps && (vk === 0x1B || vk === 0x0D || vk === 0x20 || vk === 0x47 || (vk >= 0x21 && vk <= 0x28))) {
+    if (PICK.steps && (vk === 0x1B || vk === 0x0D || vk === 0x47 || (vk >= 0x21 && vk <= 0x28))) {
         pickStop();
         if (vk === 0x1B) return true;
     }
     if (AR.inspOn) {
         if (vk === 0x1B) { AR.inspOn = false; clock.wake(); return true; }
-        if (vk === 0x0D) { openAlbum(); return true; }
-        if (vk === 0x20) { playAlbum(); return true; }
+        if (vk === 0x0D) { playAlbum(); AR.inspOn = false; clock.wake(); return true; }   // as a click on the case
         return vk >= 0x21 && vk <= 0x28;   // navigation keys do nothing while inspecting
     }
     if (vk === 0x47) { setLayout(AR.layout === "grid" ? "array" : "grid"); return true; }   // G
     if (vk === 0x4C) { setInfoPage(AR.page === "tracks" ? "file" : "tracks"); return true; }   // L: the album file's other page
     if (AR.layout === "grid" && gridKey(vk)) return true;
+    // Space is not the Archive's: play / pause, as in every view (stage.js)
     switch (vk) {
-        case 0x26: moveAlbum(-1); return true;          // ↑
-        case 0x28: moveAlbum(1); return true;           // ↓
+        // up the shelf (up and to the right on screen) is the next album, as the wheel
+        case 0x26: moveAlbum(1); return true;           // ↑
+        case 0x28: moveAlbum(-1); return true;          // ↓
         // the next shelf stands behind, up and to the left: ← goes to it, → back towards the front (#16)
         case 0x25: moveGroup(1); return true;           // ←
         case 0x27: moveGroup(-1); return true;          // →
-        case 0x21: moveAlbum(-10); return true;         // Page Up
-        case 0x22: moveAlbum(10); return true;          // Page Down
+        case 0x21: moveAlbum(10); return true;          // Page Up
+        case 0x22: moveAlbum(-10); return true;         // Page Down
         case 0x24: moveAlbum(-1e6); return true;        // Home
         case 0x23: moveAlbum(1e6); return true;         // End
         case 0x0D: if (curAlbum()) { AR.inspOn = true; inspectImages(); clock.wake(); } return true;
-        case 0x20: {                                    // Space: play the album (play / pause when it is the one playing)
-            const a = curAlbum(), np = fb.GetNowPlaying();
-            if (itemPlaying(a, np)) fb.PlayOrPause(); else playAlbum();
-            return true;
-        }
     }
     return false;
 }
@@ -1493,6 +1549,13 @@ function archiveMenu(x, y) {
     so.CheckMenuRadioItem(400, 403, 400 + Math.max(0, sorts.indexOf(LIB.sortBy)));
     so.AppendTo(m, 0, tr("Sort by"));
     m.AppendMenuItem(showTracks() ? 0x8 : 0, 10, tr("Show every track as its own item"));
+    m.AppendMenuItem((AR.shelfPerGroup ? 0x8 : 0) | (LIB.groupBy === "none" ? 1 : 0), 15, tr("Each group on its own shelf"));
+    const lk = window.CreatePopupMenu(), frosts = ["all", "others", "none"];
+    lk.AppendMenuItem(AR.shelfFade ? 0x8 : 0, 16, tr("Fade the other shelves"));
+    lk.AppendMenuSeparator();
+    ["Frosted glass on every case but the selected one", "Frosted glass on the other shelves only", "No frosted glass"].forEach((t, i) => lk.AppendMenuItem(0, 700 + i, tr(t)));
+    lk.CheckMenuRadioItem(700, 702, 700 + frosts.indexOf(AR.caseFrost));
+    lk.AppendTo(m, 0, tr("Shelf look"));
     m.AppendMenuSeparator();
     m.AppendMenuItem(0, 7, tr("Case array") + "\tG");
     m.AppendMenuItem(0, 8, tr("Cover grid") + "\tG");
@@ -1527,6 +1590,9 @@ function archiveMenu(x, y) {
     else if (id === 14) setInfoPage(AR.page === "tracks" ? "file" : "tracks");
     else if (id >= 600 && ratingMenuPick(id, 600)) { AR.listVer++; AR.dirtyInfo = true; window.Repaint(); }
     else if (id === 10) setUnit(showTracks() ? "albums" : "tracks");
+    else if (id === 16) { AR.shelfFade = !AR.shelfFade; setSetting("shelfFade", AR.shelfFade); clock.wake(); window.Repaint(); }
+    else if (id >= 700 && frosts[id - 700]) { AR.caseFrost = frosts[id - 700]; setSetting("caseFrost", AR.caseFrost); clock.wake(); window.Repaint(); }
+    else if (id === 15) { AR.shelfPerGroup = !AR.shelfPerGroup; setSetting("shelfPerGroup", AR.shelfPerGroup); placeSelection(AR.selAlbum); clock.wake(); window.Repaint(); }
     else if (id === 5) openAlbum();
     else if (id === 6) libIndex(true);
     else if (id === 7 || id === 8) setLayout(id === 8 ? "grid" : "array");

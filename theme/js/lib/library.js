@@ -231,8 +231,11 @@ function setSortBy(by) {
 const lcs = s => String(s || "").toLowerCase();
 const strCmp = (x, y) => x < y ? -1 : x > y ? 1 : 0;
 function albumOrder(by) {
-    const art = (p, q) => strCmp(lcs(p.artist), lcs(q.artist)), tit = (p, q) => strCmp(lcs(p.title), lcs(q.title));
-    const yr = (p, q) => (!p.year - !q.year) || strCmp(p.year, q.year);   // undated last
+    // a track item goes by its album's artist and year, so the tracks of a soundtrack or a compilation (each with an
+    // artist of its own) are not scattered across the group but stay together in disc / track order
+    const of = p => albumOf(p) || p;
+    const art = (p, q) => strCmp(lcs(of(p).artist), lcs(of(q).artist)), tit = (p, q) => strCmp(lcs(p.title), lcs(q.title));
+    const yr = (p, q) => { const a = of(p).year, b = of(q).year; return (!a - !b) || strCmp(a, b); };   // undated last
     // tracks of one album stay in disc / track order where the order does not separate them
     const alb = (p, q) => p.album ? strCmp(p.album, q.album) || (p.ord - q.ord) : 0;
     if (by === "title") return (p, q) => tit(p, q) || art(p, q);

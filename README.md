@@ -145,9 +145,9 @@ Running it again keeps the foobar2000 folder and installs the theme again.
 | Lyrics translation: language, sources, keys | `MENU › Audio Archive › Translate lyrics` (see *Translated lyrics* below) | — |
 | Intro film | `MENU › Audio Archive › Play intro film`, or `PLAY INTRO` in the Style view; switch it off at start there | `B` |
 | Archive: add music | `+ ADD MUSIC FOLDER` while the Archive is empty (foobar2000's *Media Library* page) | — |
-| Archive: album / row | hover and click a case; `↑` `↓` beside the album index; `←` `→` beside the row name; wheel | `↑` `↓` album, `←` `→` row, `PgUp` `PgDn` `Home` `End` (Archive) |
+| Archive: album / row | hover and click a case (a case on another shelf switches to that shelf); `↓` `↑` beside the album index; `←` `→` beside the row name; wheel (up = up the shelf, the next album) | `↑` `↓` album (`↑` up the shelf), `←` `→` row, `PgUp` `PgDn` `Home` `End` (Archive) |
 | Archive: inspect the album | click the selected case | `Enter`; `Esc` or click to return |
-| Archive: play / open the album | `PLAY ALBUM` / `OPEN ALBUM` | `Space` plays (or pauses it if it is playing); `Enter` while inspecting opens |
+| Archive: play / open the album | `PLAY ALBUM` / `OPEN ALBUM`; while inspecting, click the case to play it (and put it back), anywhere else to put it back | `Enter` while inspecting plays; `Space` is play / pause, as everywhere |
 | Archive: group by genre, decade, artist initial or none | `GROUP` in the Archive's top bar, or right-click | — |
 | Archive: sort albums by artist, title, year or date added | `SORT` in the Archive's top bar, or right-click | — |
 | Archive: next shelf (behind, on the left) / previous shelf (in front) | `← SHELF 04 / 31 →` under the array, or `Shift` + wheel (a sideways wheel too; in the grid it jumps a section) | `←` `→` |
@@ -163,7 +163,7 @@ Running it again keeps the foobar2000 folder and installs the theme again.
 | Archive: case array or cover grid | `LAYOUT ARRAY / GRID` at the top right of the Archive, or right-click | `G` |
 | Archive grid: covers per page (10, 36, 50, 75, 100, 200) | `PER PAGE` in the grid's bar, or right-click | — |
 | Archive: look again for covers of albums without artwork | right-click › `Re-index library` | — |
-| Archive grid: select / play / open | click a cover / double-click / `OPEN ALBUM` | arrows, `PgUp` `PgDn` `Home` `End`; `Space` plays, `Enter` opens |
+| Archive grid: select / play / open | click a cover / double-click / `OPEN ALBUM` | arrows, `PgUp` `PgDn` `Home` `End`; `Enter` opens |
 | Archive grid: scroll | the wheel, or drag the scroll bar at its right edge (a click on the bar jumps there) | `PgUp` `PgDn` |
 | Case skin | `MENU › Audio Archive › Case skin`, or right-click the Archive | — |
 | Your own case | the `CUSTOM` card under `CASE SKIN` in `05 STYLE`: a base colour, an accent and a pattern (stripes, blocks or an edge band), then `MAKE THIS CASE` | — |

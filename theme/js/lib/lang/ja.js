@@ -51,7 +51,7 @@ I18N["ja"] = {
     "SOURCE · ALL PLAYLISTS (NO MEDIA LIBRARY FOLDERS)": "ソース · すべてのプレイリスト（メディアライブラリのフォルダ未設定）",
     "Group by genre": "ジャンルでグループ化", "Group by decade": "年代でグループ化", "Group by artist initial": "アーティストの頭文字でグループ化",
     "No groups": "グループなし", "Artist": "アーティスト", "Album title": "アルバム名", "Year": "年", "Date added (newest first)": "追加日（新しい順）",
-    "Sort by": "並べ替え", "Show every track as its own item": "曲ごとに表示", "Grid: covers per page": "グリッド：1ページのカバー数",
+    "Sort by": "並べ替え", "Show every track as its own item": "曲ごとに表示", "Each group on its own shelf": "グループごとに別の棚に並べる", "Fade the other shelves": "ほかの棚を薄く表示", "Frosted glass on every case but the selected one": "すりガラス：選択中以外のすべてのケース", "Frosted glass on the other shelves only": "すりガラス：ほかの棚のみ", "No frosted glass": "すりガラスなし", "Shelf look": "棚の見た目", "Grid: covers per page": "グリッド：1ページのカバー数",
     "{0} covers": "{0} 枚", "Play album": "アルバムを再生", "Open album in playlist": "アルバムをプレイリストで開く",
     "Re-index library": "ライブラリを再読み込み", "Case array": "ケース配列", "Cover grid": "カバーグリッド",
 

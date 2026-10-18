@@ -50,7 +50,7 @@ I18N["zh-CN"] = {
     "PLAY TRACK": "播放曲目", "OPEN ALBUM": "打开专辑",
     "Group by genre": "按流派分组", "Group by decade": "按年代分组", "Group by artist initial": "按艺术家首字母分组",
     "No groups": "不分组", "Artist": "艺术家", "Album title": "专辑标题", "Year": "年份", "Date added (newest first)": "添加时间（最新在前）",
-    "Sort by": "排序方式", "Show every track as its own item": "每首曲目单独显示", "Grid: covers per page": "网格：每页封面数",
+    "Sort by": "排序方式", "Show every track as its own item": "每首曲目单独显示", "Each group on its own shelf": "每个分组单独占用货架", "Fade the other shelves": "淡化其他货架", "Frosted glass on every case but the selected one": "磨砂玻璃：除选中的标本盒外全部", "Frosted glass on the other shelves only": "磨砂玻璃：仅其他货架", "No frosted glass": "不使用磨砂玻璃", "Shelf look": "货架外观", "Grid: covers per page": "网格：每页封面数",
     "{0} covers": "{0} 个封面", "Play album": "播放专辑", "Open album in playlist": "在播放列表中打开专辑",
     "Re-index library": "重新索引媒体库", "Case array": "外壳阵列", "Cover grid": "封面网格",
 
