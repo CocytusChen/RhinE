@@ -104,7 +104,13 @@ const clock = Clock((dt, now) => {
     if (STATE.view === "archive") {
         let more = archiveUpdate(dt);
         if (AR.layout === "grid") more = gridUpdate(dt) || more;
-        window.RepaintRect(0, 0, AR.dirtyInfo ? W : arrayW(), H);
+        // only the cases moving under the mouse: only their area is new (the scene is drawn whole, clipped to it)
+        const P = AR.layout === "grid" || AR.dirtyInfo ? null : AR.paint;
+        if (!P) window.RepaintRect(0, 0, AR.dirtyInfo ? W : arrayW(), H);
+        else {
+            const x0 = Math.max(0, Math.floor(P[0])), y0 = Math.max(0, Math.floor(P[1])), x1 = Math.min(arrayW(), Math.ceil(P[2])), y1 = Math.min(H, Math.ceil(P[3]));
+            if (x1 > x0 && y1 > y0) window.RepaintRect(x0, y0, x1 - x0, y1 - y0);
+        }
         return more;
     }
     if (!visible()) return false;

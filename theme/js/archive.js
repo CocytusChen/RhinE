@@ -63,6 +63,7 @@ const AR = {
     infoPlates: [],     // the info plates to draw this frame, over every shelf: the selected case's, and one going
     hoverPlate: null,   // the case to label this frame (hoverMode "label"): drawn after the shelf, over its neighbours
     reshelve: false,    // the next placeSelection comes from a new sort, grouping or unit: its cases drop into place
+    paint: null,        // [x0, y0, x1, y1]: all that moved this frame, when only a few cases did (the mouse over them)
 };
 let ARCHIVE_ON = false;
 const PICK = { steps: null, t: 0, after: false };   // RANDOM PICK's run (see randomPick)
@@ -393,6 +394,10 @@ function archiveUpdate(dt) {
     if (!G.length) return false;
     let more = stepInspection(dt);
     more = pickUpdate(dt) || more;
+    // What moved this frame, for the repaint (AR.paint): anything but a few cases (the shelves, the inspection, the
+    // index, the file) is "glob"; the cases that moved alone, the area they are drawn in (their c.box)
+    let glob = more, box = null;
+    const grow = b => { box = box ? [Math.min(box[0], b[0]), Math.min(box[1], b[1]), Math.max(box[2], b[2]), Math.max(box[3], b[3])] : b.slice(); };
     // Keep a full viewport near the end of the library, plus a row at each edge for animation.
     const start = arrayStart(), count = arrayGeom().count;
     const F = frontRows();
@@ -407,8 +412,8 @@ function archiveUpdate(dt) {
     // the selected case's place along its row, for the titles near it (titleDistance)
     const ra = AR.rows.get(AR.group), selY = ra && G[AR.group] ? slotOf(G[AR.group], ra.sel) - ra.scroll.to : 0;
     for (const [gi, r] of AR.rows) {
-        more = stepSpring(r.pos, dt) || more;
-        more = stepSpring(r.scroll, dt) || more;
+        if (stepSpring(r.pos, dt)) glob = true;
+        if (stepSpring(r.scroll, dt)) glob = true;
         const active = gi === AR.group, [i0, i1] = caseWindow(r, G[gi]);
         for (const i of [...r.cases.keys()]) if (i < i0 || i > i1) r.cases.delete(i);
         for (let i = i0; i <= i1; i++) {
@@ -426,7 +431,11 @@ function archiveUpdate(dt) {
             const m1 = stepSpring(c.lift, dt), m2 = stepSpring(c.clear, dt), m3 = stepSpring(c.gap, dt), m4 = stepSpring(c.near, dt), m5 = stepSpring(c.hov, dt), m6 = stepSpring(c.plate, dt);
             let m7 = c.wait > 0;
             if (m7) c.wait -= dt; else m7 = stepSpring(c.appear, dt);
-            more = more || m1 || m2 || m3 || m4 || m5 || m6 || m7;
+            if (m1 || m2 || m3 || m4 || m5 || m6 || m7) {
+                // the selected case moves its info plate (beside it) too; a new case has no area yet
+                if (!c.box || (active && i === r.sel) || c.plate.x > .01 || c.plate.to > 0 || m7) glob = true;
+                else grow(c.box);
+            }
         }
     }
     // album index marks
@@ -434,7 +443,7 @@ function archiveUpdate(dt) {
     if (r) {
         const M = rulerCount(), n = G[AR.group].albums.length;
         AR.rulerStart.to = clamp(r.sel - Math.floor(M / 2), 0, Math.max(0, n - M));
-        more = stepSpring(AR.rulerStart, dt) || more;
+        if (stepSpring(AR.rulerStart, dt)) glob = true;
         const s0 = Math.floor(AR.rulerStart.x);
         for (const i of [...AR.ticks.keys()]) if (i < s0 - 1 || i > s0 + M + 1) AR.ticks.delete(i);
         for (let i = Math.max(0, s0 - 1); i <= Math.min(n - 1, s0 + M + 1); i++) {
@@ -443,13 +452,14 @@ function archiveUpdate(dt) {
             let s = AR.ticks.get(i);
             if (!s) { s = Spring(to, 18); AR.ticks.set(i, s); }
             s.to = to;
-            more = stepSpring(s, dt) || more;
+            if (stepSpring(s, dt)) glob = true;
         }
     }
-    if (AR.title && !scrambleDone(AR.title)) { more = true; AR.dirtyInfo = true; }
-    if (!rollDone(AR.noRoll)) { more = true; AR.dirtyInfo = true; }
-    if (!rollDone(AR.selRoll) || !rollDone(AR.groupRoll)) more = true;
-    return more;
+    if (AR.title && !scrambleDone(AR.title)) { glob = true; AR.dirtyInfo = true; }
+    if (!rollDone(AR.noRoll)) { glob = true; AR.dirtyInfo = true; }
+    if (!rollDone(AR.selRoll) || !rollDone(AR.groupRoll)) glob = true;
+    AR.paint = glob ? null : box;
+    return glob || !!box;
 }
 // the cases of a row that can be on screen (with room for lift and gap): cases enter and leave out of sight, behind
 // the edges and fades, instead of popping in or out where they stand when the row scrolls
@@ -1000,6 +1010,10 @@ function drawArrayCase(gr, it, sx, sy, k, aw, I) {
     let selItem = null;
     if (it.isSel) { AR.from = [ox + meta.center[0] * k, oy + meta.center[1] * k]; selItem = { ox, oy }; }
     if (it.isSel && inspTurn() > 0) return selItem;                   // drawn by the inspection
+    // the area it is drawn in (AR.paint), with room above for the lift to come: the sprite, and right of it the label
+    // a case under the mouse may show
+    const lab = AR.hoverMode === "label" ? dp(420) : 0;
+    it.c.box = [ox - 2, oy - S * .2 - lab / 8, ox + S + 2 + lab, oy + S + 2];
     const alpha = Math.round(rowAlpha(it.pos) * clamp(it.c.appear.x, 0, 1)), f = rowTint(it.pos), t = thumbOf(it.a);
     // how frosted the case is: its shelf's frost at its place (frostAt), cleared as it is selected (it.c.clear)
     const fr = frostAt(it.pos) * (1 - clamp(it.c.clear.x, 0, 1));
