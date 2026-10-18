@@ -163,7 +163,7 @@ function drawGrid(gr) {
             for (const [px, py] of [[x, y], [x + c, y], [x, y + c], [x + c, y + c]]) gr.FillSolidRect(Math.round(px - dp(3)), Math.round(py - dp(3)), dp(6), dp(6), C.accent);
         }
         if (G.lab) {
-            text(gr, a.title || tr("UNTITLED"), 10, sel ? 700 : 600, C.fg, x, y + c + dp(6), c, dp(18));
+            text(gr, a.part || a.title || tr("UNTITLED"), 10, sel ? 700 : 600, C.fg, x, y + c + dp(6), c, dp(18));
             text(gr, a.artist || "—", 9, 500, C["text-muted"], x, y + c + dp(23), c, dp(16));
         }
     }

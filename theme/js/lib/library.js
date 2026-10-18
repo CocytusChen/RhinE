@@ -189,12 +189,49 @@ function libMessage(m) {
     }
 }
 
-// albums (and, once the worker has run, one item per track: they carry their album's number)
+// Long track titles made short for lists and labels, as a classical album's are: "Ferencz Liszt: Transcendental
+// Studies, S139 Nos. 1-12 - No. 1 Prélude (Presto)" on every track but the last words. Of an album's titles (in disc /
+// track order): a beginning they all share up to ": " (the composer) and an ending in brackets they all share (" (from
+// the series …)") are dropped; then neighbours whose titles begin alike up to a separator (WORK_SEPS) are a work: the
+// shared beginning is its name (work), the rest the track's own (part). A title with no work keeps itself as its part.
+const WORK_SEPS = [": ", " - ", " – ", " — ", " / "];
+function shortTitles(titles) {
+    let t = titles.map(x => String(x || ""));
+    const n = t.length;
+    if (n > 1) {
+        const c = t[0].indexOf(": "), pre = c > 0 ? t[0].slice(0, c + 2) : "";
+        if (pre && t.every(x => x.startsWith(pre) && x.length > pre.length)) t = t.map(x => x.slice(pre.length));
+        const o = t[0].endsWith(")") ? t[0].lastIndexOf(" (") : -1, suf = o > 0 ? t[0].slice(o) : "";
+        if (suf && t.every(x => x.endsWith(suf) && x.length > suf.length)) t = t.map(x => x.slice(0, -suf.length));
+    }
+    // the work two neighbours share: their common beginning, back to its last separator ([name, separator length])
+    const shared = (a, b) => {
+        let i = 0;
+        while (i < a.length && i < b.length && a[i] === b[i]) i++;
+        let at = -1, len = 0;
+        for (const sp of WORK_SEPS) { const k = i >= sp.length ? a.lastIndexOf(sp, i - sp.length) : -1; if (k > at) { at = k; len = sp.length; } }
+        return at >= 3 ? [a.slice(0, at), len] : null;
+    };
+    const pairs = t.map((x, i) => i + 1 < n ? shared(x, t[i + 1]) : null);
+    return t.map((x, i) => {
+        const w = pairs[i - 1] || pairs[i];
+        return w && x.length > w[0].length + w[1] ? { work: w[0], part: x.slice(w[0].length + w[1]) } : { work: "", part: x };
+    });
+}
+
+// albums (and, once the worker has run, one item per track: they carry their album's number, and their short title
+// and work, see shortTitles)
 function setAlbums(albums, items = []) {
     albums.forEach(a => { a.no = 1 + parseInt(fnv(a.key), 16) % 9999; });
     LIB.albums = albums;
     LIB.albumMap = new Map(albums.map(a => [a.key, a]));
     items.forEach(t => { const a = LIB.albumMap.get(t.album); t.no = a ? a.no : 0; });
+    const byAlbum = new Map();
+    for (const t of items) { if (!byAlbum.has(t.album)) byAlbum.set(t.album, []); byAlbum.get(t.album).push(t); }
+    for (const list of byAlbum.values()) {
+        list.sort((p, q) => p.ord - q.ord);
+        shortTitles(list.map(t => t.title)).forEach((s, i) => { list[i].part = s.part; list[i].work = s.work; });
+    }
     LIB.items = items;
     groupAlbums();
 }

@@ -60,6 +60,7 @@ const AR = {
     shelfPerGroup: getSetting("shelfPerGroup", true) !== false,   // each group starts a shelf of its own (the context menu)
     hoverRow: -1,   // the shelf (row index) of the case under the mouse (AR.hover): the selected one or any other
     hoverMode: HOVER_MODES.includes(getSetting("caseHover", "outline")) ? getSetting("caseHover", "outline") : "outline",   // the case under the mouse: outlined, titled or left as is (the context menu)
+    infoPlates: [],     // the info plates to draw this frame, over every shelf: the selected case's, and one going
     hoverPlate: null,   // the case to label this frame (hoverMode "label"): drawn after the shelf, over its neighbours
 };
 let ARCHIVE_ON = false;
@@ -202,7 +203,7 @@ function selectionChanged(animate = true) {
     const run = !!PICK.steps;
     if (animate) { setRoll(AR.selRoll, sel); setRoll(AR.groupRoll, gno); if (!run) setRoll(AR.noRoll, no); }
     else { AR.selRoll = Roll(sel); AR.groupRoll = Roll(gno); AR.noRoll = Roll(no); }
-    if (!run) { AR.title = a && animate ? Scramble(a.title || tr("UNTITLED")) : null; AR.dirtyInfo = true; }
+    if (!run) { AR.title = a && animate ? Scramble(a.part || a.title || tr("UNTITLED")) : null; AR.dirtyInfo = true; }
     if (AR.layout === "grid") GRID.reveal = true;   // the grid scrolls to a selection made elsewhere (keys, catalog)
     if (ARCHIVE_ON) { requestVisibleThumbs(); clock.wake(); }
 }
@@ -311,12 +312,24 @@ function albumTracks(a, max) {
         const at = own ? [...Array(list.Count).keys()].find(i => sameTrack(list[i], own)) : -1;
         first = prev.album === alb && prev.max === max && at >= prev.first && at < prev.first + max ? prev.first
             : at > max - 2 ? Math.max(0, Math.min(at - 1, list.Count - max)) : 0;
-        const n = Math.min(max, list.Count - first), sub = fb.CreateHandleList();
-        for (let i = 0; i < n; i++) sub.Add(list[first + i]);
-        rows = TF_AR_TRACK.EvalWithMetadbs(sub).map((s, k) => {
-            const [no, title, len] = s.split("\u0001"), i = first + k, h = list[i];
-            return { i, no: no ? pad(parseInt(no) || 0, 2) : pad(i + 1, 2), title, len: +len || 0, playing: sameTrack(h, np), own: sameTrack(h, own) };
-        });
+        // the whole album is read for its short titles and works (see shortTitles); a row where a work starts (or the
+        // window starts within one) is its name, and takes a row of the window
+        const all = TF_AR_TRACK.EvalWithMetadbs(list).map(s => s.split("\u0001")), short = shortTitles(all.map(v => v[1]));
+        const fill = from => {
+            const out = [];
+            let work = null;
+            for (let i = from; i < list.Count && out.length < max; i++) {
+                const [no, , len] = all[i], h = list[i], sh = short[i];
+                if (sh.work !== work && i > from && (work || sh.work) && out.length < max - 1) out.push({ gap: true });   // air between works
+                if (sh.work && sh.work !== work && out.length < max - 1) out.push({ work: sh.work });
+                work = sh.work;
+                out.push({ i, no: no ? pad(parseInt(no) || 0, 2) : pad(i + 1, 2), title: sh.part, len: +len || 0, playing: sameTrack(h, np), own: sameTrack(h, own) });
+            }
+            return out;
+        };
+        rows = fill(first);
+        // the work rows can push the selected track out of the window: then the window starts further on
+        while (at >= 0 && first < at && !rows.some(r => r.own)) rows = fill(++first);
     }
     AR.tracks = { key, rows, first, total: list ? list.Count : (albumOf(a) || a).tracks, album: alb, max };
     return AR.tracks;
@@ -332,16 +345,22 @@ function albumTrackList(a) {
     let rows = [];
     if (list && list.Count) {
         const R = getRatings(list);
-        rows = TF_AR_LIST.EvalWithMetadbs(list).map((v, i) => {
-            const [disc, no, title, len] = v.split("\u0001"), h = list[i];
-            return { i, disc: disc || "", no: no ? pad(parseInt(no) || 0, 2) : pad(i + 1, 2), title, len: +len || 0, rating: R[i] || 0,
-                     playing: sameTrack(h, np), own: sameTrack(h, own) };
+        const all = TF_AR_LIST.EvalWithMetadbs(list).map(v => v.split("\u0001")), short = shortTitles(all.map(v => v[2]));
+        rows = all.map(([disc, no, , len], i) => {
+            const h = list[i];
+            return { i, disc: disc || "", no: no ? pad(parseInt(no) || 0, 2) : pad(i + 1, 2), title: short[i].part, work: short[i].work,
+                     len: +len || 0, rating: R[i] || 0, playing: sameTrack(h, np), own: sameTrack(h, own) };
         });
     }
     const rated = rows.filter(r => r.rating);
     AR.list = { key, rows, handles: list, discs: new Set(rows.map(r => r.disc)).size, total: rows.reduce((n, r) => n + r.len, 0),
                 rated: rated.length, avg: rated.length ? rated.reduce((n, r) => n + r.rating, 0) / rated.length : 0 };
     return AR.list;
+}
+// a work's name over its tracks in the album file's lists (see shortTitles)
+function drawWorkRow(gr, work, x, y, w, h) {
+    gr.DrawText(work, fontFor(work, 10, 600), C["fg-soft"], x, y + dp(2), w, h, DT_SINGLE | DT_ELLIPSIS);
+    gr.FillSolidRect(x, y + h - dp(3), w, HAIR, C["line-faint"]);
 }
 function setInfoPage(page) {
     if (page === AR.page) return;
@@ -387,10 +406,10 @@ function archiveUpdate(dt) {
             const nd = titleDistance(slotOf(G[gi], i) - r.scroll.to - selY, gi - AR.group);
             const t = caseTargets(i, r, active, G[gi], gi === AR.hoverRow ? AR.hover : -1, nd);
             let c = r.cases.get(i);
-            if (!c) { c = { lift: Spring(t.lift, 13), clear: Spring(t.clear, 8), gap: Spring(t.gap, 11), near: Spring(t.near, 10), hov: Spring(t.hov, 14) }; r.cases.set(i, c); }
-            c.lift.to = t.lift; c.lift.w = active ? 13 : 7; c.clear.to = t.clear; c.gap.to = t.gap; c.near.to = t.near; c.hov.to = t.hov;
-            const m1 = stepSpring(c.lift, dt), m2 = stepSpring(c.clear, dt), m3 = stepSpring(c.gap, dt), m4 = stepSpring(c.near, dt), m5 = stepSpring(c.hov, dt);
-            more = more || m1 || m2 || m3 || m4 || m5;
+            if (!c) { c = { lift: Spring(t.lift, 13), clear: Spring(t.clear, 8), gap: Spring(t.gap, 11), near: Spring(t.near, 10), hov: Spring(t.hov, 14), plate: Spring(t.plate, 12) }; r.cases.set(i, c); }
+            c.lift.to = t.lift; c.lift.w = active ? 13 : 7; c.clear.to = t.clear; c.gap.to = t.gap; c.near.to = t.near; c.hov.to = t.hov; c.plate.to = t.plate;
+            const m1 = stepSpring(c.lift, dt), m2 = stepSpring(c.clear, dt), m3 = stepSpring(c.gap, dt), m4 = stepSpring(c.near, dt), m5 = stepSpring(c.hov, dt), m6 = stepSpring(c.plate, dt);
+            more = more || m1 || m2 || m3 || m4 || m5 || m6;
         }
     }
     // album index marks
@@ -462,6 +481,8 @@ function caseTargets(i, r, active, row, hover, nd) {
         // the cases under the mouse show their titles as much as they are lifted for it (the one under it whole, its
         // neighbours less), even where titles are off or far from the selection
         hov: hb,
+        // the info plate: the selected case's (while it is inspected, drawInspection carries it over)
+        plate: isSel ? 1 : 0,
     };
 }
 
@@ -801,13 +822,14 @@ function topLook() {
     TOP_LOOK.key = JSON.stringify(TOP_LOOK);
     return TOP_LOOK;
 }
-function drawTopTitle(gr, a, ox, oy, k, alpha, f) {
+// P: (x, y, z) in case model units -> screen point; by default the array's projection of the case at (ox, oy)
+function drawTopTitle(gr, a, ox, oy, k, alpha, f, P = null) {
     const m = CASE_META.array.origin, ax = CASE_META.axes, T = TOP_STRIP;
-    const at = (x, y) => [ox + (m[0] + x * ax.x[0] + y * ax.y[0] + T.z * ax.z[0]) * k, oy + (m[1] + x * ax.x[1] + y * ax.y[1] + T.z * ax.z[1]) * k];
+    const at = P ? (x, y) => P(x, y, T.z) : (x, y) => [ox + (m[0] + x * ax.x[0] + y * ax.y[0] + T.z * ax.z[0]) * k, oy + (m[1] + x * ax.x[1] + y * ax.y[1] + T.z * ax.z[1]) * k];
     const o = at(T.x0, T.y), u = at(T.x0 + 1, T.y), v = at(T.x0, T.y - 1);
     if (Math.hypot(v[0] - o[0], v[1] - o[1]) * T.y * 2 < 5) return;   // too small to read
     QM[0] = (u[0] - o[0]) / 100; QM[1] = (u[1] - o[1]) / 100; QM[2] = (v[0] - o[0]) / 100; QM[3] = (v[1] - o[1]) / 100; QM[4] = o[0]; QM[5] = o[1];
-    const look = topLook(), img = topStrip((a.title || tr("UNTITLED")).toUpperCase(), look), w = (T.x1 - T.x0) * 100, h = T.y * 200;
+    const look = topLook(), img = topStrip((a.part || a.title || tr("UNTITLED")).toUpperCase(), look), w = (T.x1 - T.x0) * 100, h = T.y * 200;
     gr.SetTransform(QM);
     if (look.kind === "label") {
         const sa = alpha * TOP_ALPHA;
@@ -916,8 +938,10 @@ function drawArchive(gr) {
         }
         drawLip(gr, row, gi, r, x, toScreen, k);
     }
+    for (const p of AR.infoPlates) drawInfoPlate(gr, p);
+    AR.infoPlates = [];
     if (AR.hoverPlate) {
-        const h = AR.hoverPlate, t = [...(h.a.title || tr("UNTITLED"))];
+        const h = AR.hoverPlate, t = [...(h.a.part || h.a.title || tr("UNTITLED"))];
         drawCasePlate(gr, h.a, h.ox, h.oy, h.k, h.alpha, t.length > 40 ? t.slice(0, 39).join("") + "…" : t.join(""));
         AR.hoverPlate = null;
     }
@@ -981,14 +1005,100 @@ function drawArrayCase(gr, it, sx, sy, k, aw, I) {
         if (hovered && AR.hoverMode === "label") AR.hoverPlate = { a: it.a, ox, oy, k, alpha };
         if (hovered && AR.hoverMode === "outline") gr.DrawPolygon(withAlpha(C.accent, alpha / 255), Math.max(HAIR, dp(1.5)), P.flatMap(([px, py]) => [ox + px * k, oy + py * k]));
     }
-    if (it.isSel && it.c.clear.x > .6 && AR.insp === 0) {
-        drawCasePlate(gr, it.a, ox, oy, k);
-        for (const [px, py] of meta.cover) gr.FillSolidRect(Math.round(ox + px * k - dp(3)), Math.round(oy + py * k - dp(3)), dp(6), dp(6), C.accent);
+    // the selected case's info plate, drawn after every shelf (see drawInfoPlate), and its corner marks: coming in as
+    // its glass clears, going as another case is selected, the shelf changes or the case is inspected
+    const pv = clamp(it.c.plate.x, 0, 1) * clamp((it.c.clear.x - .6) / .4, 0, 1);
+    if (pv > .01) {
+        AR.infoPlates.push({ a: it.a, ox, oy, k, alpha: Math.round(alpha * pv), sel: it.isSel });
+        for (const [px, py] of meta.cover) gr.FillSolidRect(Math.round(ox + px * k - dp(3)), Math.round(oy + py * k - dp(3)), dp(6), dp(6), withAlpha(C.accent, pv));
     }
     return selItem;
 }
-// a plate led out from the top corner of a case's cover: ARC-#### for the selected case, the title (the album's, or
-// the song's when every track is its own item) for the one under the mouse in "label" mode
+// The selected case's info plate: its ARC number and track (or its album's track count) on an inverse header, then the
+// title, the artist, the album (or the genre), and length, format and year. It is drawn flat once (PLATE_IMG keeps the
+// last) and laid on the plane of the case's front, the cover's plane (the case's x and z axes), beside the case and a
+// little above it (PLATE_AT: its top-left corner in case model units), so it stands in the scene, slanted like the
+// case, and rises with it; a leader runs to it from the cover's corner. Its size is not the case's but the text's own
+// (PLATE_SCALE of it, upright), so it stays readable at every array size. It is drawn after every shelf, over them: it
+// only shows, nothing on it is clicked.
+// PLATE_SLANT: how far its rows lean with the case's front, 0 level … 1 as the cover's edges
+const PLATE = { w: 236, res: 2 }, PLATE_AT = { x: 2.45, z: 4.5 }, PLATE_SCALE = .95, PLATE_SLANT = 0, PLATE_MIN = .5, PLATE_WRAP = .85;
+const DT_WRAP = 0x00000800 | 0x00000010 | 0x00008000 | 0x00040000;   // NOPREFIX | WORDBREAK | END_ELLIPSIS | EDITCONTROL
+const PLATE_IMG = new Map();   // key -> plate: the last few (a plate going and one coming are drawn at once)
+// The rows are as tall as their fonts (which follow the text size), the title on up to two lines.
+function plateImage(a) {
+    const key = `${a.key}|${MODE}|${SCALE}|${TEXT_SCALE}|${C.fg}|${C.bg}|${C.accent}|${C.panel}`;
+    if (PLATE_IMG.has(key)) return PLATE_IMG.get(key);
+    const al = albumOf(a) || a, isTrack = !!a.album, R = PLATE.res, u = v => dp(v * TEXT_SCALE);
+    // a track: its short title, and its work (else its album) on the third line
+    const title = a.part || a.title || tr("UNTITLED"), artist = a.artist || "—", third = isTrack ? a.work || al.title || "" : (al.genre || "").toUpperCase();
+    const no = isTrack ? a.ord % 1000 : 0, right = isTrack ? `TRK ${no ? pad(no, 2) : "—"} / ${pad(al.tracks, 2)}` : tr("{0} TRACKS", pad(al.tracks, 2));
+    const meta = [a.length ? fmtTime(a.length) : "", fmtChip(a, true), a.year || ""].filter(Boolean).join("   ");
+    const w = u(PLATE.w), m = u(12), tw = w - 2 * m - dp(2), x = m + dp(2);
+    // The layout first, measured on a 1 px bitmap. Text too long for its room is set smaller, down to PLATE_MIN of its
+    // size: the title and the work so they fit on two lines (one when they can at their full size), the artist on one.
+    const probe = d2d.CreateImage(1, 1), pg = probe.GetGraphics();
+    // (by measured widths: two lines are taken to hold PLATE_WRAP of twice the width, for the words that do not fill
+    // the first line)
+    const fit = (t, size, weight, maxLines) => {
+        const room = maxLines > 1 ? tw * 2 * PLATE_WRAP : tw;
+        for (let sz = size; ; sz -= .5) {
+            const f = fontFor(t, sz, weight), wt = pg.CalcTextWidth(t, f);
+            if (wt <= room || sz - .5 < size * PLATE_MIN) return { f, n: wt <= tw ? 1 : maxLines };
+        }
+    };
+    const T = fit(title, 13, 600, 2), fT = T.f, lines = T.n, fA = fit(artist, 10, 400, 1).f, L3 = fit(third, 10, 500, 2), fL = L3.f;
+    probe.ReleaseGraphics(pg);
+    const fH = font(9, 600), fR = font(9, 500), fM = font(9, 500), hh = Math.ceil(fH.Height + u(9));
+    const lineH = f => Math.ceil(f.Height * 1.2);   // a line with its leading: a box of n × Height is too short for n lines
+    const tH = lineH(fT) * lines, aH = Math.ceil(fA.Height), lH = L3.n > 1 ? lineH(fL) * 2 : Math.ceil(fL.Height), mH = Math.ceil(fM.Height);
+    const yT = hh + u(10), yA = yT + tH + u(3), yL = yA + aH + u(1), yRule = yL + lH + u(8), yM = yRule + u(7), h = yM + mH + u(10);
+    const img = d2d.CreateImage(Math.ceil(w * R), Math.ceil(h * R)), g = img.GetGraphics();
+    g.SetTransform(new Float32Array([R, 0, 0, R, 0, 0]));
+    // header: ARC-#### · TRK 03 / 24 (an album: 12 TRACKS)
+    g.FillSolidRect(0, 0, w, hh, C.fg);
+    g.DrawText(`ARC-${pad(a.no, 4)}`, fH, C.bg, m, 0, w - 2 * m, hh, DT_SINGLE);
+    g.DrawText(right, fR, C.bg, m, 0, w - 2 * m, hh, DT_RIGHT_SINGLE);
+    // body: title, artist, album (an album: its genre), a rule, then length, format, year
+    g.FillSolidRect(0, hh, w, h - hh, C.panel);
+    box(g, 0, hh, w, h - hh, C["line-dim"], 1);
+    g.FillSolidRect(0, hh, dp(2), h - hh, C.accent);
+    g.DrawText(title, fT, C.fg, x, yT, tw, tH, lines > 1 ? DT_WRAP : DT_SINGLE | DT_ELLIPSIS);
+    g.DrawText(artist, fA, C["fg-soft"], x, yA, tw, aH, DT_SINGLE | DT_ELLIPSIS);
+    g.DrawText(third, fL, C.fg, x, yL, tw, lH, L3.n > 1 ? DT_WRAP : DT_SINGLE | DT_ELLIPSIS);
+    g.FillSolidRect(x, yRule, tw, 1, C["line-dim"]);
+    g.DrawText(meta, fM, C["text-muted"], x, yM, tw, mH, DT_SINGLE | DT_ELLIPSIS);
+    g.ResetTransform();
+    img.ReleaseGraphics(g);
+    const plate = { key, img, w, h, hh };
+    PLATE_IMG.set(key, plate);
+    if (PLATE_IMG.size > 4) PLATE_IMG.delete(PLATE_IMG.keys().next().value);
+    return plate;
+}
+TOKEN_LISTENERS.push(() => PLATE_IMG.clear());
+// p: { a, ox, oy, k, alpha }: the selected case's sprite at (ox, oy), k sprite px -> screen px
+function drawInfoPlate(gr, p) {
+    if (p.alpha <= 0) return;
+    const P = plateImage(p.a), m = CASE_META.array.origin, ax = CASE_META.axes;
+    const at = (x, y, z) => [p.ox + (m[0] + x * ax.x[0] + y * ax.y[0] + z * ax.z[0]) * p.k, p.oy + (m[1] + x * ax.x[1] + y * ax.y[1] + z * ax.z[1]) * p.k];
+    // the plate's axes: its rows along the case's x on screen (as far as PLATE_SLANT leans them), its columns along z,
+    // each PLATE_SCALE px per plate px (not stretched by the x axis being longer on screen than z)
+    const nx = Math.hypot(ax.x[0], ax.x[1]), rx = 1 + (ax.x[0] / nx - 1) * PLATE_SLANT, ry = ax.x[1] / nx * PLATE_SLANT, nr = Math.hypot(rx, ry);
+    const sz = PLATE_SCALE / Math.hypot(ax.z[0], ax.z[1]), o = at(PLATE_AT.x, -.23, PLATE_AT.z);
+    QM[0] = rx / nr * PLATE_SCALE; QM[1] = ry / nr * PLATE_SCALE; QM[2] = -ax.z[0] * sz; QM[3] = -ax.z[1] * sz; QM[4] = o[0]; QM[5] = o[1];
+    // the leader: from the cover's top corner to the middle of the plate's header, the last stretch level with it
+    const c = CASE_META.array.cover[1], x1 = p.ox + c[0] * p.k + dp(4), y1 = p.oy + c[1] * p.k - dp(4);
+    const ex = o[0] + QM[2] * P.hh / 2, ey = o[1] + QM[3] * P.hh / 2, col = withAlpha(C.fg, p.alpha / 255);
+    gr.DrawLine(x1, y1, ex - dp(14), ey, HAIR, col);
+    gr.DrawLine(ex - dp(14), ey, ex, ey, HAIR, col);
+    gr.SetTransform(QM);
+    gr.DrawImage(P.img, 0, 0, P.w, P.h, 0, 0, P.img.Width, P.img.Height, 0, p.alpha);
+    gr.ResetTransform();
+    // where the selected case's plate was last drawn: an inspection carries it from there (see drawInspection)
+    if (p.sel) AR.plateFrom = { key: p.a.key, qm: Array.from(QM), alpha: p.alpha };
+}
+// a plate led out from the top corner of a case's cover: the title (the album's, or the song's when every track is its
+// own item) for the one under the mouse in "label" mode
 function drawCasePlate(gr, a, ox, oy, k, alpha = 255, txt = `ARC-${pad(a.no, 4)}`) {
     const top = CASE_META.array.cover[1], x1 = ox + top[0] * k + dp(4), y1 = oy + top[1] * k - dp(4), lx = x1 + dp(26), ly = y1 - dp(30);
     const fg = withAlpha(C.fg, alpha / 255), s = st(AR_ST.plate, C.bg, C.fg);
@@ -1227,7 +1337,7 @@ function drawRuler(gr) {
     // the album under the mouse (or under a drag along the index), named on a plate above its mark (#8)
     const ht = AR.hoverTick, a = ht >= 0 ? curGroup().albums[ht] : null;
     if (a) {
-        const s = st(AR_ST.plate, C.bg, C.fg), t = fitLabel(`${pad(ht + 1, 2)}  ${a.title || tr("UNTITLED")}`, s, dp(280)), w = labelWidth(t, s) + dp(16), h = dp(20);
+        const s = st(AR_ST.plate, C.bg, C.fg), t = fitLabel(`${pad(ht + 1, 2)}  ${a.part || a.title || tr("UNTITLED")}`, s, dp(280)), w = labelWidth(t, s) + dp(16), h = dp(20);
         const mx = Math.round(x0 + (ht - s0) * step), px = clamp(mx - Math.round(w / 2), dp(8), arrayW() - w - dp(8)), py = y0 - dp(46);
         gr.FillSolidRect(mx, py + h, HAIR, dp(10), C.fg);
         gr.FillSolidRect(px, py, w, h, C.fg);
@@ -1273,6 +1383,38 @@ function inspectK(k0) {
 // inspection, stage 2 (e: 0 lifted above its row … 1 in front): the case moves to the middle, grows ×2 and turns
 // square-on through the evenly spaced pre-rendered frames; between two frames the next one fades in over the current
 // one and the cover and label quads are interpolated, so the turn has no visible steps
+// The inspection frames name the cover's and the spine label's corners and the origin, not the case's axes. An affine
+// camera fitted to them per frame maps the case's top edge onto the frame, so its title goes with the case as it starts
+// to turn: least squares over those nine points, placed on the case from the array view's axes (the cover on the front,
+// y = -0.23; the label on the side, x = 2.3). It holds closely in the first frames (none off in the first, about 7 px
+// in 900 a third of the way); the title has faded by the time it would not (see drawInspection).
+function inspectCam(i) {
+    const M = CASE_META.inspect[i];
+    if (M.cam) return M.cam;
+    const A = CASE_META.axes, O = CASE_META.array.origin, col = [A.x, A.y, A.z];
+    // a point of the array view on the plane where model axis `fixed` is `val`: its model coordinates
+    const model = (pt, fixed, val) => {
+        const [i1, i2] = [0, 1, 2].filter(j => j !== fixed), r0 = pt[0] - O[0] - col[fixed][0] * val, r1 = pt[1] - O[1] - col[fixed][1] * val;
+        const det = col[i1][0] * col[i2][1] - col[i2][0] * col[i1][1], p = [0, 0, 0];
+        p[i1] = (r0 * col[i2][1] - col[i2][0] * r1) / det; p[i2] = (col[i1][0] * r1 - r0 * col[i1][1]) / det; p[fixed] = val;
+        return p;
+    };
+    const X = [...CASE_META.array.cover.map(pt => model(pt, 1, -.23)), ...CASE_META.array.label.map(pt => model(pt, 0, 2.3)), [0, 0, 0]].map(p => [...p, 1]);
+    const S = [...M.cover, ...M.label, M.origin];
+    // the normal equations (XᵀX) c = Xᵀs, one per screen coordinate, by Gaussian elimination
+    const solve = d => {
+        const N = [0, 1, 2, 3].map(r => [0, 1, 2, 3].map(c => X.reduce((n, x) => n + x[r] * x[c], 0)).concat(X.reduce((n, x, j) => n + x[r] * S[j][d], 0)));
+        for (let c = 0; c < 4; c++) {
+            let piv = c;
+            for (let r = c + 1; r < 4; r++) if (Math.abs(N[r][c]) > Math.abs(N[piv][c])) piv = r;
+            [N[c], N[piv]] = [N[piv], N[c]];
+            for (let r = 0; r < 4; r++) if (r !== c) { const q = N[r][c] / N[c][c]; for (let j = c; j < 5; j++) N[r][j] -= q * N[c][j]; }
+        }
+        return N.map((row, r) => row[4] / row[r]);
+    };
+    M.cam = [solve(0), solve(1)];
+    return M.cam;
+}
 function drawInspection(gr, e) {
     const frames = ARIMG.inspect, a = curAlbum(), aw = arrayW();
     gr.FillSolidRect(0, 0, aw, H, withAlpha(C.bg, .82 * e));
@@ -1280,7 +1422,14 @@ function drawInspection(gr, e) {
     const n = frames.length, x = e * (n - 1), i0 = Math.min(n - 2, Math.floor(x)), f = clamp(x - i0, 0, 1);
     const M0 = CASE_META.inspect[i0], M1 = CASE_META.inspect[i0 + 1], full = CASE_META.inspect_res;
     const k0 = arK() * CASE_META.array_ppu / CASE_META.inspect_ppu, k = lerp(k0, inspectK(k0), e);
-    const cx = lerp(AR.from[0], aw * .49, e), cy = lerp(AR.from[1], H * .5, e);
+    // the case comes to rest left of the middle as far as the info plate needs room on its right
+    const P = plateImage(a), kEnd = inspectK(k0), last = CASE_META.inspect[n - 1], lc = last.crop || [0, 0, full[0], full[1]];
+    const rightOf = (lc[0] + lc[2] - last.center[0]) * kEnd, leftOf = (last.center[0] - lc[0]) * kEnd;
+    const cxEnd = Math.min(aw * .49, Math.max(leftOf + dp(16), aw - dp(24) - P.w - dp(40) - rightOf));
+    const cx = lerp(AR.from[0], cxEnd, e), cy = lerp(AR.from[1], H * .5, e);
+    // the info plate's place by the case at rest: right of it, its header level with the cover's top corner
+    const oxEnd = cxEnd - last.center[0] * kEnd, oyEnd = H * .5 - last.center[1] * kEnd;
+    const plateTo = [1, 0, 0, 1, Math.round(Math.min(aw - dp(16) - P.w, cxEnd + rightOf + dp(40))), Math.round(oyEnd + last.cover[1][1] * kEnd - P.hh / 2)];
     const ox = cx - M0.center[0] * k, oy = cy - M0.center[1] * k;
     const mixQ = (A, B) => A.map((p, j) => [lerp(p[0], B[j][0], f), lerp(p[1], B[j][1], f)]);
     const coverQ = mixQ(M0.cover, M1.cover), labelQ = mixQ(M0.label, M1.label);
@@ -1295,6 +1444,27 @@ function drawInspection(gr, e) {
     frame(frames[i0], M0, 255);
     if (f > .01) frame(frames[i0 + 1], M1, Math.round(255 * f));
     drawSpineLabel(gr, labelQ, ox, oy, k, a.no);
+    // The info plate goes from where it stood by the case in the array (AR.plateFrom: its transform there) to its place
+    // by the case at rest, as the case turns, and back; the leader stays on the cover's corner.
+    const from = AR.plateFrom && AR.plateFrom.key === a.key ? AR.plateFrom : { qm: plateTo, alpha: 0 };
+    const pm = from.qm.map((v, j) => lerp(v, plateTo[j], e)), pa = Math.round(lerp(from.alpha, 255, e));
+    if (pa > 0) {
+        const cq = [ox + coverQ[1][0] * k, oy + coverQ[1][1] * k], lx = pm[4] + pm[2] * P.hh / 2, ly = pm[5] + pm[3] * P.hh / 2;
+        gr.DrawLine(cq[0] + dp(4), cq[1] - dp(4), lx, ly, HAIR, withAlpha(C.fg, pa / 255));
+        for (let j = 0; j < 6; j++) QM[j] = pm[j];
+        gr.SetTransform(QM);
+        gr.DrawImage(P.img, 0, 0, P.w, P.h, 0, 0, P.img.Width, P.img.Height, 0, pa);
+        gr.ResetTransform();
+    }
+    // the title on the case's top edge goes with it as it starts to turn, and fades as the top turns out of sight
+    const ta = AR.topTitles ? clamp(1 - e / .3, 0, 1) : 0;
+    if (ta > .01) {
+        const c0 = inspectCam(i0), c1 = inspectCam(i0 + 1), pr = (c, X, Y, Z) => [0, 1].map(d => c[d][0] * X + c[d][1] * Y + c[d][2] * Z + c[d][3]);
+        drawTopTitle(gr, a, 0, 0, 0, Math.round(255 * ta), 0, (X, Y, Z) => {
+            const p0 = pr(c0, X, Y, Z), p1 = pr(c1, X, Y, Z);
+            return [ox + lerp(p0[0], p1[0], f) * k, oy + lerp(p0[1], p1[1], f) * k];
+        });
+    }
     if (e > .85) {
         const q = coverQ.map(([px, py]) => [ox + px * k, oy + py * k]), al = (e - .85) / .15;
         for (const [px, py] of q) gr.FillSolidRect(Math.round(px - dp(3)), Math.round(py - dp(3)), dp(6), dp(6), withAlpha(C.accent, al));
@@ -1407,7 +1577,8 @@ function drawInfoFile(gr, a, x, y, iw, w, h) {
     y += HEAVY + dp(20);
     // title plate (wraps, two lines at most): the album's title, or the track's
     const al = albumOf(a) || a, isTrack = al !== a;
-    const title = AR.title ? scrambleText(AR.title) : (a.title || tr("UNTITLED")), tf = fontFor(a.title || "U", 25, 600);
+    // a track by its short title (see shortTitles), its work in the line below
+    const name = a.part || a.title || tr("UNTITLED"), title = AR.title ? scrambleText(AR.title) : name, tf = fontFor(name, 25, 600);
     const lines = gr.EstimateLineWrap(title, tf, iw - dp(24)), lh = dp(42);
     for (let i = 0, ly = y; i < Math.min(4, lines.length); i += 2, ly += lh + dp(2)) {
         let t = lines[i];
@@ -1420,7 +1591,7 @@ function drawInfoFile(gr, a, x, y, iw, w, h) {
     // artist, year / tracks / length
     label(gr, fitLabel((a.artist || tr("UNKNOWN ARTIST")).toUpperCase(), st(AR_ST.artist, 0), iw), st(AR_ST.artist, C.fg), x, y);
     y += dp(22);
-    const meta = isTrack ? `${(al.title || tr("UNTITLED")).toUpperCase()} / ${a.year || "—"} / ${fmtTime(a.length)}`
+    const meta = isTrack ? `${(a.work || al.title || tr("UNTITLED")).toUpperCase()} / ${a.year || "—"} / ${fmtTime(a.length)}`
                          : `${a.year || "—"} / ${tr("{0} TRACKS", pad(a.tracks, 2))} / ${fmtTime(a.length)}`;
     label(gr, fitLabel(meta, st(AR_ST.meta, 0), iw), st(AR_ST.meta, C["text-muted"]), x, y);
     y += dp(28);
@@ -1448,6 +1619,8 @@ function drawInfoFile(gr, a, x, y, iw, w, h) {
     if (!TL.rows.length) label(gr, tr(LIB.live ? "NO TRACKS" : "INDEXING …"), st(AR_ST.more, C["text-muted"]), x + dp(34), y + dp(6));
     TL.rows.forEach((t, k) => {
         const ry = y + k * rowH, hov = AR.infoHover === t.i;
+        if (t.gap) return;
+        if (t.work) { drawWorkRow(gr, t.work, x, ry, iw, rowH); return; }
         if (t.own || hov) gr.FillSolidRect(x - dp(8), ry, iw + dp(16), rowH, t.own ? C.panel : withAlpha(C.fg, .06));
         if (t.own) gr.FillSolidRect(x - dp(8), ry, dp(3), rowH, C.accent);
         gr.DrawText(t.playing ? "▶" : t.no, font(12, 400), t.playing ? C.accent : C["text-muted"], x, ry, dp(34), rowH, DT_SINGLE);
@@ -1501,8 +1674,14 @@ function drawInfoTracks(gr, a, x, y, iw, w, h) {
     else {
         // the display rows: a header per disc when there are several, then its tracks
         const D = [];
-        let disc = null;
-        for (const r of L.rows) { if (L.discs > 1 && r.disc !== disc) { disc = r.disc; D.push({ head: r.disc }); } D.push(r); }
+        let disc = null, work = null;
+        for (const r of L.rows) {
+            if (L.discs > 1 && r.disc !== disc) { disc = r.disc; work = null; D.push({ head: r.disc }); }
+            if (r.work !== work && D.length && D[D.length - 1].head === undefined && (work || r.work)) D.push({ gap: true });   // air between works
+            if (r.work && r.work !== work) D.push({ workHead: r.work });
+            work = r.work;
+            D.push(r);
+        }
         const fit = Math.max(1, Math.floor(listH / rowH));
         AR.listMax = Math.max(0, D.length - fit);
         // a new album opens on its selected track item (else at the top); another track of the same album selected stays
@@ -1515,6 +1694,8 @@ function drawInfoTracks(gr, a, x, y, iw, w, h) {
         AR.listScroll = clamp(AR.listScroll, 0, AR.listMax);
         D.slice(AR.listScroll, AR.listScroll + fit).forEach((r, k) => {
             const ry = y + k * rowH;
+            if (r.gap) return;
+            if (r.workHead) { drawWorkRow(gr, r.workHead, x, ry, iw, rowH); return; }
             if (r.head !== undefined) {
                 label(gr, `${tr("DISC")} ${r.head || "—"}`, st(AR_ST.key, C.fg), x, ry + Math.round((rowH - labelHeight(AR_ST.key)) / 2));
                 hline(gr, x + dp(64), ry + rowH / 2, iw - dp(64), C["line-faint"]);
