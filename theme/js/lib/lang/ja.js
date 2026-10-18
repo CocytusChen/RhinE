@@ -209,4 +209,9 @@ I18N["ja"] = {
     "How the Archive draws the selected shelf, the shelves behind it and the shelves in front of it.": "アーカイブで選択中の棚・奥の棚・手前の棚をそれぞれどう表示するか。",
     "Customise in STYLE …": "スタイルでカスタマイズ …",
     "Back to the default look": "デフォルトの見た目に戻す",
+    // how a view switch looks (05 STYLE › DISPLAY)
+    "VIEW SWITCH": "ビュー切り替え",
+    "SCAN": "スキャン",
+    "WIPE": "ワイプ",
+    "CUT": "カット",
 };

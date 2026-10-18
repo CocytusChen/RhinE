@@ -208,4 +208,9 @@ I18N["zh-CN"] = {
     "How the Archive draws the selected shelf, the shelves behind it and the shelves in front of it.": "档案中当前货架、后方货架与前方货架各自的显示方式。",
     "Customise in STYLE …": "在外观中自定义 …",
     "Back to the default look": "恢复默认外观",
+    // how a view switch looks (05 STYLE › DISPLAY)
+    "VIEW SWITCH": "页面切换",
+    "SCAN": "扫描",
+    "WIPE": "滑开",
+    "CUT": "直接",
 };

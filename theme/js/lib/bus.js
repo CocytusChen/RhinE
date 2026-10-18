@@ -9,7 +9,8 @@
 const BUS = "audio-archive";
 const BUS_HANDLERS = {};
 const STATE = { view: "playlists", preset: "album", reduce: false, boot: true, skin: "white", grain: true, lyricsOnline: true,
-                textScale: 1, arrayScale: 1, inspectScale: 1.3, wallpaper: null, halftone: "bottom", halftoneLevel: "mid" };
+                textScale: 1, arrayScale: 1, inspectScale: 1.3, wallpaper: null, halftone: "bottom", halftoneLevel: "mid",
+                viewFx: "scan" };
 
 // text size, Array scale and inspection size: the choices offered in MENU › Audio Archive and the Style view (frame.js keeps the value)
 const TEXT_SCALES = [.9, 1, 1.1, 1.2, 1.35, 1.5], ARRAY_SCALES = [.8, .9, 1, 1.15, 1.3], INSPECT_SCALES = [1, 1.15, 1.3, 1.5];
@@ -23,6 +24,10 @@ const pickFloor = v => FLOORS.some(f => f[0] === v) ? v : "plain";
 // the halftone of dots on the album file and the signal profile card (05 STYLE): where (off, along the bottom, the
 // lower right corner) and how strong (lib/draw.js halftoneDecor)
 const HALFTONES = [["off", "OFF"], ["bottom", "BOTTOM"], ["corner", "CORNER"]], HALFTONE_LEVELS = [["low", "FAINT"], ["mid", "MEDIUM"], ["high", "STRONG"]];
+// how a view switch looks (the Style view's VIEW SWITCH; frame.js runs it, fx.js draws it): the cover slides off with
+// the scan head and its wake, slides off plain and quicker, or there is none: the new view at once
+const VIEW_FXS = [["scan", "SCAN"], ["wipe", "WIPE"], ["cut", "CUT"]];
+const pickViewFx = v => VIEW_FXS.some(f => f[0] === v) ? v : "scan";
 const pickHalftone = v => HALFTONES.some(f => f[0] === v) ? v : "bottom";
 const pickHalftoneLevel = v => HALFTONE_LEVELS.some(f => f[0] === v) ? v : "mid";
 const pickScale = (v, list) => list.reduce((a, b) => Math.abs(b - v) < Math.abs(a - v) ? b : a, 1);

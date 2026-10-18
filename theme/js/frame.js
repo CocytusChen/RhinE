@@ -30,6 +30,7 @@ STATE.floor = pickFloor(getSetting("floor", "plain"));
 STATE.wallpaper = pickWallpaper(getSetting("wallpaper", null));
 STATE.halftone = pickHalftone(getSetting("halftone", "bottom"));
 STATE.halftoneLevel = pickHalftoneLevel(getSetting("halftoneLevel", "mid"));
+STATE.viewFx = pickViewFx(getSetting("viewFx", "scan"));
 REDUCE_MOTION = STATE.reduce;
 RELOAD_ON_LANG = false;   // see lib/bus.js
 const P = {};          // child name -> PanelObject
@@ -37,7 +38,7 @@ let ready = false;
 
 const broadcast = () => send("state", { view: STATE.view, preset: STATE.preset, reduce: STATE.reduce, boot: STATE.boot, skin: STATE.skin, grain: STATE.grain, lyricsOnline: STATE.lyricsOnline,
                                    textScale: STATE.textScale, arrayScale: STATE.arrayScale, inspectScale: STATE.inspectScale, floor: STATE.floor, wallpaper: STATE.wallpaper,
-                                   halftone: STATE.halftone, halftoneLevel: STATE.halftoneLevel });
+                                   halftone: STATE.halftone, halftoneLevel: STATE.halftoneLevel, viewFx: STATE.viewFx });
 
 // The layout creates the children in CHILDREN order and that is their z-order, so GetPanelByIndex(i) is CHILDREN[i].
 // They may not exist yet on the root's first on_size, so look again (briefly) until they are all there.
@@ -118,18 +119,21 @@ function sendPlaylistSize(r = regions()) { if (r.playlist) send("playlist-size",
 // ----------------------------------------------------------------------------------------------- transitions
 // The fx panel is only moved during a transition, never resized (a resize rebuilds its Direct2D surface every frame).
 // view: a panel the size of the view area starts on top of it and slides right off the window; its left edge is the
-//       scan head, so the new view is uncovered left to right
+//       scan head, so the new view is uncovered left to right (STATE.viewFx "scan")
+// wipe: the same panel plain (no scan head), a little quicker ("wipe")
+// ("cut": no transition, the new view at once)
 // mode: the colours swap first (every panel repaints and the native playlist redraws, ≈ 0.1 s) and the band only
 //       starts once that is done — Windows runs timers after pending paints — so the sweep itself never stalls
 let fx = null;   // { kind, tw }
-const fxGeom = kind => kind === "view"
+const FX_VIEW_MS = { view: 600, wipe: 420 };   // the view kinds and how long each runs
+const fxGeom = kind => FX_VIEW_MS[kind]
     ? { y: dp(M.header), w: W, h: H - dp(M.transport + M.status + M.header) }
     : { y: 0, w: dp(222), h: H };
 const fxClock = Clock(() => {
     if (!fx || fx.kind === "boot") return false;
-    if (!fx.tw) fx.tw = Tween(fx.kind === "view" ? 600 : 560);   // first frame after the swap's repaint
+    if (!fx.tw) fx.tw = Tween(FX_VIEW_MS[fx.kind] || 560);   // first frame after the swap's repaint
     const k = tweenK(fx.tw), g = fxGeom(fx.kind);
-    const x = fx.kind === "view" ? Math.round(easeOutCubic(k) * W) : Math.round(easeInOut(k) * (W + g.w)) - g.w;
+    const x = FX_VIEW_MS[fx.kind] ? Math.round(easeOutCubic(k) * W) : Math.round(easeInOut(k) * (W + g.w)) - g.w;
     if (k < 1) P.fx.Move(x, g.y, g.w, g.h);
     else { P.fx.Show(false); fx = null; return false; }
     return true;
@@ -138,10 +142,10 @@ const fxClock = Clock(() => {
 // swap: what changes under a "mode" sweep (the light / dark switch, or a colour scheme's import)
 function startFx(kind, swap = switchMode) {
     if (!ready || REDUCE_MOTION || (fx && fx.kind === "boot")) return false;
-    fx = { kind, tw: kind === "view" ? Tween(600) : null };
+    fx = { kind, tw: FX_VIEW_MS[kind] ? Tween(FX_VIEW_MS[kind]) : null };
     send("fx", kind);
     const g = fxGeom(kind);
-    P.fx.Move(kind === "view" ? 0 : -g.w, g.y, g.w, g.h);
+    P.fx.Move(FX_VIEW_MS[kind] ? 0 : -g.w, g.y, g.w, g.h);
     P.fx.Show(true);
     if (kind === "mode") swap();
     fxClock.wake();
@@ -155,7 +159,7 @@ function setView(v) {
     setSetting("view", v);
     P.tip.Show(false);
     layout();
-    startFx("view");
+    if (STATE.viewFx !== "cut") startFx(STATE.viewFx === "wipe" ? "wipe" : "view");
     broadcast();
 }
 
@@ -235,6 +239,7 @@ onMessage("inspect-scale", v => { STATE.inspectScale = pickScale(+v, INSPECT_SCA
 onMessage("array-scale", v => { STATE.arrayScale = pickScale(+v, ARRAY_SCALES); setSetting("arrayScale", STATE.arrayScale); broadcast(); });
 onMessage("floor", v => { STATE.floor = pickFloor(v); setSetting("floor", STATE.floor); broadcast(); });
 onMessage("halftone", v => { STATE.halftone = pickHalftone(v); setSetting("halftone", STATE.halftone); broadcast(); });
+onMessage("view-fx", v => { STATE.viewFx = pickViewFx(v); setSetting("viewFx", STATE.viewFx); broadcast(); });
 onMessage("halftone-level", v => { STATE.halftoneLevel = pickHalftoneLevel(v); setSetting("halftoneLevel", STATE.halftoneLevel); broadcast(); });
 // the wallpaper's settings, changed in part (05 STYLE)
 onMessage("wallpaper", w => { STATE.wallpaper = pickWallpaper(Object.assign({}, STATE.wallpaper, w)); setSetting("wallpaper", STATE.wallpaper, true); broadcast(); });

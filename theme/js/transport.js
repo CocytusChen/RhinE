@@ -46,20 +46,35 @@ const clock = Clock(dt => {
     return more || sc;
 });
 
-// while playing, the controls row repaints 20 times a second so the playhead glides (it moves a few px per second)
+// while playing, the controls row repaints at the display's rate so the playhead glides (it moves a few px per second)
 let playTimer = 0;
 function startPlayTimer() {
     window.ClearInterval(playTimer);
-    playTimer = window.SetInterval(() => { if (!drag) repaintRuler(); }, 50);
+    playAnchor();
+    playTimer = window.SetInterval(() => { if (!drag) repaintRuler(); }, 16);
+}
+// The playhead's time. foobar2000's position moves in uneven steps (as the output buffer is filled), so read as it is the
+// playhead jumped: it runs on its own clock instead, from the last reading, eased a little towards each new one so it
+// never drifts off; a reading more than PLAY_SNAP s away from it (a seek, a stall) is taken as it is.
+const PLAY = { t: 0, at: 0 }, PLAY_SNAP = .3, PLAY_EASE = .01;
+function playAnchor() { PLAY.t = fb.IsPlaying ? fb.PlaybackTime : 0; PLAY.at = performance.now(); }
+function playTime() {
+    if (!fb.IsPlaying) return 0;
+    const real = fb.PlaybackTime;
+    if (fb.IsPaused) return real;
+    const now = performance.now(), run = PLAY.t + (now - PLAY.at) / 1000;
+    if (Math.abs(real - run) > PLAY_SNAP) { PLAY.t = real; PLAY.at = now; return real; }
+    PLAY.t = run + (real - run) * PLAY_EASE; PLAY.at = now;
+    return Math.min(PLAY.t, fb.PlaybackLength);
 }
 function stopPlayTimer() { window.ClearInterval(playTimer); playTimer = 0; }
 function repaintRuler() { window.RepaintRect(0, 0, W, TP()); }
 
 function on_playback_starting() { startPlayTimer(); repaintRuler(); }
-function on_playback_new_track() { nowCover(); repaintRuler(); }
+function on_playback_new_track() { nowCover(); playAnchor(); repaintRuler(); }
 function on_playback_pause(paused) { paused ? stopPlayTimer() : startPlayTimer(); repaintRuler(); }
 function on_playback_stop(reason) { if (reason !== 2) { stopPlayTimer(); nowCover(); } repaintRuler(); }   // 2 = starting another track
-function on_playback_seek() { repaintRuler(); }
+function on_playback_seek() { playAnchor(); repaintRuler(); }
 function on_playback_time() { repaintRuler(); }
 function on_volume_change() { repaintRuler(); }
 function on_playback_order_changed() { repaintRuler(); }
@@ -172,19 +187,19 @@ function drawRuler(gr, left, right) {
     const tf = font(15, 500), lw = Math.max(dp(64), timeW(tf, "00:00") + dp(10)), rw = Math.max(dp(74), timeW(tf, "−00:00") + dp(12));
     const y = dp(ROW_Y), x0 = left + lw, x1 = right - rw;
     if (x1 - x0 < dp(80)) return;
-    let el = playing ? fb.PlaybackTime : 0;
+    let el = playing ? playTime() : 0;
     if (drag && drag.id === "seek") el = drag.value;
     const cur = playing ? x0 + (x1 - x0) * clamp(el / len, 0, 1) : x0;
     text(gr, fmtTime(el), 15, 500, playing ? C.fg : C["text-muted"], left, y - dp(12), lw, dp(24));
     text(gr, playing ? "−" + fmtTime(len - el) : "−00:00", 15, 500, C["text-muted"], x1 + dp(12), y - dp(12), rw, dp(24));
     gr.FillSolidRect(x0, y, x1 - x0, HAIR, C["line-dim"]);
-    if (playing) gr.FillSolidRect(x0, y - HAIR, Math.round(cur - x0), HEAVY, C.fg);
+    if (playing) gr.FillSolidRect(x0, y - HAIR, cur - x0, HEAVY, C.fg);   // not snapped to whole px: it glides
     // START marker (orange once passed); chapter and cue markers join it when a track has them
     const mc = playing ? C.accent : C["line-dim"];
     gr.FillSolidRect(x0, y - dp(14), HAIR, dp(12), mc);
     label(gr, tr("START"), st(ST.marker, mc), x0 + dp(4), y - dp(15));
     // the playhead: a plain orange line
-    if (playing) gr.FillSolidRect(Math.round(cur - dp(.75)), y - dp(10), Math.max(HAIR, dp(1.5)), dp(20), C.accent);
+    if (playing) gr.FillSolidRect(cur - dp(.75), y - dp(10), Math.max(HAIR, dp(1.5)), dp(20), C.accent);
     // NOW PLAYING  title · artist, under the line
     if (fb.IsPlaying && NOW.title) {
         const ny = y + dp(9), kw = label(gr, tr("NOW PLAYING"), st(ST.marker, C.accent), x0, ny + dp(2));

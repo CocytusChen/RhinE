@@ -240,7 +240,8 @@ const scaleGroups = () => {
     const scales = list => list.map(v => [v, pct(v)]);
     return [["TEXT", scales(TEXT_SCALES), STATE.textScale, "sty-text"], ["ARRAY", scales(ARRAY_SCALES), STATE.arrayScale, "sty-array"],
             ["INSPECT", scales(INSPECT_SCALES), STATE.inspectScale, "sty-inspect"], ["FLOOR", FLOORS, STATE.floor, "sty-floor"],
-            ["HALFTONE", HALFTONES, STATE.halftone, "sty-ht"], ...(STATE.halftone === "off" ? [] : [["DOTS", HALFTONE_LEVELS, STATE.halftoneLevel, "sty-htl"]])];
+            ["HALFTONE", HALFTONES, STATE.halftone, "sty-ht"], ...(STATE.halftone === "off" ? [] : [["DOTS", HALFTONE_LEVELS, STATE.halftoneLevel, "sty-htl"]]),
+            ["VIEW SWITCH", VIEW_FXS, STATE.viewFx, "sty-vfx"]];
 };
 // toggle groups [title, items, cur, hit id, marks] in a row from x, wrapping before x1: where each one's right edge
 // goes ({ at: [[xr, y, group]], y: the last row's, xl: where that row ends })
@@ -564,6 +565,7 @@ function styleClick(a) {
     else if (a.id === "sty-floor" && a.data !== STATE.floor) send("floor", a.data);
     else if (a.id === "sty-ht" && a.data !== STATE.halftone) send("halftone", a.data);
     else if (a.id === "sty-htl" && a.data !== STATE.halftoneLevel) send("halftone-level", a.data);
+    else if (a.id === "sty-vfx" && a.data !== STATE.viewFx) send("view-fx", a.data);
     else if (a.id === "sty-hearth") send("scheme", "hearth");
     else if (a.id === "sty-cpick") {
         const [m, k] = a.data.split("|"), u = customChoice(), c = utils.ColourPicker(window.ID, argb(u[m][k]));

@@ -3,6 +3,7 @@
 // so a transition cannot draw over them; instead this small top-most panel is moved across the window by frame.js:
 //   view  — a panel as large as the view area slides right off the window, uncovering the new view left to right;
 //           its left edge is the 2 dp scan head with a scan-line wake
+//   wipe  — the same as view, plain (no scan head or wake)
 //   mode  — a 222 dp band of scan lines with the head at its right edge sweeps across the whole window after the colours
 //           have swapped
 // frame.js only moves this panel, never resizes it during a transition (a resize rebuilds the Direct2D surface every
@@ -10,7 +11,7 @@
 
 include(fb.ProfilePath + "themes\\audio-archive\\js\\lib\\core.js");
 
-let W = 0, H = 0, kind = "cover";   // "cover" (plain dark until frame.js says what to play), "view", "mode", "boot"
+let W = 0, H = 0, kind = "cover";   // "cover" (plain dark until frame.js says what to play), "view", "wipe", "mode", "boot"
 onMessage("fx", k => {
     // a second "boot" while the intro is still running (frame.js asking again, see below) does not restart it
     if (k === "boot" && !(kind === "boot" && !boot.ended)) startBoot();
@@ -44,6 +45,7 @@ function on_paint(gr) {
     gr.FillSolidRect(0, 0, W, H, C.bg);
     if (kind === "boot") { drawBoot(gr, performance.now() - boot.t0); drawGrain(gr, 0, 0, W, H); return; }
     drawGrain(gr, 0, 0, W, H);
+    if (kind === "wipe") return;
     const head = dp(2), wake = Math.min(W - head, dp(kind === "view" ? 160 : 220));
     if (wake <= 0) return;
     const T = wakeTile(wake), wx = kind === "view" ? head : W - head - wake;

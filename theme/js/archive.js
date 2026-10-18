@@ -1774,9 +1774,9 @@ function inspectRequest() {
     if (STATE.view !== "archive") send("view", "archive");   // the view comes back here with the next "state"
     else inspectPending(0);
 }
-function inspectPending(delay = 450) {
+function inspectPending(delay = STATE.viewFx === "cut" ? 0 : 450) {
     if (!INSPECT_ASK.key || !ARCHIVE_ON || INSPECT_ASK.timer) return;
-    // after the view's scan transition, so the lift and turn are seen
+    // after the view's transition (none with VIEW SWITCH › CUT), so the lift and turn are seen
     INSPECT_ASK.timer = window.SetTimeout(() => {
         INSPECT_ASK.timer = 0;
         const key = INSPECT_ASK.key;
