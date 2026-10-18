@@ -36,6 +36,7 @@ const PITCH = 1.0, ROWP = 4.7;     // case spacing along a row and between rows,
 const CLOSE = [.45, -.62, .64];    // "towards the viewer", for back-to-front sorting
 const INFO_W = 456, ARCHIVE_PLAYLIST = "Archive · Album";
 const LIFT_OUT = 2.2;              // how far the inspected case rises out of its row, in case.json axis units
+const RESHELVE_DROP = 1.6;         // how high above its place a case starts as the shelves are re-sorted (AR.reshelve)
 const INSP_LIFT = .32, INSP_TURN = .72, INSPECT_ZOOM = 2.05;   // stage durations (s); size at the end of the turn
 
 const HOVER_MODES = ["outline", "label", "none"];
@@ -61,6 +62,7 @@ const AR = {
     hoverMode: HOVER_MODES.includes(getSetting("caseHover", "outline")) ? getSetting("caseHover", "outline") : "outline",   // the case under the mouse: outlined, titled or left as is (the context menu)
     infoPlates: [],     // the info plates to draw this frame, over every shelf: the selected case's, and one going
     hoverPlate: null,   // the case to label this frame (hoverMode "label"): drawn after the shelf, over its neighbours
+    reshelve: false,    // the next placeSelection comes from a new sort, grouping or unit: its cases drop into place
 };
 let ARCHIVE_ON = false;
 const PICK = { steps: null, t: 0, after: false };   // RANDOM PICK's run (see randomPick)
@@ -149,7 +151,13 @@ function placeSelection(key) {
         if (at) { r.sel = at[1]; r.scroll.x = r.scroll.to = scrollTarget(r.sel, R[AR.group]); }
     }
     selectionChanged(false);
+    // the rows and their cases at once: a paint before the next step would find the array empty (a blink)
+    if (ARCHIVE_ON && AR.layout !== "grid" && R.length) archiveUpdate(0);
 }
+
+// a new sort, grouping or unit (fn): the shelves it rebuilds (synchronously, through the catalog listener) drop their
+// cases into place; nothing is left waiting when fn changes nothing
+function reshelve(fn) { AR.reshelve = true; try { fn(); } finally { AR.reshelve = false; } }
 
 function selIndexOf(gi) {
     const g = arRows()[gi], key = g && AR.selKey.get(g.name);
@@ -160,7 +168,9 @@ function rowState(gi) {
     let r = AR.rows.get(gi);
     if (!r) {
         const sel = selIndexOf(gi);
-        r = { sel, scroll: Spring(scrollTarget(sel, arRows()[gi]), 9), pos: Spring(gi - arrayStart(), 9), cases: new Map() };
+        // a row is ROWP units apart on screen: the springs stop much nearer their end than the default, so the last
+        // step is not seen as a jump
+        r = { sel, scroll: Spring(scrollTarget(sel, arRows()[gi]), 9, .002), pos: Spring(gi - arrayStart(), 9, .0005), cases: new Map() };
         // The rows move as one strip: a new row joins it where the strip is now, one row on from its nearest
         // neighbour (and at its speed), so it slides in with the others rather than standing at its place while they
         // are still on their way there (a RANDOM PICK crosses several shelves at a time).
@@ -405,10 +415,18 @@ function archiveUpdate(dt) {
             const nd = titleDistance(slotOf(G[gi], i) - r.scroll.to - selY, gi - AR.group);
             const t = caseTargets(i, r, active, G[gi], gi === AR.hoverRow ? AR.hover : -1, nd);
             let c = r.cases.get(i);
-            if (!c) { c = { lift: Spring(t.lift, 13), clear: Spring(t.clear, 8), gap: Spring(t.gap, 11), near: Spring(t.near, 10), hov: Spring(t.hov, 14), plate: Spring(t.plate, 12) }; r.cases.set(i, c); }
+            if (!c) {
+                // re-sorted shelves: the cases drop into place one after another, outwards from the selected one
+                const drop = AR.reshelve && !REDUCE_MOTION;
+                c = { lift: Spring(t.lift, 13), clear: Spring(t.clear, 8), gap: Spring(t.gap, 11), near: Spring(t.near, 10), hov: Spring(t.hov, 14), plate: Spring(t.plate, 12), appear: Spring(drop ? 0 : 1, 11), wait: drop ? Math.min(.45, nd * .025) : 0 };
+                c.appear.to = 1;
+                r.cases.set(i, c);
+            }
             c.lift.to = t.lift; c.lift.w = active ? 13 : 7; c.clear.to = t.clear; c.gap.to = t.gap; c.near.to = t.near; c.hov.to = t.hov; c.plate.to = t.plate;
             const m1 = stepSpring(c.lift, dt), m2 = stepSpring(c.clear, dt), m3 = stepSpring(c.gap, dt), m4 = stepSpring(c.near, dt), m5 = stepSpring(c.hov, dt), m6 = stepSpring(c.plate, dt);
-            more = more || m1 || m2 || m3 || m4 || m5 || m6;
+            let m7 = c.wait > 0;
+            if (m7) c.wait -= dt; else m7 = stepSpring(c.appear, dt);
+            more = more || m1 || m2 || m3 || m4 || m5 || m6 || m7;
         }
     }
     // album index marks
@@ -922,7 +940,7 @@ function drawArchive(gr) {
             const c = r.cases.get(i);
             if (!c) continue;
             const isSel = active && i === r.sel;
-            const y = (slotOf(row, i) - r.scroll.x) * PITCH + c.gap.x, z = c.lift.x + (isSel ? LIFT_OUT * lift : 0);
+            const y = (slotOf(row, i) - r.scroll.x) * PITCH + c.gap.x, z = c.lift.x + (isSel ? LIFT_OUT * lift : 0) + (1 - c.appear.x) * RESHELVE_DROP;
             // where the case rests without the hover lift: its click area (#7), so the lift under the mouse does not
             // move the case being aimed at
             const yr = (slotOf(row, i) - r.scroll.x) * PITCH + c.gap.to, zr = caseTargets(i, r, active, row, -1).lift + (isSel ? LIFT_OUT * lift : 0);
@@ -974,7 +992,7 @@ function drawArrayCase(gr, it, sx, sy, k, aw, I) {
     let selItem = null;
     if (it.isSel) { AR.from = [ox + meta.center[0] * k, oy + meta.center[1] * k]; selItem = { ox, oy }; }
     if (it.isSel && inspTurn() > 0) return selItem;                   // drawn by the inspection
-    const alpha = rowAlpha(it.pos), f = rowTint(it.pos), t = thumbOf(it.a);
+    const alpha = Math.round(rowAlpha(it.pos) * clamp(it.c.appear.x, 0, 1)), f = rowTint(it.pos), t = thumbOf(it.a);
     // how frosted the case is: its shelf's frost at its place (frostAt), cleared as it is selected (it.c.clear)
     const fr = frostAt(it.pos) * (1 - clamp(it.c.clear.x, 0, 1));
     // cover, under the case: blurred behind frosted glass, the sharp one over it as the glass clears
@@ -1860,7 +1878,7 @@ function archiveClick(x, y, a) {
                 return;
             }
             case "ar-page": setInfoPage(a.data); return;
-            case "ar-unit": setUnit(a.data); return;
+            case "ar-unit": reshelve(() => setUnit(a.data)); return;
             case "ar-open": openAlbum(); return;
             case "ar-prev": moveAlbum(-1); return;
             case "ar-next": moveAlbum(1); return;
@@ -1870,8 +1888,8 @@ function archiveClick(x, y, a) {
             case "ar-layout": setLayout(a.data); return;
             case "ar-filter": send("search-clear"); return;
             case "ar-per": setPerPage(a.data); return;
-            case "ar-group": setGroupBy(a.data); return;
-            case "ar-sort": setSortBy(a.data); return;
+            case "ar-group": reshelve(() => setGroupBy(a.data)); return;
+            case "ar-sort": reshelve(() => setSortBy(a.data)); return;
         }
     }
     if (AR.layout === "grid") { gridClick(x, y, a); return; }
@@ -1972,9 +1990,9 @@ function archiveMenu(x, y) {
     const skins = appendSkinMenu(m, 100);
     m.AppendMenuItem(0, 6, tr("Re-index library"));
     const id = m.TrackPopupMenu(x, y);
-    if (id >= 1 && id <= 4) setGroupBy(by[id - 1]);
-    else if (id === 18) setGroupBy("album");
-    else if (id >= 400 && sorts[id - 400]) setSortBy(sorts[id - 400]);
+    if (id >= 1 && id <= 4) reshelve(() => setGroupBy(by[id - 1]));
+    else if (id === 18) reshelve(() => setGroupBy("album"));
+    else if (id >= 400 && sorts[id - 400]) reshelve(() => setSortBy(sorts[id - 400]));
     else if (id === 9) playAlbum();
     else if (id === 11) randomPick();
     else if (id === 13) openFolder(itemTrack(curAlbum()) || albumFirst(curAlbum()));
@@ -1982,10 +2000,10 @@ function archiveMenu(x, y) {
     else if (id === 12) { AR.topTitles = !AR.topTitles; setSetting("caseTopTitles", AR.topTitles); window.Repaint(); }
     else if (id === 14) setInfoPage(AR.page === "tracks" ? "file" : "tracks");
     else if (id >= 600 && ratingMenuPick(id, 600)) { AR.listVer++; AR.dirtyInfo = true; window.Repaint(); }
-    else if (id === 10) setUnit(showTracks() ? "albums" : "tracks");
+    else if (id === 10) reshelve(() => setUnit(showTracks() ? "albums" : "tracks"));
     else if (id === 16) { STY.edit = "shelves"; send("view", "style"); }
     else if (id === 17) resetShelfLook();
-    else if (id === 15) { AR.shelfPerGroup = !AR.shelfPerGroup; setSetting("shelfPerGroup", AR.shelfPerGroup); placeSelection(AR.selAlbum); clock.wake(); window.Repaint(); }
+    else if (id === 15) { AR.shelfPerGroup = !AR.shelfPerGroup; setSetting("shelfPerGroup", AR.shelfPerGroup); reshelve(() => placeSelection(AR.selAlbum)); clock.wake(); window.Repaint(); }
     else if (id === 5) openAlbum();
     else if (id === 6) libIndex(true);
     else if (id === 7 || id === 8) setLayout(id === 8 ? "grid" : "array");

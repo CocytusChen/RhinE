@@ -11,14 +11,15 @@ const easeInOut = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 // gentler than easeOut: at the ≈ 64 fps the default timer allows, the first frames move less than a tenth of the way
 const easeOutCubic = t => t >= 1 ? 1 : 1 - Math.pow(1 - t, 3);
 
-// Spring: { x, v, to }. step() returns true while it still moves.
-function Spring(x = 0, w = 16) { return { x, v: 0, to: x, w }; }
+// Spring: { x, v, to }. step() returns true while it still moves. eps: how near its end it is put there and stops (and
+// its speed under 5 eps): small for a spring whose unit is large on screen, so the last step is not seen as a jump.
+function Spring(x = 0, w = 16, eps = .01) { return { x, v: 0, to: x, w, eps }; }
 function stepSpring(s, dt) {
     if (REDUCE_MOTION) { s.x = s.to; s.v = 0; return false; }
-    const a = s.w * s.w * (s.to - s.x) - 2 * s.w * s.v;
+    const a = s.w * s.w * (s.to - s.x) - 2 * s.w * s.v, eps = s.eps || .01;
     s.v += a * dt;
     s.x += s.v * dt;
-    if (Math.abs(s.to - s.x) < 0.01 && Math.abs(s.v) < 0.05) { s.x = s.to; s.v = 0; return false; }
+    if (Math.abs(s.to - s.x) < eps && Math.abs(s.v) < eps * 5) { s.x = s.to; s.v = 0; return false; }
     return true;
 }
 
