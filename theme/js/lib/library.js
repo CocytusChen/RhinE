@@ -239,14 +239,15 @@ function setAlbums(albums, items = []) {
 
 const GROUP_BY = [["genre", "GENRE"], ["decade", "DECADE"], ["artist", "A–Z"], ["album", "ALBUM"], ["none", "NONE"]];
 const SORT_BY = [["albumartist", "ALBUM ARTIST"], ["artist", "ARTIST"], ["title", "TITLE"], ["year", "YEAR"], ["added", "ADDED"]];
-// The choices offered. With albums, an album's artist is its album artist (ALBUM ARTIST would say ARTIST again) and
-// grouping by album would make a shelf of one album each, so neither is offered; a choice of them stays saved and
-// comes back with the tracks, the albums going meanwhile by ARTIST and in no groups.
+// The choices offered. An album has no artist of its own but its album artist (the tag, else its tracks' most common
+// artist), so with albums ARTIST is not offered: the albums go by ALBUM ARTIST, which they would anyway; grouping by
+// album would make a shelf of one album each, so that is not offered either. A choice of them stays saved and comes
+// back with the tracks, the albums going meanwhile by ALBUM ARTIST and in no groups.
 const groupChoices = () => showTracks() ? GROUP_BY : GROUP_BY.filter(([k]) => k !== "album");
-const sortChoices = () => showTracks() ? SORT_BY : SORT_BY.filter(([k]) => k !== "albumartist");
+const sortChoices = () => showTracks() ? SORT_BY : SORT_BY.filter(([k]) => k !== "artist");
 function settleChoices() {
     LIB.groupBy = groupChoices().some(([k]) => k === LIB.groupPref) ? LIB.groupPref : "none";
-    LIB.sortBy = sortChoices().some(([k]) => k === LIB.sortPref) ? LIB.sortPref : "artist";
+    LIB.sortBy = sortChoices().some(([k]) => k === LIB.sortPref) ? LIB.sortPref : "albumartist";
 }
 const GROUP_LABEL = { genre: "GENRE", decade: "DECADE", artist: "ARTIST", album: "ALBUM", none: "ALL" };
 // a group's name as shown: the fixed ones and decades translated, genres as they are tagged, an album by its title (its
