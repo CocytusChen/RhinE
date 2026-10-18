@@ -1935,12 +1935,12 @@ function archiveKey(vk) {
 }
 function archiveMenu(x, y) {
     const m = window.CreatePopupMenu(), by = ["genre", "decade", "artist", "none"], sorts = SORT_BY.map(([k]) => k);
-    // (checked rather than a radio group: "album" came later and has an id of its own, out of the run 1 – 4)
-    [["genre", "Group by genre", 1], ["decade", "Group by decade", 2], ["artist", "Group by artist initial", 3], ["album", "Group by album", 18], ["none", "No groups", 4]]
-        .forEach(([k, t, id]) => m.AppendMenuItem(LIB.groupBy === k ? 0x8 : 0, id, tr(t)));
-    const so = window.CreatePopupMenu();
-    ["Artist", "Album title", "Year", "Date added (newest first)"].forEach((t, i) => so.AppendMenuItem(0, 400 + i, tr(t)));
-    so.CheckMenuRadioItem(400, 403, 400 + Math.max(0, sorts.indexOf(LIB.sortBy)));
+    // the groups and sorts on offer (groupChoices, sortChoices), checked rather than radio groups: "album" came later
+    // and has an id of its own, out of the run 1 – 4; a sort's id is 400 + its place in SORT_BY
+    const gIds = { genre: [1, "Group by genre"], decade: [2, "Group by decade"], artist: [3, "Group by artist initial"], album: [18, "Group by album"], none: [4, "No groups"] };
+    groupChoices().forEach(([k]) => m.AppendMenuItem(LIB.groupBy === k ? 0x8 : 0, gIds[k][0], tr(gIds[k][1])));
+    const so = window.CreatePopupMenu(), sNames = { albumartist: "Album artist", artist: "Artist", title: showTracks() ? "Title" : "Album title", year: "Year", added: "Date added (newest first)" };
+    sortChoices().forEach(([k]) => so.AppendMenuItem(LIB.sortBy === k ? 0x8 : 0, 400 + sorts.indexOf(k), tr(sNames[k])));
     so.AppendTo(m, 0, tr("Sort by"));
     m.AppendMenuItem(showTracks() ? 0x8 : 0, 10, tr("Show every track as its own item"));
     m.AppendMenuItem((AR.shelfPerGroup ? 0x8 : 0) | (LIB.groupBy === "none" ? 1 : 0), 15, tr("Each group on its own shelf"));

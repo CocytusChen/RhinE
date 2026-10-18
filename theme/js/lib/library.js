@@ -12,7 +12,8 @@
 // kept in memory (least recently drawn go first).
 
 const LIB = { albums: [], groups: [], live: false, gen: 0, tracks: 0, ms: null, source: "library",
-              groupBy: getSetting("archiveGroup", "genre"), sortBy: getSetting("archiveSort", "artist"),
+              groupPref: getSetting("archiveGroup", "genre"), sortPref: getSetting("archiveSort", "artist"),   // as chosen
+              groupBy: "genre", sortBy: "artist",   // as in effect (see settleChoices)
               unit: getSetting("archiveUnit", "albums"), items: [], albumMap: new Map() };
 const LIB_LISTENERS = [];   // fn(kind): "catalog" when the albums or groups changed, "cover" when a thumbnail arrived
 const LIB_DB = fb.ProfilePath + "audio-archive-cache\\library.db";
@@ -237,15 +238,24 @@ function setAlbums(albums, items = []) {
 }
 
 const GROUP_BY = [["genre", "GENRE"], ["decade", "DECADE"], ["artist", "A–Z"], ["album", "ALBUM"], ["none", "NONE"]];
-const SORT_BY = [["artist", "ARTIST"], ["title", "TITLE"], ["year", "YEAR"], ["added", "ADDED"]];
+const SORT_BY = [["albumartist", "ALBUM ARTIST"], ["artist", "ARTIST"], ["title", "TITLE"], ["year", "YEAR"], ["added", "ADDED"]];
+// The choices offered. With albums, an album's artist is its album artist (ALBUM ARTIST would say ARTIST again) and
+// grouping by album would make a shelf of one album each, so neither is offered; a choice of them stays saved and
+// comes back with the tracks, the albums going meanwhile by ARTIST and in no groups.
+const groupChoices = () => showTracks() ? GROUP_BY : GROUP_BY.filter(([k]) => k !== "album");
+const sortChoices = () => showTracks() ? SORT_BY : SORT_BY.filter(([k]) => k !== "albumartist");
+function settleChoices() {
+    LIB.groupBy = groupChoices().some(([k]) => k === LIB.groupPref) ? LIB.groupPref : "none";
+    LIB.sortBy = sortChoices().some(([k]) => k === LIB.sortPref) ? LIB.sortPref : "artist";
+}
 const GROUP_LABEL = { genre: "GENRE", decade: "DECADE", artist: "ARTIST", album: "ALBUM", none: "ALL" };
 // a group's name as shown: the fixed ones and decades translated, genres as they are tagged, an album by its title (its
 // group is keyed "TITLE\u0001ARTIST", so two albums of one title stay apart); a shelf's name, its groups' names joined
 // (and a part's "2 / 3"), drops each one's artist alike
 const groupName = g => g.includes("\u0001") ? g.replace(/\u0001.*?(?=  ·  |  \d+ \/ \d+$|$)/g, "") : /^\d{3}0S$/.test(g) ? tr("{0}S", g.slice(0, 4)) : tr(g);
 function setGroupBy(by) {
-    if (by === LIB.groupBy || !GROUP_LABEL[by]) return;
-    LIB.groupBy = by;
+    if (by === LIB.groupPref || !GROUP_LABEL[by]) return;
+    LIB.groupPref = by;
     setSetting("archiveGroup", by);
     groupAlbums();
 }
@@ -261,26 +271,29 @@ const unitWord = n => tr(showTracks() ? (n === 1 ? "{0} TRACK" : "{0} TRACKS") :
 // the album a track item belongs to (an album is its own)
 const albumOf = a => a && a.album ? LIB.albumMap.get(a.album) || null : a;
 function setSortBy(by) {
-    if (by === LIB.sortBy || !SORT_BY.some(([k]) => k === by)) return;
-    LIB.sortBy = by;
+    if (by === LIB.sortPref || !SORT_BY.some(([k]) => k === by)) return;
+    LIB.sortPref = by;
     setSetting("archiveSort", by);
     groupAlbums();
 }
-// album order within a group; ties fall back to artist, then title
+// The order within a group: the key chosen first, then the album's artist, its year, the album and the disc / track
+// order, so whatever ties on the key keeps its albums whole and in order. ALBUM ARTIST goes by the album's artist (a
+// soundtrack's or a compilation's tracks stay together), ARTIST by the item's own (a track's: each song by its singer;
+// an album's is its album artist); YEAR by the album's, so an album's tracks stay together there too.
 const lcs = s => String(s || "").toLowerCase();
 const strCmp = (x, y) => x < y ? -1 : x > y ? 1 : 0;
 function albumOrder(by) {
-    // a track item goes by its album's artist and year, so the tracks of a soundtrack or a compilation (each with an
-    // artist of its own) are not scattered across the group but stay together in disc / track order
     const of = p => albumOf(p) || p;
-    const art = (p, q) => strCmp(lcs(of(p).artist), lcs(of(q).artist)), tit = (p, q) => strCmp(lcs(p.title), lcs(q.title));
+    const aart = (p, q) => strCmp(lcs(of(p).artist), lcs(of(q).artist)), art = (p, q) => strCmp(lcs(p.artist), lcs(q.artist));
+    const tit = (p, q) => strCmp(lcs(p.title), lcs(q.title));
     const yr = (p, q) => { const a = of(p).year, b = of(q).year; return (!a - !b) || strCmp(a, b); };   // undated last
-    // tracks of one album stay in disc / track order where the order does not separate them
-    const alb = (p, q) => p.album ? strCmp(p.album, q.album) || (p.ord - q.ord) : 0;
-    if (by === "title") return (p, q) => tit(p, q) || art(p, q);
-    if (by === "year") return (p, q) => yr(p, q) || art(p, q) || alb(p, q) || tit(p, q);
-    if (by === "added") return (p, q) => (!p.added - !q.added) || strCmp(q.added, p.added) || art(p, q) || alb(p, q) || tit(p, q);   // newest first
-    return (p, q) => art(p, q) || yr(p, q) || alb(p, q) || tit(p, q);
+    const alb = (p, q) => p.album ? strCmp(p.album, q.album) || (p.ord - q.ord) : 0;   // a track's album, then disc / track
+    const rest = (p, q) => aart(p, q) || yr(p, q) || alb(p, q) || tit(p, q);
+    if (by === "title") return (p, q) => tit(p, q) || rest(p, q);
+    if (by === "year") return (p, q) => yr(p, q) || rest(p, q);
+    if (by === "added") return (p, q) => (!p.added - !q.added) || strCmp(q.added, p.added) || rest(p, q);   // newest first
+    if (by === "albumartist") return rest;
+    return (p, q) => art(p, q) || rest(p, q);
 }
 
 // The archive's search filter (the header's search field while the Archive is shown): every word must appear in the
@@ -301,6 +314,7 @@ const filteredCount = () => LIB.groups.reduce((n, g) => n + g.albums.length, 0);
 // sorted in); each album also gets its group's name (a.grp), which the archive's shelves (several groups on one shelf)
 // show. Grouped by album, each album is a group: with every track as its own item, its tracks make a shelf of their own.
 function groupAlbums() {
+    settleChoices();
     const by = LIB.groupBy, map = new Map(), albumOfGroup = new Map();
     const words = LIB.filter ? LIB.filter.split(/\s+/) : null;
     for (const a of showTracks() ? LIB.items : LIB.albums) {

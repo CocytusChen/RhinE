@@ -207,8 +207,8 @@ function drawArchiveBar(gr) {
             label(gr, fitLabel(t, hs, room), hs, x0 + dp(14), y1 + dp(6));
         }
     }
-    const sx = segToggle(gr, xr, y2, "SORT", SORT_BY, LIB.sortBy, "ar-sort");
-    segToggle(gr, sx - dp(24), y2, "GROUP", GROUP_BY, LIB.groupBy, "ar-group");
+    const sx = segToggle(gr, xr, y2, "SORT", sortChoices(), LIB.sortBy, "ar-sort");
+    segToggle(gr, sx - dp(24), y2, "GROUP", groupChoices(), LIB.groupBy, "ar-group");
 }
 
 // ⚂ RANDOM PICK  R (after the filter chip): a run through the shelves to a random item, which then plays (randomPick)

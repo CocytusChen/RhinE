@@ -213,4 +213,8 @@ I18N["ja"] = {
     "SCAN": "スキャン",
     "WIPE": "ワイプ",
     "CUT": "カット",
+    // sorting by album artist or by a track's own artist (the Archive's SORT, right-click › Sort by)
+    "ALBUM ARTIST": "アルバムアーティスト",
+    "Album artist": "アルバムアーティスト",
+    "Title": "タイトル",
 };

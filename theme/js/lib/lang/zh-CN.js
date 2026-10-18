@@ -212,4 +212,8 @@ I18N["zh-CN"] = {
     "SCAN": "扫描",
     "WIPE": "滑开",
     "CUT": "直接",
+    // sorting by album artist or by a track's own artist (the Archive's SORT, right-click › Sort by)
+    "ALBUM ARTIST": "专辑艺术家",
+    "Album artist": "专辑艺术家",
+    "Title": "标题",
 };
