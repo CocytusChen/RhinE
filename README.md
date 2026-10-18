@@ -6,6 +6,9 @@
 <br>
 [安装指南](安装指南.md) · [其他信息](其他信息.md) · [更新信息 (或查看BILIBILI分P)](CHANGELOG.md)
 
+> **This fork** adds to RhinE 1.7.2: see **[改动说明.md](改动说明.md)** (in Chinese) for what changed.
+> 本 fork 在 RhinE 1.7.2 之上做了改动，详见 **[改动说明.md](改动说明.md)**。
+
 
 An archive terminal for listening: Swiss typography, a monochrome palette with one accent colour, and a sci-fi layer —
 your albums as rendered specimen cases on shelves, a Möbius signal ring that pulses with the music, synced lyrics
