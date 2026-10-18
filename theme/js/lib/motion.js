@@ -25,19 +25,25 @@ function stepSpring(s, dt) {
 
 // Clock(update): update(dt, now) is called every frame and returns true while anything still moves; the clock then
 // schedules the next frame, otherwise it stops. Call clock.wake() whenever a new animation starts.
-// The default Windows timer ticks every 15.6 ms; frames are requested at that rate (≈ 60 fps when the high-resolution
-// timer option is on, ≈ 32–64 fps otherwise) and dt is measured, so motion speed does not depend on the frame rate.
+// The default Windows timer ticks every 15.6 ms, and a timeout waits for the next tick: frames are asked for sooner
+// than that (8 ms), so each tick brings one (≈ 64 fps). With a finer timer (the high-resolution timer option, or
+// another program asking for one) the same request came every 8 ms, ≈ 125 fps, twice what a screen shows: a frame
+// now comes FRAME_MS after the last at the soonest, ≈ 60 fps either way. dt is measured, so motion speed does not
+// depend on the frame rate.
+const FRAME_MS = 16;
 function Clock(update) {
-    let running = false, last = 0;
+    let running = false, last = 0, due = 0;
     const tick = () => {
-        const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000);
-        last = now;
+        const now = performance.now();
+        if (now < due - 2) { window.SetTimeout(tick, Math.ceil(due - now)); return; }   // early (a fine timer): wait
+        const dt = Math.min(0.05, (now - last) / 1000);
+        last = now; due = now + FRAME_MS;
         let more = false;
         try { more = update(dt, now); } catch (e) { console.log("audio-archive clock: " + e); }
         if (more) window.SetTimeout(tick, 8); else running = false;
     };
     return {
-        wake() { if (running) return; running = true; last = performance.now(); window.SetTimeout(tick, 1); },
+        wake() { if (running) return; running = true; last = performance.now(); due = 0; window.SetTimeout(tick, 1); },
         get running() { return running; },
     };
 }

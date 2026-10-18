@@ -559,7 +559,7 @@ const rulerX0 = () => Math.round(arrayW() * .34);
 const rulerCount = () => Math.max(8, Math.floor((Math.round(arrayW() * .774) - dp(150) - rulerX0() - dp(40)) / dp(RULER_STEP)));
 
 // ------------------------------------------------------------------------------------------------------ images
-const ARIMG = { clear: null, frost: null, faded: new Map(), inspect: null, inspectLoading: false, gen: 0, rail: null };
+const ARIMG = { clear: null, frost: null, both: null, faded: new Map(), inspect: null, inspectLoading: false, gen: 0, rail: null };
 // the guide rail under each row: sprites made with the cases' camera, one per slot plus the row's
 // front and back ends; they belong to the archive, not to a case skin
 const RAIL_DIR = THEME_ROOT + "assets\\render\\rail\\";
@@ -664,7 +664,15 @@ function drawFloor(gr, rows, G, Ox, Oy, k, toScreen) {
 
 function arrayImages() {
     floorImages();   // a new floor may bring its own case sprites
-    if (!ARIMG.clear) for (const k of ["clear", "frost"]) ARIMG[k] = d2d.Image(floorOwn(`case${BS}${CASE_SKIN}${BS}array-${k}.png`) || CASE_DIR + `array-${k}.png`);
+    if (!ARIMG.clear) {
+        for (const k of ["clear", "frost"]) ARIMG[k] = d2d.Image(floorOwn(`case${BS}${CASE_SKIN}${BS}array-${k}.png`) || CASE_DIR + `array-${k}.png`);
+        // the frosted case as it is drawn over the clear one, made one image (drawArrayCase)
+        const w = ARIMG.clear.Width, h = ARIMG.clear.Height, img = d2d.CreateImage(w, h), g = img.GetGraphics();
+        g.DrawImage(ARIMG.clear, 0, 0, w, h, 0, 0, w, h);
+        g.DrawImage(ARIMG.frost, 0, 0, w, h, 0, 0, w, h);
+        img.ReleaseGraphics(g);
+        ARIMG.both = img;
+    }
     return ARIMG;
 }
 // src tinted towards the background by f: src as it is, then its silhouette in the background colour (tinted at 1, made
@@ -683,7 +691,7 @@ function drawTinted(gr, src, name, f, x, y, w, h, sw, sh, alpha) {
 const TINT_WARM = { timer: 0 };
 function warmTints() {
     window.ClearTimeout(TINT_WARM.timer);
-    const kinds = ["clear", "frost", ...(RAIL_META ? ["mid", "front", "back"] : [])];
+    const kinds = ["both", "clear", ...(RAIL_META ? ["mid", "front", "back"] : [])];
     const jobs = [];
     for (const kind of kinds) jobs.push([kind, 1]);
     const step = () => {
@@ -691,7 +699,7 @@ function warmTints() {
         if (!ARCHIVE_ON) return;
         if (AR.layout !== "grid") {
             const [kind, f] = jobs.shift(), I = arrayImages();
-            if (kind === "frost" || kind === "clear") { if (I[kind]) tinted(I[kind], f, (kind === "frost" ? "case" : "case-clear") + CASE_DIR); }
+            if (kind === "both" || kind === "clear") { if (I[kind]) tinted(I[kind], f, "case-" + kind + CASE_DIR); }
             else { const R = railImages(); if (R && R[kind]) tinted(accentShift(R[kind]), f, "rail-" + kind); }
         }
         if (jobs.length) TINT_WARM.timer = window.SetTimeout(step, 40);
@@ -732,7 +740,7 @@ function inspectImages() {
     return null;
 }
 // the archive's big images are kept only while it is shown
-function archiveHidden() { pickStop(); TOP_IMG.clear(); AR.inspOn = false; AR.insp = 0; ARIMG.inspect = null; ARIMG.gen++; ARIMG.inspectLoading = false; ARIMG.faded.clear(); ARIMG.clear = ARIMG.frost = ARIMG.rail = null; AR.info = null; FLOOR.key = null; FLOOR.img = null; }
+function archiveHidden() { pickStop(); TOP_IMG.clear(); AR.inspOn = false; AR.insp = 0; ARIMG.inspect = null; ARIMG.gen++; ARIMG.inspectLoading = false; ARIMG.faded.clear(); ARIMG.clear = ARIMG.frost = ARIMG.both = ARIMG.rail = null; AR.info = null; FLOOR.key = null; FLOOR.img = null; }
 
 // covers of what is on screen, nearest first: the current row around the selection, then the rows behind
 function requestVisibleThumbs() {
@@ -1005,9 +1013,17 @@ function drawArrayCase(gr, it, sx, sy, k, aw, I) {
     // exact at every fr; its glass is clear at 0 and at 1 a touch denser than the frosted sprite alone (alphas about
     // 0.12 and 0.63: 0.67), and in between it goes smoothly from one to the other. (Drawing the two at 1 - fr and fr
     // instead let the page show through the whole case halfway.)
-    drawTinted(gr, I.clear, "case-clear" + CASE_DIR, f, ox, oy, S, S, sz, sz, alpha);
-    const fa = Math.round(alpha * fr);
-    if (fa > 0) drawTinted(gr, I.frost, "case" + CASE_DIR, f, ox, oy, S, S, sz, sz, fa);
+    // Fully frosted and opaque (most cases, most of the time) the two are drawn as one: I.both, the frosted sprite laid
+    // on the clear one once (the same pixels), tinted as one. Otherwise the two go one over the other, and the tint is
+    // the clear sprite's silhouette at 1 - fr and the pair's at fr, so it comes to the same at either end.
+    if (fr >= .999 && alpha >= 255) drawTinted(gr, I.both, "case-both" + CASE_DIR, f, ox, oy, S, S, sz, sz, 255);
+    else {
+        gr.DrawImage(I.clear, ox, oy, S, S, 0, 0, sz, sz, 0, alpha);
+        const fa = Math.round(alpha * fr), ta = alpha * f;
+        if (fa > 0) gr.DrawImage(I.frost, ox, oy, S, S, 0, 0, sz, sz, 0, fa);
+        if (Math.round(ta * (1 - fr)) > 0) gr.DrawImage(tinted(I.clear, 1, "case-clear" + CASE_DIR), ox, oy, S, S, 0, 0, sz, sz, 0, Math.round(ta * (1 - fr)));
+        if (Math.round(ta * fr) > 0) gr.DrawImage(tinted(I.both, 1, "case-both" + CASE_DIR), ox, oy, S, S, 0, 0, sz, sz, 0, Math.round(ta * fr));
+    }
     // the spine labels belong to the selected shelf: they fade with its place, as a shelf moves into it or out of it
     const la = Math.round(alpha * selness(it.pos));
     if (la > 0) drawSpineLabel(gr, meta.label, ox, oy, k, it.a.no, la);
