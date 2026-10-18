@@ -100,15 +100,12 @@ onMessage("rating-store", () => { if (T.handle) loadTrack(); AR.listVer++; AR.di
 let lastPaint = 0, lastLeft = 0, alertShown = false, lyrBar = null, specRect = null, LEFT_SPEC = null;   // lyrBar: the karaoke rule's rect, repainted every frame
 const visible = () => (STATE.view === "lyrics" || STATE.view === "signal") && W > 0;
 const clock = Clock((dt, now) => {
-    clock.frame = FRAME_MS;
     if (W <= 0) return false;
     if (STATE.view === "archive") {
         let more = archiveUpdate(dt);
         if (AR.layout === "grid") more = gridUpdate(dt) || more;
-        // only the cases moving under the mouse: only their area is new (the scene is drawn whole, clipped to it), and
-        // their small lifts go at half the frame rate
+        // only the cases moving under the mouse: only their area is new (the scene is drawn whole, clipped to it)
         const P = AR.layout === "grid" || AR.dirtyInfo ? null : AR.paint;
-        if (P) clock.frame = FRAME_SLOW;
         if (!P) window.RepaintRect(0, 0, AR.dirtyInfo ? W : arrayW(), H);
         else {
             const x0 = Math.max(0, Math.floor(P[0])), y0 = Math.max(0, Math.floor(P[1])), x1 = Math.min(arrayW(), Math.ceil(P[2])), y1 = Math.min(H, Math.ceil(P[3]));

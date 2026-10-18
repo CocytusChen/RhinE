@@ -28,35 +28,24 @@ function stepSpring(s, dt) {
 // The default Windows timer ticks every 15.6 ms, and a timeout waits for the next tick: frames are asked for sooner
 // than that (8 ms), so each tick brings one (≈ 64 fps). With a finer timer (the high-resolution timer option, or
 // another program asking for one) the same request came every 8 ms, ≈ 125 fps, twice what a screen shows: a frame
-// now comes clock.frame ms after the last at the soonest (FRAME_MS, ≈ 60 fps either way). update may set clock.frame
-// to FRAME_SLOW (≈ 30 fps) for the next frame while only small things move; wake() then brings the next frame at once.
-// dt is measured, so motion speed does not depend on the frame rate.
-const FRAME_MS = 16, FRAME_SLOW = 32;
+// now comes FRAME_MS after the last at the soonest, ≈ 60 fps either way. dt is measured, so motion speed does not
+// depend on the frame rate.
+const FRAME_MS = 16;
 function Clock(update) {
-    let running = false, last = 0, due = 0, timer = 0;
-    const at = ms => { timer = window.SetTimeout(tick, Math.max(1, ms)); };
-    // a frame may come 1.5 ms before it is due, so that the default timer's ticks (15.6 ms apart) bring each one
+    let running = false, last = 0, due = 0;
     const tick = () => {
-        timer = 0;
         const now = performance.now();
-        if (now < due - 1.5) { at(Math.ceil(due - 1.5 - now)); return; }   // early: wait
+        if (now < due - 2) { window.SetTimeout(tick, Math.ceil(due - now)); return; }   // early (a fine timer): wait
         const dt = Math.min(0.05, (now - last) / 1000);
-        last = now;
+        last = now; due = now + FRAME_MS;
         let more = false;
         try { more = update(dt, now); } catch (e) { console.log("audio-archive clock: " + e); }
-        due = now + clock.frame;
-        if (more) at(8); else running = false;
+        if (more) window.SetTimeout(tick, 8); else running = false;
     };
-    const clock = {
-        frame: FRAME_MS,
-        wake() {
-            if (!running) { running = true; last = performance.now(); due = 0; at(1); return; }
-            // running at a slow frame: something new starts now
-            if (due - performance.now() > FRAME_MS && timer) { window.ClearTimeout(timer); due = 0; at(1); }
-        },
+    return {
+        wake() { if (running) return; running = true; last = performance.now(); due = 0; window.SetTimeout(tick, 1); },
         get running() { return running; },
     };
-    return clock;
 }
 
 // Tween over a fixed duration: { t0, dur } -> progress 0..1
