@@ -1,12 +1,11 @@
 ﻿"use strict";
 // 01 · ARCHIVE, drawn by the stage panel (stage.js includes this file).
 //
-//   left   the archive array: rendered specimen cases standing on shelves, shelves receding up-left. Every shelf has
-//          the same number of slots: the groups (genre, decade, artist initial or none) follow one another along
-//          the shelves, a small group sharing a shelf with the next, a large one continuing on
-//          the next shelf. Each shelf keeps its own selection and lifts a
-//          wave around it; the selected case decrypts frost → clear and gets corner marks and a leader to its ARC
-//          number. Below: ALBUM / SELECT numeral, album index (navigation), shelf switcher. Click the selected case
+//   left   the archive array: rendered specimen cases standing on shelves, shelves receding up-left, the ones in
+//          front of the selected shelf see-through (see Shelf looks). The groups (genre, decade, artist initial,
+//          album or none) stand on shelves of 10 to 30 cases (see buildShelves). Each shelf keeps its own selection
+//          and lifts a wave around it; the selected case decrypts frost → clear and gets corner marks and its info
+//          plate (see drawInfoPlate). Below: ALBUM / SELECT numeral, album index (navigation), shelf switcher. Click the selected case
 //          (or Enter) to inspect it: the case is lifted straight up out of its row, then turns square-on in front
 //          (and goes back the same way).
 //   right  the album file, two pages (the two dots at the bottom, or L):
@@ -650,7 +649,6 @@ function arrayImages() {
     if (!ARIMG.clear) for (const k of ["clear", "frost"]) ARIMG[k] = d2d.Image(floorOwn(`case${BS}${CASE_SKIN}${BS}array-${k}.png`) || CASE_DIR + `array-${k}.png`);
     return ARIMG;
 }
-// the frost sprite tinted towards the background by f (0.1 steps), alpha kept: Direct2D colour matrix, made once
 // src tinted towards the background by f: src as it is, then its silhouette in the background colour (tinted at 1, made
 // once) over it at f, so the tint follows f smoothly as a row moves. Opaque parts come out exactly as a sprite tinted
 // by f; half-clear ones (the frosted glass) a little more opaque, by the same amount at every f. (Two cached tint
@@ -682,6 +680,7 @@ function warmTints() {
     };
     TINT_WARM.timer = window.SetTimeout(step, 600);   // after the view's own transition
 }
+// src tinted towards the background by f, alpha kept: a Direct2D colour matrix, made once per sprite, f and mode
 function tinted(src, f, name) {
     const key = MODE + f + name;
     let img = ARIMG.faded.get(key);
@@ -1099,7 +1098,7 @@ function drawInfoPlate(gr, p) {
 }
 // a plate led out from the top corner of a case's cover: the title (the album's, or the song's when every track is its
 // own item) for the one under the mouse in "label" mode
-function drawCasePlate(gr, a, ox, oy, k, alpha = 255, txt = `ARC-${pad(a.no, 4)}`) {
+function drawCasePlate(gr, a, ox, oy, k, alpha, txt) {
     const top = CASE_META.array.cover[1], x1 = ox + top[0] * k + dp(4), y1 = oy + top[1] * k - dp(4), lx = x1 + dp(26), ly = y1 - dp(30);
     const fg = withAlpha(C.fg, alpha / 255), s = st(AR_ST.plate, C.bg, C.fg);
     gr.DrawLine(x1, y1, lx, ly, HAIR, fg);
@@ -1187,8 +1186,8 @@ const rowAlpha = pos => {
 // how much of the front shelves' look a row has: 0 behind the selected shelf (and the selected one), 1 a shelf or
 // more in front of it, in between while it moves from one to the other (so its fade and titles change smoothly)
 const frontness = pos => clamp(AR.group - arrayStart() - pos, 0, 1);
-// how far a row is tinted towards the background, smoothly as it moves (drawTinted draws the sprites between their
-// 0.1 steps): by its distance from the front row (the selected one), or on an ultrawide array from the selected row,
+// how far a row is tinted towards the background, smoothly as it moves (drawTinted lays the background over the
+// sprites at it): by its distance from the front row (the selected one), or on an ultrawide array from the selected row,
 // times its kind's fade; the floor may fade them less (floor.json "tint")
 const rowTint = pos => {
     const mul = lerp(SHELF_LOOK.back.fade, SHELF_LOOK.front.fade, frontness(pos));
@@ -1428,7 +1427,7 @@ function drawInspection(gr, e) {
     const cxEnd = Math.min(aw * .49, Math.max(leftOf + dp(16), aw - dp(24) - P.w - dp(40) - rightOf));
     const cx = lerp(AR.from[0], cxEnd, e), cy = lerp(AR.from[1], H * .5, e);
     // the info plate's place by the case at rest: right of it, its header level with the cover's top corner
-    const oxEnd = cxEnd - last.center[0] * kEnd, oyEnd = H * .5 - last.center[1] * kEnd;
+    const oyEnd = H * .5 - last.center[1] * kEnd;
     const plateTo = [1, 0, 0, 1, Math.round(Math.min(aw - dp(16) - P.w, cxEnd + rightOf + dp(40))), Math.round(oyEnd + last.cover[1][1] * kEnd - P.hh / 2)];
     const ox = cx - M0.center[0] * k, oy = cy - M0.center[1] * k;
     const mixQ = (A, B) => A.map((p, j) => [lerp(p[0], B[j][0], f), lerp(p[1], B[j][1], f)]);

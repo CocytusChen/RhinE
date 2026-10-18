@@ -98,7 +98,6 @@ I18N["ja"] = {
     "FLOOR": "床", "PLAIN": "無地", "LAB DECK": "ラボデッキ", "Archive floor": "アーカイブの床", "Plain": "無地", "Lab deck": "ラボデッキ", "REAL STYLE": "リアルスタイル", "Real style": "リアルスタイル",
     "CLICK TO SKIP": "クリックでスキップ",
     "Open containing folder": "フォルダーを開く",
-    "SPACE": "スペース",
     "Walnut and candlelight, made for REAL STYLE": "ウォールナットとキャンドルの灯り、リアルスタイル向け", "USE HEARTH, MADE FOR REAL STYLE": "リアルスタイル向けの HEARTH を使う",
     "Lime signal and steel cyan": "ライムのシグナルとスチールシアン",
     "Creamy white and matcha green": "クリームホワイトと抹茶グリーン",
