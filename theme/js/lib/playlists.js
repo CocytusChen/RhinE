@@ -35,3 +35,43 @@ function fmtSize(b) {
     if (b >= 1e6) return Math.round(b / 1048576) + " MB";
     return Math.round(b / 1024) + " KB";
 }
+
+// ----------------------------------------------------------------------------------------------- instrumentals
+// Instrumental versions (伴奏): a track whose title says Instrumental, Inst., Off Vocal, Karaoke, カラオケ, 伴奏 … in
+// brackets, after a dash or at its end, or whose VERSION tag says so. On an album that is itself instrumental (its
+// title says so) nothing counts. The Archive leaves them out when it plays an album, if "skipInstrumentals" is on
+// (its context menu); the playlist manager's menu removes them from a playlist (Ctrl+Z puts them back).
+const INST_WORD = /(?:^|[^a-z])(?:instrumentals?|inst\.?|off[\s-]?vocal|karaoke|backing[\s-]?tracks?|minus[\s-]?one|without[\s-]?vocals?|no[\s-]?vocals?)(?![a-z])|カラオケ|オフ\s*ボーカル|インスト|伴奏/i;
+// the parts of a title that name a version: (…) […] （…） 【…】 -…- ~…~ and whatever follows " - "
+const INST_PARTS = /[(\[（【〔<〈「『][^)\]）】〕>〉」』]*|[~～][^~～]+[~～]?|\s[-–—－]\s.*$|-[^-]+-\s*$/g;
+function isInstrumental(title, version = "", album = "") {
+    if (INST_WORD.test(album)) return false;
+    if (INST_WORD.test(version)) return true;
+    const t = String(title || "").trim();
+    if ((t.match(INST_PARTS) || []).some(p => INST_WORD.test(p))) return true;
+    // "Song Instrumental", "Song Inst.": the word at the end, after the title
+    const m = t.match(/\s(\S+(?:\s\S+)?)$/);
+    return !!m && new RegExp(`^(?:${INST_WORD.source})\.?$`, "i").test(m[1]);
+}
+const TF_INST = fb.TitleFormat("%title%\u0001$meta(version)\u0001%album%");
+const instrumentalFlags = list => list && list.Count ? TF_INST.EvalWithMetadbs(list).map(s => isInstrumental(...s.split("\u0001"))) : [];
+// `list` without its instrumentals, except `keep` (a track asked for by name); the whole list when nothing would be left
+function dropInstrumentals(list, keep) {
+    const f = instrumentalFlags(list), out = fb.CreateHandleList();
+    for (let i = 0; i < list.Count; i++) {
+        const h = list[i];
+        if (!f[i] || (keep && h.RawPath === keep.RawPath && h.SubSong === keep.SubSong)) out.Add(h);
+    }
+    return out.Count ? out : list;
+}
+// the playlist's instrumentals (their indexes)
+const playlistInstrumentals = pl => instrumentalFlags(plman.GetPlaylistItems(pl)).reduce((a, f, i) => (f && a.push(i), a), []);
+function removeInstrumentals(pl) {
+    const idx = playlistInstrumentals(pl);
+    if (!idx.length) return 0;
+    plman.UndoBackup(pl);
+    plman.ClearPlaylistSelection(pl);
+    plman.SetPlaylistSelection(pl, idx, true);
+    plman.RemovePlaylistSelection(pl, false);
+    return idx.length;
+}

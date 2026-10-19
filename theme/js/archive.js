@@ -56,7 +56,8 @@ const AR = {
     rateHover: null, mouseX: 0,   // { i, n }: the rating under the mouse (previewed); the mouse's x (wheel over the file)
     rulerStart: Spring(0, 14), ticks: new Map(),
     dirtyInfo: true, info: null,
-    topTitles: getSetting("caseTopTitles", true) !== false,   // the titles on the cases' top edges (the context menu)
+    topTitles: getSetting("caseTopTitles", true) !== false,
+    skipInst: getSetting("skipInstrumentals", false) === true,   // play albums without their instrumentals (lib/playlists.js)   // the titles on the cases' top edges (the context menu)
     hoverMode: HOVER_MODES.includes(getSetting("caseHover", "outline")) ? getSetting("caseHover", "outline") : "outline",   // the case under the mouse: outlined, titled or left as is (the context menu)
     hoverPlate: null,   // the case to label this frame (hoverMode "label"): drawn after the shelf, over its neighbours
 };
@@ -298,9 +299,10 @@ function albumTracks(a, max) {
         first = at > max - 2 ? Math.max(0, Math.min(at - 1, list.Count - max)) : 0;
         const n = Math.min(max, list.Count - first), sub = fb.CreateHandleList();
         for (let i = 0; i < n; i++) sub.Add(list[first + i]);
+        const inst = instrumentalFlags(sub);
         rows = TF_AR_TRACK.EvalWithMetadbs(sub).map((s, k) => {
             const [no, title, len] = s.split("\u0001"), i = first + k, h = list[i];
-            return { i, no: no ? pad(parseInt(no) || 0, 2) : pad(i + 1, 2), title, len: +len || 0, playing: sameTrack(h, np), own: sameTrack(h, own) };
+            return { i, no: no ? pad(parseInt(no) || 0, 2) : pad(i + 1, 2), title, len: +len || 0, playing: sameTrack(h, np), own: sameTrack(h, own), inst: inst[k] };
         });
     }
     AR.tracks = { key, rows, first, total: list ? list.Count : (albumOf(a) || a).tracks };
@@ -316,11 +318,11 @@ function albumTrackList(a) {
     const list = albumHandles(a), np = fb.GetNowPlaying(), own = itemTrack(a);
     let rows = [];
     if (list && list.Count) {
-        const R = getRatings(list);
+        const R = getRatings(list), inst = instrumentalFlags(list);
         rows = TF_AR_LIST.EvalWithMetadbs(list).map((v, i) => {
             const [disc, no, title, len] = v.split("\u0001"), h = list[i];
             return { i, disc: disc || "", no: no ? pad(parseInt(no) || 0, 2) : pad(i + 1, 2), title, len: +len || 0, rating: R[i] || 0,
-                     playing: sameTrack(h, np), own: sameTrack(h, own) };
+                     playing: sameTrack(h, np), own: sameTrack(h, own), inst: inst[i] };
         });
     }
     const rated = rows.filter(r => r.rating);
@@ -1226,7 +1228,7 @@ function drawInfoFile(gr, a, x, y, iw, w, h) {
         if (t.own || hov) gr.FillSolidRect(x - dp(8), ry, iw + dp(16), rowH, t.own ? C.panel : withAlpha(C.fg, .06));
         if (t.own) gr.FillSolidRect(x - dp(8), ry, dp(3), rowH, C.accent);
         gr.DrawText(t.playing ? "▶" : t.no, font(12, 400), t.playing ? C.accent : C["text-muted"], x, ry, dp(34), rowH, DT_SINGLE);
-        gr.DrawText(t.title, fontFor(t.title, 12, t.own ? 600 : 400), C.fg, x + dp(34), ry, iw - dp(34) - dp(70), rowH, DT_SINGLE | DT_ELLIPSIS);
+        gr.DrawText(t.title, fontFor(t.title, 12, t.own ? 600 : 400), AR.skipInst && t.inst && !t.own ? C["text-muted"] : C.fg, x + dp(34), ry, iw - dp(34) - dp(70), rowH, DT_SINGLE | DT_ELLIPSIS);
         gr.DrawText(fmtTime(t.len), font(12, 400), C["fg-soft"], x + iw - dp(70), ry, dp(70), rowH, DT_RIGHT_SINGLE);
         INFO_HITS.push(["ar-track", x - dp(8), ry, iw + dp(16), rowH, t.i]);
     });
@@ -1294,7 +1296,7 @@ function drawInfoTracks(gr, a, x, y, iw, w, h) {
             if (r.own || hov) gr.FillSolidRect(x - dp(8), ry, iw + dp(16), rowH, r.own ? C.panel : withAlpha(C.fg, .06));
             if (r.own) gr.FillSolidRect(x - dp(8), ry, dp(3), rowH, C.accent);
             gr.DrawText(r.playing ? "▶" : r.no, font(12, 400), r.playing ? C.accent : C["text-muted"], x, ry, dp(34), rowH, DT_SINGLE);
-            gr.DrawText(r.title, fontFor(r.title, 12, r.own ? 600 : 400), C.fg, tx, ry, rx - dp(12) - tx, rowH, DT_SINGLE | DT_ELLIPSIS);
+            gr.DrawText(r.title, fontFor(r.title, 12, r.own ? 600 : 400), AR.skipInst && r.inst && !r.own ? C["text-muted"] : C.fg, tx, ry, rx - dp(12) - tx, rowH, DT_SINGLE | DT_ELLIPSIS);
             drawRating(gr, rx, ry + (rowH - ms) / 2, ms, r.rating, rh);
             gr.DrawText(fmtTime(r.len), font(12, 400), C["fg-soft"], x + iw - timeW, ry, timeW, rowH, DT_RIGHT_SINGLE);
             INFO_HITS.push(["ar-track", x - dp(8), ry, rx - dp(6) - (x - dp(8)), rowH, r.i]);
@@ -1319,9 +1321,11 @@ function archivePlaylist() {
     if (pl < 0) pl = plman.CreatePlaylist(plman.PlaylistCount, ARCHIVE_PLAYLIST);
     return pl;
 }
-function loadAlbum(a) {
-    const list = albumHandles(a);
+// keep: a track asked for by name, kept even when it is an instrumental the setting leaves out
+function loadAlbum(a, keep) {
+    let list = albumHandles(a);
     if (!list || !list.Count) return -1;
+    if (AR.skipInst) list = dropInstrumentals(list, keep);
     const pl = archivePlaylist();
     plman.ClearPlaylist(pl);
     plman.InsertPlaylistItems(pl, 0, list);
@@ -1329,13 +1333,16 @@ function loadAlbum(a) {
 }
 // plays the selected item's album from track `at` (default: the item's own track, else the first)
 function playAlbum(at) {
-    const a = curAlbum(), list = albumHandles(a);
-    if (!list || !list.Count) return;
-    if (at === undefined) { const own = itemTrack(a); at = 0; if (own) for (let i = 0; i < list.Count; i++) if (sameTrack(list[i], own)) { at = i; break; } }
-    const pl = loadAlbum(a);
+    const a = curAlbum(), full = albumHandles(a);
+    if (!full || !full.Count) return;
+    const want = at !== undefined ? full[clamp(at, 0, full.Count - 1)] : itemTrack(a);
+    const pl = loadAlbum(a, want);
     if (pl < 0) return;
+    const list = plman.GetPlaylistItems(pl);
+    let i = 0;
+    if (want) for (let k = 0; k < list.Count; k++) if (sameTrack(list[k], want)) { i = k; break; }
     plman.ActivePlaylist = pl;
-    plman.ExecutePlaylistDefaultAction(pl, clamp(at, 0, list.Count - 1));
+    plman.ExecutePlaylistDefaultAction(pl, i);
     AR.tracks.key = "";
 }
 // the playing track is this item (a track item) or on this album
@@ -1526,6 +1533,7 @@ function archiveMenu(x, y) {
     m.AppendMenuItem(curAlbum() ? 0 : 1, 11, tr("Random pick") + "	R");
     m.AppendMenuItem(AR.topTitles ? 0x8 : 0, 12, tr("Titles on the cases' top edges"));
     m.AppendMenuItem(AR.page === "tracks" ? 0x8 : 0, 14, tr("Album file: all tracks with ratings") + "\tL");
+    m.AppendMenuItem(AR.skipInst ? 0x8 : 0, 15, tr("Play albums without instrumentals"));
     ratingMenu(m, 600);
     const hv = window.CreatePopupMenu();
     ["Outline it", "Show its title", "Nothing"].forEach((t, i) => hv.AppendMenuItem(0, 500 + i, tr(t)));
@@ -1543,6 +1551,7 @@ function archiveMenu(x, y) {
     else if (id >= 500 && HOVER_MODES[id - 500]) { AR.hoverMode = HOVER_MODES[id - 500]; setSetting("caseHover", AR.hoverMode); window.Repaint(); }
     else if (id === 12) { AR.topTitles = !AR.topTitles; setSetting("caseTopTitles", AR.topTitles); window.Repaint(); }
     else if (id === 14) setInfoPage(AR.page === "tracks" ? "file" : "tracks");
+    else if (id === 15) { AR.skipInst = !AR.skipInst; setSetting("skipInstrumentals", AR.skipInst); AR.dirtyInfo = true; window.Repaint(); }
     else if (id >= 600 && ratingMenuPick(id, 600)) { AR.listVer++; AR.dirtyInfo = true; window.Repaint(); }
     else if (id === 10) setUnit(showTracks() ? "albums" : "tracks");
     else if (id === 5) openAlbum();

@@ -59,7 +59,7 @@ I18N["ja"] = {
     "{0} SELECTED": "{0} 件選択", "ALBUM": "アルバム", "INDEX": "インデックス", "NO PLAYLIST": "プレイリストなし",
     "NO.": "番号", "TIME": "時間", "POS": "位置",
     "+ NEW PLAYLIST": "+ 新しいプレイリスト", "+ {0} MORE": "ほか {0}", "New playlist": "新しいプレイリスト", "Rename…": "名前を変更…",
-    "Duplicate": "複製", "Edit autoplaylist…": "オートプレイリストを編集…", "Remove": "削除",
+    "Duplicate": "複製", "Edit autoplaylist…": "オートプレイリストを編集…", "Remove instrumentals ({0})": "インストを削除（{0}）", "Remove": "削除",
     "Playlist name": "プレイリスト名", "Rename playlist": "プレイリスト名の変更",
 
     // profile card
@@ -176,6 +176,7 @@ I18N["ja"] = {
     "RATING": "評価",
     "DISC": "ディスク",
     "Album file: all tracks with ratings": "アルバムファイル：全曲と評価",
+    "Play albums without instrumentals": "アルバム再生時にインストを除く",
     "Ratings saved in": "評価の保存先",
     "Automatic": "自動",
     "JSplitter database (no files written)": "JSplitter データベース（ファイルに書き込まない）",

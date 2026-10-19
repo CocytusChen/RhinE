@@ -58,7 +58,7 @@ I18N["zh-CN"] = {
     "{0} SELECTED": "已选 {0}", "ALBUM": "专辑", "INDEX": "索引", "NO PLAYLIST": "没有播放列表",
     "NO.": "序号", "TIME": "时长", "POS": "位置",
     "+ NEW PLAYLIST": "+ 新建播放列表", "+ {0} MORE": "还有 {0} 个", "New playlist": "新建播放列表", "Rename…": "重命名…",
-    "Duplicate": "复制", "Edit autoplaylist…": "编辑自动列表…", "Remove": "删除",
+    "Duplicate": "复制", "Edit autoplaylist…": "编辑自动列表…", "Remove instrumentals ({0})": "移除伴奏（{0}）", "Remove": "删除",
     "Playlist name": "播放列表名称", "Rename playlist": "重命名播放列表",
 
     // profile card
@@ -175,6 +175,7 @@ I18N["zh-CN"] = {
     "RATING": "评分",
     "DISC": "碟",
     "Album file: all tracks with ratings": "专辑档案：全部曲目与评分",
+    "Play albums without instrumentals": "播放专辑时跳过伴奏",
     "Ratings saved in": "评分保存在",
     "Automatic": "自动",
     "JSplitter database (no files written)": "JSplitter 数据库（不写入文件）",

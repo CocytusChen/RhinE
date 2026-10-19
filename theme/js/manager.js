@@ -181,6 +181,7 @@ function playlistMenu(x, y, i) {
         menu.AppendMenuItem(0, 2, tr("Rename…"));
         menu.AppendMenuItem(0, 3, tr("Duplicate"));
         if (plman.IsAutoPlaylist(i)) menu.AppendMenuItem(0, 5, tr("Edit autoplaylist…"));
+        else { const n = playlistInstrumentals(i).length; menu.AppendMenuItem(n ? 0 : 1, 6, tr("Remove instrumentals ({0})", n)); }
         menu.AppendMenuSeparator();
         menu.AppendMenuItem(0, 4, tr("Remove"));
     }
@@ -190,6 +191,7 @@ function playlistMenu(x, y, i) {
     else if (id === 3) plman.ActivePlaylist = plman.DuplicatePlaylist(i, plman.GetPlaylistName(i));
     else if (id === 4) removePlaylist(i);
     else if (id === 5) plman.ShowAutoPlaylistUI(i);
+    else if (id === 6) removeInstrumentals(i);
 }
 
 // --------------------------------------------------------------------------------------------------- mouse
