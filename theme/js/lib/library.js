@@ -229,18 +229,23 @@ function setSortBy(by) {
     setSetting("archiveSort", by);
     groupAlbums();
 }
-// album order within a group; ties fall back to artist, then title
+// album order within a group. Ties go by the album, not the item: its artist, its year, then the album itself in disc /
+// track order, so the tracks of one album stay together and in order wherever the key chosen does not set them apart
+// (a track's own artist or date would pull it away from the rest of its album: a guest artist, a track dated on its
+// own). Albums are their own album, so they sort as before.
 const lcs = s => String(s || "").toLowerCase();
 const strCmp = (x, y) => x < y ? -1 : x > y ? 1 : 0;
 function albumOrder(by) {
+    const of = p => albumOf(p) || p;
     const art = (p, q) => strCmp(lcs(p.artist), lcs(q.artist)), tit = (p, q) => strCmp(lcs(p.title), lcs(q.title));
-    const yr = (p, q) => (!p.year - !q.year) || strCmp(p.year, q.year);   // undated last
-    // tracks of one album stay in disc / track order where the order does not separate them
+    const aart = (p, q) => strCmp(lcs(of(p).artist), lcs(of(q).artist));
+    const yr = (p, q) => { const a = of(p).year, b = of(q).year; return (!a - !b) || strCmp(a, b); };   // undated last
     const alb = (p, q) => p.album ? strCmp(p.album, q.album) || (p.ord - q.ord) : 0;
+    const rest = (p, q) => aart(p, q) || yr(p, q) || alb(p, q) || tit(p, q);
     if (by === "title") return (p, q) => tit(p, q) || art(p, q);
-    if (by === "year") return (p, q) => yr(p, q) || art(p, q) || alb(p, q) || tit(p, q);
-    if (by === "added") return (p, q) => (!p.added - !q.added) || strCmp(q.added, p.added) || art(p, q) || alb(p, q) || tit(p, q);   // newest first
-    return (p, q) => art(p, q) || yr(p, q) || alb(p, q) || tit(p, q);
+    if (by === "year") return (p, q) => yr(p, q) || rest(p, q);
+    if (by === "added") return (p, q) => (!p.added - !q.added) || strCmp(q.added, p.added) || rest(p, q);   // newest first
+    return (p, q) => art(p, q) || rest(p, q);
 }
 
 // The archive's search filter (the header's search field while the Archive is shown): every word must appear in the
