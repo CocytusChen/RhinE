@@ -9,7 +9,7 @@
 const BUS = "audio-archive";
 const BUS_HANDLERS = {};
 const STATE = { view: "playlists", preset: "album", reduce: false, boot: true, skin: "white", grain: true,
-                lyricsSource: "auto", lyricsTrans: "off", lyricsNeteaseAuto: false,
+                lyricsSource: "auto", lyricsTrans: "off", lyricsNeteaseAuto: false, lyricsRoma: false,
                 textScale: 1, arrayScale: 1, inspectScale: 1.3, wallpaper: null, halftone: "bottom", halftoneLevel: "mid",
                 emblem: "ring", tag: "plastic", tagShape: "tab", tagColours: "scheme", tagCustom: null, tagOpacity: 50, tagBody: "solid", font: "geist" };
 

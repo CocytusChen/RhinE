@@ -13,7 +13,7 @@
 // view repaints ten times a second (and every frame while lines scroll); nothing runs while paused, stopped or hidden.
 
 include(fb.ProfilePath + "themes\\audio-archive\\js\\lib\\core.js");
-for (const f of ["emblem", "audio", "ring", "lyrics", "translate", "waveform", "album", "playlists", "nowplaying", "library"]) include(fb.ProfilePath + `themes\\audio-archive\\js\\lib\\${f}.js`);
+for (const f of ["emblem", "audio", "ring", "lyrics", "translate", "roman", "waveform", "album", "playlists", "nowplaying", "library"]) include(fb.ProfilePath + `themes\\audio-archive\\js\\lib\\${f}.js`);
 include(fb.ProfilePath + "themes\\audio-archive\\js\\archive.js");
 include(fb.ProfilePath + "themes\\audio-archive\\js\\grid.js");
 include(fb.ProfilePath + "themes\\audio-archive\\js\\customcase.js");
@@ -53,8 +53,11 @@ const LYR_BACK_MS = 5000;
 const lyrSynced = () => !(T.lyrics && T.lyrics.synced === false);
 const sameHandle = h => !!(T.handle && h && T.handle.RawPath === h.RawPath && T.handle.SubSong === h.SubSong);
 // the current lyrics translated (lib/translate.js), when that is on and they have one language
+// (and romanized, lib/roman.js, when that is on)
 function trLyrics(h) {
-    translateLyrics(h, T.lyrics, () => { if (sameHandle(h)) { dirty.left = true; window.Repaint(); } });
+    const update = () => { if (sameHandle(h)) { dirty.left = true; window.Repaint(); } };
+    translateLyrics(h, T.lyrics, update);
+    romanizeLyrics(h, T.lyrics, update);
 }
 // the translation settings changed (MENU): load the lyrics again without the old translation
 onMessage("lyrics-translate", () => { if (T.handle) { T.lyrics = null; npChanged(false, T.handle); } });
@@ -84,6 +87,12 @@ onMessage("lyrics-netease-auto", on => {
     if (T.handle) { T.lyrics = null; npChanged(false, T.handle); }
     clock.wake(); window.Repaint();
 });
+// romanized lyrics switched (the MENU or the state chip's menu): read the track again, with or without them
+onMessage("lyrics-roma", on => {
+    STATE.lyricsRoma = !!on;
+    if (T.handle) { T.lyrics = null; npChanged(false, T.handle); }
+    clock.wake(); window.Repaint();
+});
 // the translation source changed in the MENU (lib/translate.js reads it): drop what the old one added and translate again
 onMessage("lyrics-trans", () => {
     if (T.handle) { T.lyrics = null; npChanged(false, T.handle); }
@@ -99,13 +108,53 @@ function setLyricsTrans(v) {
     if (T.handle) { T.lyrics = null; npChanged(false, T.handle); }
     clock.wake(); window.Repaint();
 }
-// the state chip's menu: the same four as MENU › Audio Archive › Translate lyrics, at the chip
+// the state chip's menu: the same four as MENU › Audio Archive › Translate lyrics, at the chip, and romanized lyrics
 function lyricsTransMenu(x, y) {
     const m = window.CreatePopupMenu();
     LYR_TRANS.forEach(([, name], i) => m.AppendMenuItem(0, 1 + i, tr(name)));
     m.CheckMenuRadioItem(1, LYR_TRANS.length, 1 + Math.max(0, LYR_TRANS.findIndex(([k]) => k === STATE.lyricsTrans)));
+    m.AppendMenuSeparator();
+    m.AppendMenuItem(STATE.lyricsRoma ? 0x8 : 0, 50, tr("Romanized lyrics (Japanese, Korean)"));
+    m.AppendMenuItem(lrcPath(T.handle) ? 0 : 1, 51, tr("Edit lyrics (.lrc)…"));
     const id = m.TrackPopupMenu(x, y, 0);
     if (id > 0 && id <= LYR_TRANS.length) setLyricsTrans(LYR_TRANS[id - 1][0]);
+    // the MENU's sender rule: frame.js saves it and broadcasts, and NotifyOthers skips this panel, so it reloads here
+    else if (id === 50) { STATE.lyricsRoma = !STATE.lyricsRoma; send("lyrics-roma", STATE.lyricsRoma); if (T.handle) { T.lyrics = null; npChanged(false, T.handle); } window.Repaint(); }
+    else if (id === 51) editLyrics();
+}
+
+// Edit lyrics: the track's own .lrc (same name, next to it) in Notepad. When there is none, it is made from the lyrics
+// shown (time stamps and all; a translation only when it came with them, not one the theme added). While it is open the
+// file is read every 2 s and what was saved shows at once; under LRCLIB or NETEASE the source turns to AUTO, which
+// puts the file first, so the edit is what shows.
+const lrcPath = h => h && /^([a-z]:\\|\\\\)/i.test(h.Path || "") ? h.Path.replace(/\.[^.\\]+$/, "") + ".lrc" : "";
+const LRC_EDIT = { path: "", text: "", timer: 0, until: 0 };
+function editLyrics() {
+    const h = T.handle, lrc = lrcPath(h);
+    if (!lrc) return;
+    if (!utils.IsFile(lrc)) {
+        const L = T.lyrics, stamp = t => `[${pad(Math.floor(t / 60), 2)}:${pad(Math.floor(t % 60), 2)}.${pad(Math.floor(t % 1 * 100), 2)}]`, out = [];
+        if (L) for (const l of L.lines) {
+            const s = l.t != null ? stamp(l.t) : "";
+            out.push(s + l.a);
+            if (l.b && !L.translated && s) out.push(s + l.b);
+        }
+        let ok = false;
+        try { ok = utils.WriteTextFile(lrc, out.join("\r\n"), false) !== false && utils.IsFile(lrc); } catch (e) { ok = false; }
+        if (!ok) { console.log("audio-archive: could not write " + lrc); return; }
+    }
+    LRC_EDIT.path = lrc; LRC_EDIT.text = readLrcFile(lrc); LRC_EDIT.until = Date.now() + 30 * 60e3;
+    if (lyrFixed()) setLyricsSource("auto");
+    else { T.lyrics = null; npChanged(false, h); }
+    utils.Run("notepad.exe", `"${lrc}"`, "", "", 1, false);
+    if (!LRC_EDIT.timer) LRC_EDIT.timer = window.SetInterval(() => {
+        // the edit ends after half an hour, or when another track plays
+        if (Date.now() > LRC_EDIT.until || lrcPath(T.handle) !== LRC_EDIT.path) { window.ClearInterval(LRC_EDIT.timer); LRC_EDIT.timer = 0; return; }
+        const text = utils.IsFile(LRC_EDIT.path) ? readLrcFile(LRC_EDIT.path) : "";
+        if (text === LRC_EDIT.text) return;
+        LRC_EDIT.text = text;
+        T.lyrics = null; npChanged(false, T.handle);
+    }, 2000);
 }
 
 function npChanged(same, h, what) {
@@ -449,6 +498,8 @@ function drawLyrics(gr, g) {
         lyrIdx = i;
     }
     const o = lyrOff.x, cx = g.cx, cy = g.cy, cur = L[i], hasTr = !!(cur && cur.a && cur.b), left = cx - g.cw / 2;
+    // under the current line: its romanization (as written, lib/roman.js), then its translation (in capitals)
+    const hasRo = !!(STATE.lyricsRoma && cur && cur.a && cur.r), subs = hasRo + hasTr;
     // the current line on two lines pushes the ones after it down
     const curFit = cur ? lyricFit(gr, cur.a || cur.b, 30, 22, 2, 700, g.cw, 3, 18) : null, extra = curFit ? (curFit.lines.length - 1) * curFit.lh : 0;
     lyrBar = null;
@@ -456,7 +507,7 @@ function drawLyrics(gr, g) {
     for (let k = -4; k <= 5; k++) {
         const line = L[i + k];
         if (!line) continue;
-        const off = k * pitch + (k > 0 ? dp(hasTr ? 34 : 8) + extra : 0), y = cy + off + o, a = line.a || line.b;
+        const off = k * pitch + (k > 0 ? dp(8 + 26 * subs) + extra : 0), y = cy + off + o, a = line.a || line.b;
         if (y > dp(60) && y < H - dp(90)) hits.add("lyric", left, Math.round(y - pitch / 2), g.cw, pitch, i + k);   // a whole row each
         // the sung line, when scrolled away from the middle: an orange mark to its left
         if (scrolled && i + k === sung && k !== 0) {
@@ -467,12 +518,13 @@ function drawLyrics(gr, g) {
             // the line shrinks (down to 22 dp) when it is wider than the column, then wraps onto a second line
             const fa = curFit.f;
             drawFit(gr, curFit, scrolled ? C["fg-soft"] : C.fg, left, y - dp(1) + extra / 2, g.cw);
-            if (hasTr) gr.DrawText(line.b.toUpperCase(), fontFor(line.b, 13, 500), C["fg-soft"], left, y + dp(22) + extra, g.cw, dp(22), DT_CENTER_SINGLE | DT_ELLIPSIS);
+            if (hasRo) gr.DrawText(line.r, fontFor(line.r, 13, 400), C["fg-soft"], left, y + dp(22) + extra, g.cw, dp(22), DT_CENTER_SINGLE | DT_ELLIPSIS);
+            if (hasTr) gr.DrawText(line.b.toUpperCase(), fontFor(line.b, 13, 500), C["fg-soft"], left, y + dp(22 + 22 * hasRo) + extra, g.cw, dp(22), DT_CENTER_SINGLE | DT_ELLIPSIS);
             const wa = Math.min(g.cw, Math.max(...curFit.lines.map(t => gr.CalcTextWidth(t, fa))));
             if (!synced) continue;
             // karaoke rule under the line (and its translation): a hairline, filled in orange through the line's time
-            const ftr = hasTr ? fontFor(line.b, 13, 500) : null, wb = ftr ? gr.CalcTextWidth(line.b.toUpperCase(), ftr) : 0;
-            const rw = Math.min(g.cw - dp(40), Math.max(wa, wb)), ry = Math.round(y + dp(hasTr ? 52 : 30) + extra);
+            const wb = hasTr ? gr.CalcTextWidth(line.b.toUpperCase(), fontFor(line.b, 13, 500)) : 0, wr = hasRo ? gr.CalcTextWidth(line.r, fontFor(line.r, 13, 400)) : 0;
+            const rw = Math.min(g.cw - dp(40), Math.max(wa, wb, wr)), ry = Math.round(y + dp(30 + 22 * subs) + extra);
             const next = L[i + 1] ? L[i + 1].t : line.t + 8, prog = clamp((el - line.t) / Math.max(.1, next - line.t), 0, 1);
             gr.FillSolidRect(cx - rw / 2, ry, rw, HAIR, C.hair);
             if (!scrolled) {
@@ -587,9 +639,10 @@ function on_mouse_wheel(step) {
     }
 }
 function on_mouse_rbtn_up(x, y, mask) {
-    if (STATE.view !== "archive" || (mask & 0x0004)) return false;   // Shift: JSplitter's own menu
-    archiveMenu(x, y);
-    return true;
+    if (mask & 0x0004) return false;   // Shift: JSplitter's own menu
+    if (STATE.view === "archive") { archiveMenu(x, y); return true; }
+    if (STATE.view === "lyrics") { lyricsTransMenu(x, y); return true; }   // the state chip's menu, with Edit lyrics
+    return false;
 }
 function on_mouse_lbtn_up(x, y) {
     if (GRID.drag) { gridBarUp(); return; }

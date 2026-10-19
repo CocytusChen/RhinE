@@ -200,13 +200,14 @@ function trBatch(api, texts, src, target, done) {
 // ------------------------------------------------------------------------------------------------------ community
 // NetEase Cloud Music: search by title and artist, keep the songs whose length is within 4 s of the track's, and take
 // the first one (exact title first) that has a translation, or failing that any lyrics. The result is cached as
-// ne-<key>.json: { lrc, tlyric } or { none: time } (a miss is remembered for a week).
+// ne-<key>.json: { lrc, tlyric, romalrc } or { none: time } (a miss is remembered for a week). romalrc: its romaji
+// (lib/roman.js); a file cached before they were asked for has no romalrc and is looked up again when they are wanted.
 const NE_MISS_DAYS = 7;
 const TF_NE = fb.TitleFormat("[%artist%]\u0001[%title%]");
 // lines that are credits, not lyrics ("作词 : …", "Composer: …")
 const NE_CREDIT = /^\s*(作词|作曲|编曲|制作人|制作|混音|母带|和声|吉他|贝斯|鼓|录音|监制|出品|词|曲|Lyricist|Lyrics|Composer|Arranger|Producer|Mixing|Mastering|Written by)\s*[:：]/i;
 
-function neteaseFetch(handle, done) {
+function neteaseFetch(handle, done, opts = {}) {
     const [artist, title] = TF_NE.EvalWithMetadb(handle).split("\u0001").map(v => v.trim());
     const len = handle.Length;
     if (!title || !(len > 0)) { done(null); return; }
@@ -214,7 +215,7 @@ function neteaseFetch(handle, done) {
     if (utils.IsFile(file)) {
         try {
             const c = JSON.parse(utils.ReadTextFile(file, 65001));
-            if (!c.none) { done(c); return; }
+            if (!c.none && !(opts.roma && c.romalrc === undefined)) { done(c); return; }
             if (Date.now() - c.none < NE_MISS_DAYS * 864e5) { done(null); return; }
         } catch (e) { /* look up again */ }
     }
@@ -230,12 +231,12 @@ function neteaseFetch(handle, done) {
         let fallback = null;
         const next = i => {
             if (i >= cands.length) { const c = fallback || { none: Date.now() }; save(c); done(c.none ? null : c); return; }
-            trHttp("GET", `https://music.163.com/api/song/lyric?id=${cands[i].id}&lv=1&tv=-1`, "", null, (st2, txt2) => {
+            trHttp("GET", `https://music.163.com/api/song/lyric?id=${cands[i].id}&lv=1&tv=-1&rv=-1`, "", null, (st2, txt2) => {
                 let d = null;
                 try { d = JSON.parse(txt2); } catch (e) { d = null; }
-                const lrc = d && d.lrc && d.lrc.lyric || "", tlyric = d && d.tlyric && d.tlyric.lyric || "";
-                if (lrc && tlyric) { const c = { lrc, tlyric, id: cands[i].id }; save(c); done(c); return; }
-                if (lrc && !fallback) fallback = { lrc, tlyric: "", id: cands[i].id };
+                const lrc = d && d.lrc && d.lrc.lyric || "", tlyric = d && d.tlyric && d.tlyric.lyric || "", romalrc = d && d.romalrc && d.romalrc.lyric || "";
+                if (lrc && tlyric) { const c = { lrc, tlyric, romalrc, id: cands[i].id }; save(c); done(c); return; }
+                if (lrc && !fallback) fallback = { lrc, tlyric: "", romalrc, id: cands[i].id };
                 next(i + 1);
             });
         };
@@ -258,6 +259,8 @@ function neteaseLines(c, withTr) {
 // "thing" / "things"). A line takes the most alike line, or two or three in a row, a few lines ahead; a line with no
 // match of its own may form one with the next lines (each then shows the joined line's translation). What the walk
 // misses (a chorus written once) takes the most alike line anywhere. Returns the number of lines that got one.
+// layOnto does the walk for any field: N is NetEase's lines as { k: lyrKey(text), v: what to lay on }, and each line of L
+// gets its v as line[field] (b: the translation; r: the romaji, lib/roman.js).
 const lyrKey = s => String(s || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
 // how alike two keys are: the Dice coefficient of their character pairs (1 = the same)
 function likeness(a, b) {
@@ -271,13 +274,13 @@ function likeness(a, b) {
 }
 // lengths within a quarter of each other: a part of a line is not taken for the whole
 const closeLen = (a, b) => Math.min(a.length, b.length) >= .75 * Math.max(a.length, b.length);
-function applyCommunity(L, c) {
-    const N = neteaseLines(c, true).filter(l => lyrKey(l.a)).map(l => ({ k: lyrKey(l.a), b: l.b }));
+const applyCommunity = (L, c) => layOnto(L, neteaseLines(c, true).filter(l => lyrKey(l.a)).map(l => ({ k: lyrKey(l.a), v: l.b })), "b");
+function layOnto(L, N, field) {
     const A = L.lines.map(l => lyrKey(l.a)), LIKE = .8, AHEAD = 8;
     const better = (best, score) => !best || score > best.score + .02;
     let j = 0, n = 0;
     for (let i = 0; i < A.length; i++) {
-        if (!A[i] || L.lines[i].b) continue;
+        if (!A[i] || L.lines[i][field]) continue;
         let best = null;
         for (let s = j; s < Math.min(N.length, j + AHEAD) && !(best && best.score === 1); s++)
             for (let k = 1; k <= 3 && s + k <= N.length; k++) {
@@ -290,16 +293,16 @@ function applyCommunity(L, c) {
                 if (score >= LIKE && closeLen(here, N[s].k) && better(best, score)) best = { s, k: 1, score, lines: m };
             }
         if (!best) continue;
-        const b = N.slice(best.s, best.s + best.k).map(x => x.b).filter(Boolean).join(" ");
-        if (b) for (let m = 0; m < best.lines; m++) if (!L.lines[i + m].b) { L.lines[i + m].b = b; n++; }
+        const v = N.slice(best.s, best.s + best.k).map(x => x.v).filter(Boolean).join(" ");
+        if (v) for (let m = 0; m < best.lines; m++) if (!L.lines[i + m][field]) { L.lines[i + m][field] = v; n++; }
         j = best.s + best.k;
         i += best.lines - 1;
     }
     for (let i = 0; i < A.length; i++) {
-        if (L.lines[i].b || !A[i]) continue;
-        let b = "", top = .85;
-        for (const x of N) { const s = x.b ? likeness(A[i], x.k) : 0; if (s >= top && closeLen(A[i], x.k)) { top = s; b = x.b; } }
-        if (b) { L.lines[i].b = b; n++; }
+        if (L.lines[i][field] || !A[i]) continue;
+        let v = "", top = .85;
+        for (const x of N) { const s = x.v ? likeness(A[i], x.k) : 0; if (s >= top && closeLen(A[i], x.k)) { top = s; v = x.v; } }
+        if (v) { L.lines[i][field] = v; n++; }
     }
     return n;
 }

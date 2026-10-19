@@ -365,6 +365,9 @@ function showMenu(a) {
     prov.AppendMenuItem(0, 430, tr("Baidu Translate APP ID and key…"));
     prov.AppendMenuItem(0, 431, tr("DeepL API key…"));
     prov.AppendTo(trm, 0, tr("Machine translation service"));
+    // romanized lyrics: Korean converted by the theme, Japanese romaji from NetEase (lib/roman.js)
+    trm.AppendMenuSeparator();
+    trm.AppendMenuItem(STATE.lyricsRoma ? 0x8 : 0, 511, tr("Romanized lyrics (Japanese, Korean)"));
     trm.AppendTo(theme, 0, tr("Translate lyrics"));
     theme.AppendMenuItem(STATE.boot ? 0x8 : 0, 7, tr("Intro film at start"));
     theme.AppendMenuItem(0, 8, tr("Play intro film") + "\tB");
@@ -415,6 +418,7 @@ function showMenu(a) {
     else if (id >= 450 && id < 450 + UI_LANGS.length) { if (UI_LANGS[id - 450][0] !== UI_LANG) { setSetting("uiLang", UI_LANGS[id - 450][0]); send("ui-lang"); window.Reload(); } }
     else if (id >= 500 && id < 500 + LYR_SOURCES.length) send("lyrics-source", LYR_SOURCES[id - 500][0]);
     else if (id === 510) send("lyrics-netease-auto", !STATE.lyricsNeteaseAuto);
+    else if (id === 511) send("lyrics-roma", !STATE.lyricsRoma);
     else if (id >= 400 && id < 400 + LYR_TRANS.length) send("lyrics-trans", LYR_TRANS[id - 400][0]);
     else if (id >= 460 && id < 460 + TR_TARGETS.length) { setSetting("lyricsTarget", TR_TARGETS[id - 460][0]); send("lyrics-translate"); }
     else if (id >= 420 && id < 420 + TR_PROVIDERS.length) { setSetting("trProvider", TR_PROVIDERS[id - 420][0]); send("lyrics-translate"); }

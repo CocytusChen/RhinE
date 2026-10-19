@@ -26,6 +26,7 @@ STATE.lyricsSource = pickLyricsSource(getSetting("lyricsSource", "auto"));
 STATE.lyricsTrans = pickLyricsTrans(getSetting("lyricsTrans", defaultLyricsTrans()));
 // the permission the AUTO fallback needs; migrateLyricsSettings() above carries it over from lyricsNetease
 STATE.lyricsNeteaseAuto = !!getSetting("lyricsNeteaseAuto", SYSTEM_LANG.startsWith("zh"));
+STATE.lyricsRoma = getSetting("lyricsRoma", false) === true;   // romanized lyrics (lib/roman.js)
 STATE.textScale = pickScale(+getSetting("textScale", 1), TEXT_SCALES);
 STATE.arrayScale = pickScale(+getSetting("arrayScale", 1), ARRAY_SCALES);
 setTextScale(STATE.textScale);   // the root panel's own copy: the Playlists view's column widths follow it
@@ -48,7 +49,7 @@ const P = {};          // child name -> PanelObject
 let ready = false;
 
 const broadcast = () => send("state", { view: STATE.view, preset: STATE.preset, reduce: STATE.reduce, boot: STATE.boot, skin: STATE.skin, grain: STATE.grain,
-                                   lyricsSource: STATE.lyricsSource, lyricsTrans: STATE.lyricsTrans, lyricsNeteaseAuto: STATE.lyricsNeteaseAuto,
+                                   lyricsSource: STATE.lyricsSource, lyricsTrans: STATE.lyricsTrans, lyricsNeteaseAuto: STATE.lyricsNeteaseAuto, lyricsRoma: STATE.lyricsRoma,
                                    textScale: STATE.textScale, arrayScale: STATE.arrayScale, inspectScale: STATE.inspectScale, floor: STATE.floor, wallpaper: STATE.wallpaper,
                                    halftone: STATE.halftone, halftoneLevel: STATE.halftoneLevel, emblem: STATE.emblem, tag: STATE.tag,
                                    tagShape: STATE.tagShape, tagColours: STATE.tagColours, tagCustom: STATE.tagCustom, tagOpacity: STATE.tagOpacity, tagBody: STATE.tagBody, font: STATE.font });
@@ -263,6 +264,7 @@ onMessage("boot", on => { STATE.boot = !!on; setSetting("bootSelfTest", STATE.bo
 onMessage("lyrics-source", v => { STATE.lyricsSource = pickLyricsSource(v); setSetting("lyricsSource", STATE.lyricsSource); broadcast(); });
 onMessage("lyrics-trans", v => { STATE.lyricsTrans = pickLyricsTrans(v); setSetting("lyricsTrans", STATE.lyricsTrans); broadcast(); });
 onMessage("lyrics-netease-auto", on => { STATE.lyricsNeteaseAuto = !!on; setSetting("lyricsNeteaseAuto", STATE.lyricsNeteaseAuto); broadcast(); });
+onMessage("lyrics-roma", on => { STATE.lyricsRoma = !!on; setSetting("lyricsRoma", STATE.lyricsRoma); broadcast(); });
 onMessage("text-scale", v => { STATE.textScale = pickScale(+v, TEXT_SCALES); setSetting("textScale", STATE.textScale); setTextScale(STATE.textScale); broadcast(); layout(); });
 onMessage("inspect-scale", v => { STATE.inspectScale = pickScale(+v, INSPECT_SCALES); setSetting("inspectScale", STATE.inspectScale); broadcast(); });
 onMessage("array-scale", v => { STATE.arrayScale = pickScale(+v, ARRAY_SCALES); setSetting("arrayScale", STATE.arrayScale); broadcast(); });
