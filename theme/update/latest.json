@@ -1,31 +1,31 @@
 {
- "version": "1.8.0",
- "tag": "v1.8.0",
- "date": "2026-10-18",
+ "version": "1.9.0",
+ "tag": "v1.9.0",
+ "date": "2026-10-19",
  "notes": {
   "en": [
-   "Title tag: the song's title printed on a rendered tag on the signal profile card and the album file. Four shapes, seven finishes (plastic, paper, brushed metal, translucent, transparent, Tide and Aurora glass), coloured by the scheme, the case or your own colours; the see-through finishes show the page through them (05 STYLE › TITLE TAG; hover a card for a preview).",
-   "Fonts: Oxanium and Chakra Petch beside Geist Mono (05 STYLE › FONT).",
-   "Emblem: the header shows the Möbius ring or nested triangles (05 STYLE › EMBLEM).",
-   "Lyrics: a source switch under the Lyrics view's title and in the menu: AUTO, LOCAL, LRCLIB or NETEASE. LRCLIB and NETEASE use only that service, even when the file has lyrics of its own (#26, thanks to @RiBunsyou).",
-   "Lyrics: the translation has its own setting: off, NetEase community, machine translation or automatic, in MENU › Translate lyrics or from the Lyrics view's state chip (#26).",
-   "Sharper on high-DPI screens: the inspection frames, the array cases, the rails and the Möbius ring are rendered at twice the pixels; on screens scaled above 125 % the covers are 512 px and the large cover 1280 px. The download is about 400 MB larger.",
-   "A custom case made with an earlier version is made again from the new renders at start, in its colours.",
-   "Fetch lyrics online (LRCLIB) is replaced by the lyrics source; your settings carry over.",
-   "Archive: the album file's + N MORE · ALL TRACKS showed {0} instead of the number of tracks (#29).",
-   "Lyrics: enhanced LRC files (a time stamp on every word) showed the word stamps as text."
+   "Favourites: a heart on tracks and albums, apart from the rating. Give it on the signal profile card, beside OPEN ALBUM, on the album file's TRACKS page, from the Archive's menu, or with H for the playing track. GROUP › FAV puts the favourites first, and Open favourites playlist collects them in Archive · Favourites. A track's heart is kept in JSplitter's database (no files written) or, if you choose, a LOVED tag (#17).",
+   "Instrumentals: right-click the Archive › Play albums without instrumentals leaves out Instrumental, Off Vocal, Inst., Karaoke, カラオケ, 伴奏 … when an album plays (a track you click still plays), and the playlist manager's Remove instrumentals (N) takes them out of a playlist, undoable (#18).",
+   "Romanized lyrics for Japanese and Korean: a line in Latin letters under the sung line (MENU › Translate lyrics, or the Lyrics view's state chip). Korean is converted by the theme; Japanese romaji come from NetEase (#20).",
+   "Edit lyrics: the track's own .lrc opens in Notepad (made from the shown lyrics when there is none), and what you save shows at once: right-click the Lyrics view (#20).",
+   "The interface in Korean, French and German (#31).",
+   "Archive: shelves hold 10 to 30 cases, and a large group is shared out evenly instead of leaving a few cases alone on a shelf (#33, thanks to @CocytusChen).",
+   "Archive: with every track shown, the tracks of one album stay together and in order when sorted (#32, thanks to @CocytusChen).",
+   "The transport's playhead glides instead of stepping (#34, thanks to @CocytusChen).",
+   "A very narrow title tag (a narrow window, or while resizing) could stop the Style view with \"Font failed\".",
+   "After switching the interface language, the lyrics could lose their translation until the next track."
   ],
   "zh": [
-   "标题标签：把歌名印在渲染出的标签上，显示在信号资料卡和专辑档案中。四种形状、七种材质（塑料、纸、拉丝金属、半透明、透明、潮汐玻璃、极光玻璃），颜色可取自配色方案、外壳或自定义；透明类材质能透出后面的页面（05 外观 › 标题标签；鼠标悬停卡片可预览）。",
-   "字体：除 Geist Mono 外新增 Oxanium 和 Chakra Petch（05 外观 › 字体）。",
-   "徽记：顶部可显示莫比乌斯环或三角（05 外观 › 徽记）。",
-   "歌词：歌词视图标题下方和菜单中新增来源开关：自动、本地、LRCLIB 或网易云；选 LRCLIB 或网易云时只用该来源，即使文件自带歌词（#26，感谢 @RiBunsyou）。",
-   "歌词：译文来源成为独立设置：关闭、网易云社区、机器翻译或自动，可在菜单的歌词翻译中或点击歌词视图的状态标签选择（#26）。",
-   "高分屏更清晰：查看动画、阵列外壳、货架和莫比乌斯环都以两倍像素重新渲染；缩放大于 125% 的屏幕上，封面缩略图为 512 像素，大封面为 1280 像素。下载包因此增大约 400 MB。",
-   "用旧版本生成的自定义外壳会在启动时按新的渲染图以原有配色重新生成。",
-   "原来的在线获取歌词选项由歌词来源取代，原有设置会自动沿用。",
-   "档案：专辑档案底部的“还有 N 首 · 全部曲目”显示为 {0}，而不是剩余曲目数（#29）。",
-   "歌词：增强型 LRC（每个字都带时间戳）会把时间戳当作文字显示，现已修复。"
+   "收藏：给曲目和专辑加上红心，与评分互不影响。可在信号资料卡、打开专辑 旁、专辑档案的全部曲目页、档案右键菜单中收藏，或按 H 收藏正在播放的曲目。分组中的 收藏 把收藏排在最前，打开收藏播放列表 把它们汇集到 Archive · Favourites。曲目的收藏保存在 JSplitter 数据库（不写入文件），也可选择写入 LOVED 标签（#17）。",
+   "伴奏：档案右键 › 播放专辑时跳过伴奏，播放专辑时跳过 Instrumental、Off Vocal、Inst.、Karaoke、カラオケ、伴奏等版本（直接点击的曲目照常播放）；播放列表管理器中的 移除伴奏（N） 可一键移除，并可撤销（#18）。",
+   "日语和韩语的罗马音歌词：在正在唱的那一行下方显示拉丁字母（菜单的歌词翻译中，或歌词视图的状态标签）。韩语由主题自己转换，日语罗马音来自网易云（#20）。",
+   "编辑歌词：用记事本打开曲目自己的 .lrc（没有时按当前歌词生成），保存后立即显示：在歌词视图中右键（#20）。",
+   "界面新增韩语、法语和德语（#31）。",
+   "档案：每层货架放 10 到 30 个外壳，较大的分组会平均分配，不再在最后一层只剩几个（#33，感谢 @CocytusChen）。",
+   "档案：显示全部曲目时，同一张专辑的曲目在排序后仍然连在一起并按顺序排列（#32，感谢 @CocytusChen）。",
+   "底栏的播放头平滑移动，不再一格一格跳动（#34，感谢 @CocytusChen）。",
+   "很窄的标题标签（窗口很窄或正在调整大小时）可能导致外观视图报错“Font failed”。",
+   "切换界面语言后，歌词的译文可能要到下一首才会恢复。"
   ]
  }
 }
