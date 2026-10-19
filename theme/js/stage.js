@@ -166,6 +166,7 @@ function npChanged(same, h, what) {
         // are on: the file's are not used at all, so what the switch says is what is shown. When they have nothing the
         // panel reports no lyrics instead of quietly falling back to the file.
         const src = STATE.lyricsSource, fixed = lyrFixed();
+        lyricsWas = lyricsKey();
         T.lyrics = fixed ? null : loadLyrics(h);
         trLyrics(h);
         LYR.src = "";   // a new track: no source has been asked yet (the notice names whichever one is, see drawLyricsView)
@@ -239,11 +240,17 @@ const clock = Clock((dt, now) => {
 });
 let arrayScaleWas = STATE.arrayScale;
 let halftoneWas = "";
+// the lyrics settings the current track's lyrics were read with (npChanged)
+const lyricsKey = () => [STATE.lyricsSource, STATE.lyricsTrans, STATE.lyricsNeteaseAuto, STATE.lyricsRoma].join("|");
+let lyricsWas = "";
 onMessage("state", () => {
     if (stageSkin() !== CASE_SKIN && loadSkin(stageSkin())) dirty.card = true;
     // another halftone, title tag, font or case (05 STYLE): the album file and the card are drawn again
     const ht = [STATE.halftone, STATE.halftoneLevel, STATE.tag, STATE.tagShape, STATE.tagColours, JSON.stringify(STATE.tagCustom), STATE.tagOpacity, STATE.tagBody, STATE.font, stageSkin()].join("|");
     if (ht !== halftoneWas) { halftoneWas = ht; AR.dirtyInfo = dirty.card = true; }
+    // the lyrics settings as the track's lyrics were read: when every panel reloads at once (a new interface language)
+    // the track can be read before frame.js has sent them, so lyrics read with the defaults are read again
+    if (T.handle && lyricsWas && lyricsKey() !== lyricsWas) { T.lyrics = null; npChanged(false, T.handle); }
     const on = STATE.view === "archive";
     if (on !== ARCHIVE_ON) { ARCHIVE_ON = on; if (on) requestVisibleThumbs(); else archiveHidden(); }
     if (on) inspectPending();
