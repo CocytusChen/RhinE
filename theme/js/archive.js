@@ -148,6 +148,8 @@ function placeSelection(key) {
         if (at) { r.sel = at[1]; r.scroll.x = r.scroll.to = scrollTarget(r.sel, R[AR.group]); }
     }
     selectionChanged(false);
+    // the rows and their cases at once: a paint before the next step would find the array empty (a blink)
+    if (ARCHIVE_ON && AR.layout !== "grid" && R.length && W > 0) archiveUpdate(0);
 }
 
 function selIndexOf(gi) {
