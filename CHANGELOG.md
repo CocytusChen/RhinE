@@ -3,6 +3,45 @@
 Newest version first. Download any version from [Releases](https://github.com/ericzhang12111-cell/RhinE/releases).
 最新版本在最上面；各版本可在 Releases 页面下载。
 
+## 1.9.0 — 2026-10-19
+
+**Added · 新增**
+- Favourites: a heart on tracks and albums, apart from the rating. Give it on the signal profile card, beside
+  `OPEN ALBUM`, on the album file's `TRACKS` page, from the Archive's menu, or with `H` for the playing track. `GROUP` ›
+  `FAV` puts the favourites first, and `Open favourites playlist` collects them in *Archive · Favourites*. A track's
+  heart is kept in JSplitter's database (no files written) or, if you choose, a `LOVED` tag (#17). 收藏：给曲目和专辑加上
+  红心，与评分互不影响。可在信号资料卡、`打开专辑` 旁、专辑档案的全部曲目页、档案右键菜单中收藏，或按 `H` 收藏正在播放的曲目。
+  分组中的 `收藏` 把收藏排在最前，`打开收藏播放列表` 把它们汇集到 *Archive · Favourites*。曲目的收藏保存在 JSplitter
+  数据库（不写入文件），也可选择写入 `LOVED` 标签（#17）。
+- Instrumentals: right-click the Archive › `Play albums without instrumentals` leaves out Instrumental, Off Vocal,
+  Inst., Karaoke, `カラオケ`, `伴奏` … when an album plays (a track you click still plays), and the playlist manager's
+  `Remove instrumentals (N)` takes them out of a playlist, undoable (#18). 伴奏：档案右键 › `播放专辑时跳过伴奏`，播放专辑时
+  跳过 Instrumental、Off Vocal、Inst.、Karaoke、カラオケ、伴奏等版本（直接点击的曲目照常播放）；播放列表管理器中的
+  `移除伴奏（N）` 可一键移除，并可撤销（#18）。
+- Romanized lyrics for Japanese and Korean: a line in Latin letters under the sung line (`MENU › Translate lyrics`, or
+  the Lyrics view's state chip). Korean is converted by the theme; Japanese romaji come from NetEase (#20). 日语和韩语的
+  罗马音歌词：在正在唱的那一行下方显示拉丁字母（菜单的歌词翻译中，或歌词视图的状态标签）。韩语由主题自己转换，日语罗马音
+  来自网易云（#20）。
+- Edit lyrics: the track's own `.lrc` opens in Notepad (made from the shown lyrics when there is none), and what you
+  save shows at once: right-click the Lyrics view (#20). 编辑歌词：用记事本打开曲目自己的 `.lrc`（没有时按当前歌词生成），
+  保存后立即显示：在歌词视图中右键（#20）。
+- The interface in Korean, French and German (#31). 界面新增韩语、法语和德语（#31）。
+
+**Changed · 改进**
+- Archive: shelves hold 10 to 30 cases, and a large group is shared out evenly instead of leaving a few cases alone
+  on a shelf (#33, thanks to @CocytusChen). 档案：每层货架放 10 到 30 个外壳，较大的分组会平均分配，不再在最后一层只剩
+  几个（#33，感谢 @CocytusChen）。
+- Archive: with every track shown, the tracks of one album stay together and in order when sorted (#32, thanks to
+  @CocytusChen). 档案：显示全部曲目时，同一张专辑的曲目在排序后仍然连在一起并按顺序排列（#32，感谢 @CocytusChen）。
+- The transport's playhead glides instead of stepping (#34, thanks to @CocytusChen). 底栏的播放头平滑移动，不再一格一格
+  跳动（#34，感谢 @CocytusChen）。
+
+**Fixed · 修复**
+- A very narrow title tag (a narrow window, or while resizing) could stop the Style view with "Font failed".
+  很窄的标题标签（窗口很窄或正在调整大小时）可能导致外观视图报错“Font failed”。
+- After switching the interface language, the lyrics could lose their translation until the next track.
+  切换界面语言后，歌词的译文可能要到下一首才会恢复。
+
 ## 1.8.0 — 2026-10-18
 
 **Added · 新增**
