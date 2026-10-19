@@ -1,23 +1,31 @@
 {
- "version": "1.7.2",
- "tag": "v1.7.2",
- "date": "2026-10-15",
+ "version": "1.8.0",
+ "tag": "v1.8.0",
+ "date": "2026-10-18",
  "notes": {
   "en": [
-   "Ratings: rate tracks 1 to 5 by clicking the marks on the album file's new TRACKS page or on the signal profile card, or with Ctrl+1 – Ctrl+5 (Ctrl+0 clears). They are kept in JSplitter's own database, so no file is written, or in foo_playcount's statistics when it is installed; right-click the Archive › Ratings saved in to pick file tags instead.",
-   "Archive: the album file has a second page listing every track with its rating, so a library can be browsed and rated without opening a playlist; the two dots at its bottom, or L, turn the page.",
-   "Archive: Shift + wheel (or a sideways wheel) switches shelves, as ← → do; in the grid it jumps a section.",
-   "A halftone of dots on the album file and the signal profile card: along the bottom, in the lower right corner or off, faint to strong (05 STYLE › HALFTONE, DOTS).",
-   "Startup: with a large library of CUE albums, 1.7.1 could make foobar2000 report the Archive's script as not responding (#24). The CUE sheets are now read a little at a time, and each folder once.",
-   "Archive: CUE sheets saved in a Japanese or Chinese code page (as EAC writes them) are read, so their albums show as their tracks too."
+   "Title tag: the song's title printed on a rendered tag on the signal profile card and the album file. Four shapes, seven finishes (plastic, paper, brushed metal, translucent, transparent, Tide and Aurora glass), coloured by the scheme, the case or your own colours; the see-through finishes show the page through them (05 STYLE › TITLE TAG; hover a card for a preview).",
+   "Fonts: Oxanium and Chakra Petch beside Geist Mono (05 STYLE › FONT).",
+   "Emblem: the header shows the Möbius ring or nested triangles (05 STYLE › EMBLEM).",
+   "Lyrics: a source switch under the Lyrics view's title and in the menu: AUTO, LOCAL, LRCLIB or NETEASE. LRCLIB and NETEASE use only that service, even when the file has lyrics of its own (#26, thanks to @RiBunsyou).",
+   "Lyrics: the translation has its own setting: off, NetEase community, machine translation or automatic, in MENU › Translate lyrics or from the Lyrics view's state chip (#26).",
+   "Sharper on high-DPI screens: the inspection frames, the array cases, the rails and the Möbius ring are rendered at twice the pixels; on screens scaled above 125 % the covers are 512 px and the large cover 1280 px. The download is about 400 MB larger.",
+   "A custom case made with an earlier version is made again from the new renders at start, in its colours.",
+   "Fetch lyrics online (LRCLIB) is replaced by the lyrics source; your settings carry over.",
+   "Archive: the album file's + N MORE · ALL TRACKS showed {0} instead of the number of tracks (#29).",
+   "Lyrics: enhanced LRC files (a time stamp on every word) showed the word stamps as text."
   ],
   "zh": [
-   "评分：在专辑档案新的 曲目 页或信号资料卡上点击菱形为曲目评 1 至 5 分，或按 Ctrl+1 – Ctrl+5 （Ctrl+0 清除）。评分默认保存在 JSplitter 自带的数据库中，不写入文件；装有 foo_playcount 时保存在其播放统计中；也可在右键档案 › 评分保存在 中改为文件标签。",
-   "档案：专辑档案新增第二页，列出全部曲目及其评分，无需打开播放列表即可浏览与评分；点击底部的两个圆点或按 L 翻页。",
-   "档案： Shift + 滚轮（或横向滚轮）切换货架，与 ← → 相同；网格中跳到相邻分区。",
-   "专辑档案与信号资料卡加入半调网点装饰：沿底部、在右下角或关闭，浓淡可调（05 外观 › 半调网点、浓度）。",
-   "启动：媒体库中有大量 CUE 专辑时，1.7.1 可能让 foobar2000 提示档案脚本无响应（#24）。现在 CUE 分轨分批读取，每个文件夹只读一次。",
-   "档案：以日文或中文编码保存的 CUE（EAC 常见）现在也能读取，这些专辑同样按分轨显示。"
+   "标题标签：把歌名印在渲染出的标签上，显示在信号资料卡和专辑档案中。四种形状、七种材质（塑料、纸、拉丝金属、半透明、透明、潮汐玻璃、极光玻璃），颜色可取自配色方案、外壳或自定义；透明类材质能透出后面的页面（05 外观 › 标题标签；鼠标悬停卡片可预览）。",
+   "字体：除 Geist Mono 外新增 Oxanium 和 Chakra Petch（05 外观 › 字体）。",
+   "徽记：顶部可显示莫比乌斯环或三角（05 外观 › 徽记）。",
+   "歌词：歌词视图标题下方和菜单中新增来源开关：自动、本地、LRCLIB 或网易云；选 LRCLIB 或网易云时只用该来源，即使文件自带歌词（#26，感谢 @RiBunsyou）。",
+   "歌词：译文来源成为独立设置：关闭、网易云社区、机器翻译或自动，可在菜单的歌词翻译中或点击歌词视图的状态标签选择（#26）。",
+   "高分屏更清晰：查看动画、阵列外壳、货架和莫比乌斯环都以两倍像素重新渲染；缩放大于 125% 的屏幕上，封面缩略图为 512 像素，大封面为 1280 像素。下载包因此增大约 400 MB。",
+   "用旧版本生成的自定义外壳会在启动时按新的渲染图以原有配色重新生成。",
+   "原来的在线获取歌词选项由歌词来源取代，原有设置会自动沿用。",
+   "档案：专辑档案底部的“还有 N 首 · 全部曲目”显示为 {0}，而不是剩余曲目数（#29）。",
+   "歌词：增强型 LRC（每个字都带时间戳）会把时间戳当作文字显示，现已修复。"
   ]
  }
 }
