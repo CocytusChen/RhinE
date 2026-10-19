@@ -64,7 +64,9 @@ function refreshTokens() {
 }
 refreshTokens();
 
-// none of the interface fonts has CJK; those strings use the system's CJK UI font
+// none of the interface fonts has CJK; those strings use the system's CJK UI font (Korean: Malgun Gothic, since the
+// Chinese UI font has no Hangul)
+const isHangul = s => /[가-힯ᄀ-ᇿ㄰-㆏]/.test(s);
 const isCJK = s => /[⺀-鿿가-힯豈-﫿＀-￯]/.test(s);
 const FONT_CACHE = new Map();
 // Text size (MENU › Audio Archive › Text size, or the Style view): every font of the scripted panels is scaled by it,
@@ -89,18 +91,19 @@ function setFontFamily(id) {
 }
 // font(13, 600) -> D2DFont of the interface font at 13 dp (× the text size), weight 600 (static TTFs: the weight picks
 // the family)
+// (cjk: true for the CJK UI font, "ko" for the Korean one)
 function font(sizeDp, weight = 400, cjk = false) {
-    const key = sizeDp + "/" + weight + (cjk ? "/cjk" : "");
+    const key = sizeDp + "/" + weight + (cjk ? "/" + cjk : "");
     if (!FONT_CACHE.has(key)) {
         const n = FONT_FAMILIES[FONT_FAMILY].name;
-        const family = cjk ? "Microsoft YaHei UI" : { 300: n + " Light", 400: n, 500: n + " Medium", 600: n + " SemiBold", 700: n }[weight] || n;
+        const family = cjk === "ko" ? "Malgun Gothic" : cjk ? "Microsoft YaHei UI" : { 300: n + " Light", 400: n, 500: n + " Medium", 600: n + " SemiBold", 700: n }[weight] || n;
         // Direct2D refuses a size under 1 px (a tag or a card squeezed to nothing while the window is resized)
         const px = dp(sizeDp * TEXT_SCALE);
         FONT_CACHE.set(key, d2d.Font(family, px >= 1 ? px : 1, weight >= 700 || (cjk && weight >= 600) ? 1 : 0));
     }
     return FONT_CACHE.get(key);
 }
-const fontFor = (str, sizeDp, weight) => font(sizeDp, weight, isCJK(str));
+const fontFor = (str, sizeDp, weight) => font(sizeDp, weight, isHangul(str) ? "ko" : isCJK(str));
 
 const DT_SINGLE = 0x00000800 | 0x00000020 | 0x00000004;    // DT_NOPREFIX | DT_SINGLELINE | DT_VCENTER
 const DT_CENTER_SINGLE = DT_SINGLE | 0x00000001;

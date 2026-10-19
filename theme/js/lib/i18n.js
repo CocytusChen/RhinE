@@ -4,7 +4,7 @@
 // string are filled from tr()'s other arguments. The language is "uiLang" in the settings (default: Windows' display
 // language when there is a table for it); changing it reloads every panel (message "ui-lang", lib/bus.js).
 
-const UI_LANGS = [["en", "English"], ["zh-CN", "简体中文"], ["ja", "日本語"]];
+const UI_LANGS = [["en", "English"], ["zh-CN", "简体中文"], ["ja", "日本語"], ["ko", "한국어"], ["fr", "Français"], ["de", "Deutsch"]];
 const I18N = {};
 
 // Windows' display language: "zh-CN", "zh-TW", "ja", "ko", "de", "fr" or "en"
