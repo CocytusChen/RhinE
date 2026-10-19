@@ -10,7 +10,7 @@ Five views: **Archive** (every album, or every track, as a rendered specimen cas
 **Lyrics** (synced lyrics from your files or fetched online, with a translation when they are in another language),
 **Signal** (a rendered ∞ ring, spectrum and the whole-track waveform, or a Classic player screen) and **Style** (eleven
 case skins and eight colour schemes, each in light and dark). A pre-rendered intro film, scan transitions, grain and a
-Reduce motion option. The interface is in English, Simplified Chinese or Japanese.
+Reduce motion option. The interface is in English, Simplified Chinese, Japanese, Korean, French or German.
 
 ## Requirements
 
@@ -96,20 +96,27 @@ Running it again keeps the foobar2000 folder and installs the theme again.
 | Lyrics: play from a line | click the line | — |
 | Lyrics source: AUTO, LOCAL, LRCLIB or NETEASE | `SOURCE` under the Lyrics view's title, or `MENU › Audio Archive › Lyrics source` (see *Lyrics view* below) | — |
 | Lyrics translation: source, language, keys | `MENU › Audio Archive › Translate lyrics`, or click the state chip in the Lyrics view (see *Translated lyrics* below) | — |
+| Romanized lyrics (Japanese, Korean): a line in Latin letters under the sung line | `MENU › Audio Archive › Translate lyrics › Romanized lyrics`, or the state chip's menu (see *Romanized lyrics* below) | — |
+| Edit the lyrics: the track's own `.lrc` in Notepad (made from the lyrics shown when there is none) | right-click the Lyrics view, or the state chip's menu › `Edit lyrics (.lrc)…`; what you save shows at once | — |
 | Intro film | `MENU › Audio Archive › Play intro film`, or `PLAY INTRO` in the Style view; switch it off at start there | `B` |
 | Archive: add music | `+ ADD MUSIC FOLDER` while the Archive is empty (foobar2000's *Media Library* page) | — |
 | Archive: album / row | hover and click a case; `↑` `↓` beside the album index; `←` `→` beside the row name; wheel | `↑` `↓` album, `←` `→` row, `PgUp` `PgDn` `Home` `End` (Archive) |
 | Archive: inspect the album | click the selected case | `Enter`; `Esc` or click to return |
 | Archive: play / open the album | `PLAY ALBUM` / `OPEN ALBUM` | `Space` plays (or pauses it if it is playing); `Enter` while inspecting opens |
-| Archive: group by genre, decade, artist initial or none | `GROUP` in the Archive's top bar, or right-click | — |
+| Archive: group by genre, decade, artist initial, favourites or none | `GROUP` in the Archive's top bar (`FAV` puts the favourites first), or right-click | — |
 | Archive: sort albums by artist, title, year or date added | `SORT` in the Archive's top bar, or right-click | — |
 | Archive: next shelf (behind, on the left) / previous shelf (in front) | `← SHELF 04 / 31 →` under the array, or `Shift` + wheel (a sideways wheel too; in the grid it jumps a section) | `←` `→` |
 | Archive: pick an album from the index under the shelf | hover it to see the album's name; click, or hold and drag along it and release | — |
 | Archive: every track as its own case / tile (with its album's cover) | `SHOW [ALBUMS | TRACKS]` in the Archive's top bar, or right-click | — |
 | Archive: play a track | click it in the album file's track list (the album plays from there) | — |
+| Archive: play albums without their instrumentals (Instrumental, Off Vocal, Inst., Karaoke, カラオケ, 伴奏 …) | right-click › `Play albums without instrumentals`; the album file shows the ones left out greyed, and a track you click by name still plays | — |
+| Playlists: remove the instrumentals | right-click the playlist in the manager › `Remove instrumentals (N)`; *Edit › Undo* puts them back | — |
 | Archive: every track of the album, with ratings, without opening a playlist | the album file's second page: the two dots at its bottom, `+ N MORE · ALL TRACKS`, or right-click › `Album file: all tracks with ratings`; the wheel over it scrolls the list | `L` (Archive) |
 | Rate a track (1 – 5) | click its marks on the album file's `TRACKS` page, or on the `RATING` row of the signal profile card; the same mark again clears it | `Ctrl+1` – `Ctrl+5` rate the playing track (else the focused one), `Ctrl+0` clears |
 | Where ratings are kept | right-click the Archive › `Ratings saved in`: *Automatic* (foo_playcount's Playback Statistics when it is installed, else JSplitter's own database), *JSplitter database* (no file is written), *Playback Statistics*, or *File tags* (a `RATING` tag in the files) | — |
+| Favourites: a heart on a track or an album, apart from its rating | the heart on the `FAVOURITE` row of the signal profile card; the ♥ button beside `OPEN ALBUM` (the album, or the track when every track is shown); the heart column on the album file's `TRACKS` page; or right-click the Archive › `Favourite album` / `Favourite track` | `H` gives or takes the playing track's (else the focused one's) |
+| Favourites playlist | right-click the Archive, or `MENU › Audio Archive` › `Open favourites playlist`: *Archive · Favourites* holds every favourite track and the tracks of favourite albums, and follows your hearts | — |
+| Where favourites are kept | right-click the Archive › `Favourites saved in`: *JSplitter database* (the default; no file is written) or *File tags* (a `LOVED` tag in the files). Favourite albums are kept in `<profile>\audio-archive-settings.json` | — |
 | Archive: random pick (the selection runs through the shelves to a random album, which is lifted out and plays) | `RANDOM PICK` at the top left of the Archive, or right-click | `R` |
 | Archive: titles on the cases' top edges | on by default; right-click › `Titles on the cases' top edges` | — |
 | Archive: the case under the mouse | outlined by default; right-click › `Case under the mouse` › outline it, show its title (the album's, or the song's when every track is shown), or nothing | — |
@@ -130,7 +137,7 @@ Running it again keeps the foobar2000 folder and installs the theme again.
 | Style: see and switch skins and schemes | the `05 STYLE` view: hover a card for its preview, click to apply | `5` |
 | Text size (90 – 150 %), Archive array scale (80 – 130 %), inspection size (100 – 150 %) | `TEXT`, `ARRAY` and `INSPECT` at the top of the `05 STYLE` view, or `MENU › Audio Archive › Text size` / `Archive array scale` / `Inspection size` | — |
 | Archive floor: the page colour, a rendered lab deck under the shelves, or REAL STYLE (the Archive as one rendered scene on a walnut desk, always with the FROST case) | `FLOOR` at the top of the `05 STYLE` view, or `MENU › Audio Archive › Archive floor` | — |
-| Interface language: English, 简体中文, 日本語 (default: Windows' display language) | `MENU › Audio Archive › Language · 语言 · 言語` | — |
+| Interface language: English, 简体中文, 日本語, 한국어, Français, Deutsch (default: Windows' display language) | `MENU › Audio Archive › Language · 语言 · 言語 · 언어 · Langue · Sprache` | — |
 
 The theme starts dark, with the ARCHIVE colour scheme and the WHITE case skin, in Windows' display language. Its
 settings are kept in `<profile>\audio-archive-settings.json` as well as in the layout, so running a newer `install.cmd`
@@ -182,7 +189,13 @@ display language until you pick one.
   on your computer.
 
 Translations are kept in `<profile>\audio-archive-cache\lyrics\` too, so a song is looked up once. Chinese and other
-CJK text uses Windows' own UI font (Geist Mono has no CJK).
+CJK text uses Windows' own UI font (Geist Mono has no CJK); Korean uses Malgun Gothic.
+
+**Romanized lyrics.** For songs in Japanese or Korean, `Romanized lyrics (Japanese, Korean)` (in `Translate lyrics`, or
+the state chip's menu) puts the sung line in Latin letters under it, above the translation. Korean is converted by the
+theme itself (Revised Romanization, with the sound changes inside a word), so nothing is sent anywhere. Japanese romaji
+come from NetEase Cloud Music, which has them for many songs: the track's **artist, title and length** are sent to find
+it, as for its translations. Your own romanized lyrics can always go in the track's `.lrc` (`Edit lyrics (.lrc)…`).
 
 **Signal view.** *CLASSIC* (beside the model switch) shows a familiar player screen instead, set out like a specimen
 plate: the cover inside a dial of progress and segmented spectrum, the title and time under it, the current lyric on

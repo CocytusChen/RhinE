@@ -33,13 +33,13 @@ are fetched online when your files have none.
 
 ## Features
 
-- **Archive:** every album, or every track, as a rendered case on shelves, or a cover grid; inspect, play and rate.
+- **Archive:** every album, or every track, as a rendered case on shelves, or a cover grid; inspect, play, rate and keep favourites.
 - **Playlists:** a playlist manager, a track rail, the native playlist in two presets and a profile card with the queue.
-- **Lyrics:** synced lyrics from your files, LRCLIB or NetEase Cloud Music, with an optional translation.
+- **Lyrics:** synced lyrics from your files, LRCLIB or NetEase Cloud Music, with an optional translation and romanization.
 - **Signal:** a rendered ∞ ring, a spectrum and the whole-track waveform, or a classic player screen.
 - **Style:** eleven case skins and eight colour schemes in light and dark, your own case and scheme, a wallpaper,
   title tags, three fonts.
-- English, Simplified Chinese and Japanese. The theme updates itself.
+- English, Simplified Chinese, Japanese, Korean, French and German. The theme updates itself.
 
 ## Requirements
 
