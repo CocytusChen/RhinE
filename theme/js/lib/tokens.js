@@ -94,7 +94,9 @@ function font(sizeDp, weight = 400, cjk = false) {
     if (!FONT_CACHE.has(key)) {
         const n = FONT_FAMILIES[FONT_FAMILY].name;
         const family = cjk ? "Microsoft YaHei UI" : { 300: n + " Light", 400: n, 500: n + " Medium", 600: n + " SemiBold", 700: n }[weight] || n;
-        FONT_CACHE.set(key, d2d.Font(family, dp(sizeDp * TEXT_SCALE), weight >= 700 || (cjk && weight >= 600) ? 1 : 0));
+        // Direct2D refuses a size under 1 px (a tag or a card squeezed to nothing while the window is resized)
+        const px = dp(sizeDp * TEXT_SCALE);
+        FONT_CACHE.set(key, d2d.Font(family, px >= 1 ? px : 1, weight >= 700 || (cjk && weight >= 600) ? 1 : 0));
     }
     return FONT_CACHE.get(key);
 }

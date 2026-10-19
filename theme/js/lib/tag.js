@@ -199,7 +199,7 @@ function tagFit(gr, title, bw, bh, T, h) {
 // Returns its height (0 when no tag is shown: the caller draws the plain title).
 function drawTag(gr, x, y, w, title, vals = {}, bg = C.bg, fin = STATE.tag) {
     const t = tagFinish(fin);
-    if (!t) return 0;
+    if (!t || !(w >= dp(40))) return 0;   // too narrow to read (or no width yet): the plain title
     const { S, F } = t, P = tagPlate(S, fin, Math.round(w), bg), h = Math.round(w * S.canvas.tag[3] / S.canvas.tag[2]);
     gr.DrawImage(P.img, Math.round(x - P.ox), Math.round(y - P.oy), P.img.Width, P.img.Height, 0, 0, P.img.Width, P.img.Height);
     const inkFor = band => tagArgb(P.inks[{ top: 0, body: 1, bottom: 2 }[band] || 1]);
