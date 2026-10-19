@@ -1,6 +1,6 @@
 # Installing RhinE — An Audio Archive
 
-[中文安装指南](安装指南.md) · Everything else (features, controls, how it works): [README.md](README.md)
+[中文安装指南](安装指南.md) · Everything else (features, controls, how it works): [GUIDE.md](GUIDE.md)
 
 Video guides: [YouTube playlist](https://www.youtube.com/playlist?list=PLYhA3n8CTLnA)
 
@@ -70,4 +70,4 @@ uninstalling brings it back.
 - **The light / dark button does nothing:** the theme follows Columns UI's mode. RhinE 1.3 then shows where to switch it
   (`MENU` › *View › Mode*).
 
-More answers: [README.md › Troubleshooting](README.md#troubleshooting).
+More answers: [GUIDE.md › Troubleshooting](GUIDE.md#troubleshooting).

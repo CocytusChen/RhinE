@@ -3,6 +3,43 @@
 Newest version first. Download any version from [Releases](https://github.com/ericzhang12111-cell/RhinE/releases).
 最新版本在最上面；各版本可在 Releases 页面下载。
 
+## 1.8.0 — 2026-10-18
+
+**Added · 新增**
+- Title tag: the song's title printed on a rendered tag on the signal profile card and the album file. Four shapes,
+  seven finishes (plastic, paper, brushed metal, translucent, transparent, Tide and Aurora glass), coloured by the
+  scheme, the case or your own colours; the see-through finishes show the page through them (`05 STYLE` ›
+  `TITLE TAG`; hover a card for a preview). 标题标签：把歌名印在渲染出的标签上，显示在信号资料卡和专辑档案中。四种形状、
+  七种材质（塑料、纸、拉丝金属、半透明、透明、潮汐玻璃、极光玻璃），颜色可取自配色方案、外壳或自定义；透明类材质能透出
+  后面的页面（`05 外观` › `标题标签`；鼠标悬停卡片可预览）。
+- Fonts: Oxanium and Chakra Petch beside Geist Mono (`05 STYLE` › `FONT`). 字体：除 Geist Mono 外新增 Oxanium 和
+  Chakra Petch（`05 外观` › `字体`）。
+- Emblem: the header shows the Möbius ring or nested triangles (`05 STYLE` › `EMBLEM`). 徽记：顶部可显示莫比乌斯环或
+  三角（`05 外观` › `徽记`）。
+- Lyrics: a source switch under the Lyrics view's title and in the menu: AUTO, LOCAL, LRCLIB or NETEASE. LRCLIB and
+  NETEASE use only that service, even when the file has lyrics of its own (#26, thanks to @RiBunsyou). 歌词：歌词视图标题
+  下方和菜单中新增来源开关：自动、本地、LRCLIB 或网易云；选 LRCLIB 或网易云时只用该来源，即使文件自带歌词（#26，感谢
+  @RiBunsyou）。
+- Lyrics: the translation has its own setting: off, NetEase community, machine translation or automatic, in
+  `MENU › Translate lyrics` or from the Lyrics view's state chip (#26). 歌词：译文来源成为独立设置：关闭、网易云社区、
+  机器翻译或自动，可在菜单的歌词翻译中或点击歌词视图的状态标签选择（#26）。
+
+**Changed · 改进**
+- Sharper on high-DPI screens: the inspection frames, the array cases, the rails and the Möbius ring are rendered at
+  twice the pixels; on screens scaled above 125 % the covers are 512 px and the large cover 1280 px. The download is
+  about 400 MB larger. 高分屏更清晰：查看动画、阵列外壳、货架和莫比乌斯环都以两倍像素重新渲染；缩放大于 125% 的屏幕上，
+  封面缩略图为 512 像素，大封面为 1280 像素。下载包因此增大约 400 MB。
+- A custom case made with an earlier version is made again from the new renders at start, in its colours. 用旧版本生成的
+  自定义外壳会在启动时按新的渲染图以原有配色重新生成。
+- `Fetch lyrics online (LRCLIB)` is replaced by the lyrics source; your settings carry over. 原来的在线获取歌词选项由歌词
+  来源取代，原有设置会自动沿用。
+
+**Fixed · 修复**
+- Archive: the album file's `+ N MORE · ALL TRACKS` showed {0} instead of the number of tracks (#29).
+  档案：专辑档案底部的“还有 N 首 · 全部曲目”显示为 {0}，而不是剩余曲目数（#29）。
+- Lyrics: enhanced LRC files (a time stamp on every word) showed the word stamps as text. 歌词：增强型 LRC（每个字都带时间戳）
+  会把时间戳当作文字显示，现已修复。
+
 ## 1.7.2 — 2026-10-15
 
 **Added · 新增**
