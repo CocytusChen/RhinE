@@ -201,9 +201,9 @@ function setAlbums(albums, items = []) {
     groupAlbums();
 }
 
-const GROUP_BY = [["genre", "GENRE"], ["decade", "DECADE"], ["artist", "A–Z"], ["none", "NONE"]];
+const GROUP_BY = [["genre", "GENRE"], ["decade", "DECADE"], ["artist", "A–Z"], ["favourites", "FAV"], ["none", "NONE"]];
 const SORT_BY = [["artist", "ARTIST"], ["title", "TITLE"], ["year", "YEAR"], ["added", "ADDED"]];
-const GROUP_LABEL = { genre: "GENRE", decade: "DECADE", artist: "ARTIST", none: "ALL" };
+const GROUP_LABEL = { genre: "GENRE", decade: "DECADE", artist: "ARTIST", favourites: "FAVOURITES", none: "ALL" };
 // a group's name as shown: the fixed ones and decades translated, genres as they are tagged
 const groupName = g => /^\d{3}0S$/.test(g) ? tr("{0}S", g.slice(0, 4)) : tr(g);
 function setGroupBy(by) {
@@ -263,22 +263,26 @@ onMessage("archive-filter", setArchiveFilter);
 const filteredCount = () => LIB.groups.reduce((n, g) => n + g.albums.length, 0);
 
 // groups: [{ name, albums }], sorted by name with the catch-all group last; each album also gets its group's name
-// (a.grp), which the archive's shelves (several groups on one shelf) show
+// (a.grp), which the archive's shelves (several groups on one shelf) show. By favourites (lib/favourite.js): an album
+// with the heart or with a track that has it, a track with the heart or on an album that has it, then the others.
 function groupAlbums() {
     const by = LIB.groupBy, map = new Map();
     const words = LIB.filter ? LIB.filter.split(/\s+/) : null;
+    const fav = by === "favourites" ? favFlags(libHandles) : null, idx = a => a.idx || [];   // (no idx before the worker has run)
+    const inFav = a => a.album ? !!fav[idx(a)[0]] || isFavAlbum(a.album) : isFavAlbum(a.key) || idx(a).some(i => fav[i]);
     for (const a of showTracks() ? LIB.items : LIB.albums) {
         if (words) { const t = searchText(a); if (!words.every(w => t.includes(w))) continue; }
         let g;
         if (by === "none") g = "ALL ALBUMS";
         else if (by === "decade") g = /^\d{4}$/.test(a.year) ? a.year.slice(0, 3) + "0S" : "UNDATED";
         else if (by === "artist") { const c = String(a.artist || "").trim().charAt(0).toUpperCase(); g = /[A-Z]/.test(c) ? c : /\d/.test(c) ? "0–9" : "OTHER"; }
+        else if (fav) g = inFav(a) ? "FAVOURITES" : "OTHERS";
         else g = String(a.genre || "").trim().toUpperCase() || "UNKNOWN";
         a.grp = g;
         if (!map.has(g)) map.set(g, []);
         map.get(g).push(a);
     }
-    const last = new Set(["UNDATED", "OTHER", "UNKNOWN"]), order = albumOrder(LIB.sortBy);
+    const last = new Set(["UNDATED", "OTHER", "OTHERS", "UNKNOWN"]), order = albumOrder(LIB.sortBy);
     LIB.groups = [...map.entries()]
         .sort(([x], [y]) => (last.has(x) - last.has(y)) || strCmp(x, y))
         .map(([name, albums]) => ({ name, albums: albums.sort(order) }));

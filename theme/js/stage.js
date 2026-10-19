@@ -200,6 +200,16 @@ function on_metadb_changed() {
     if (STATE.view === "archive") window.Repaint();
 }
 onMessage("rating-store", () => { if (T.handle) loadTrack(); AR.listVer++; AR.dirtyInfo = true; window.Repaint(); });
+// a heart given or taken (here or in another panel, lib/favourite.js): the card, the album file, the FAVOURITES group and
+// the Favourites playlist (when there is one) follow; the MENU asks for the playlist with "fav-playlist"
+FAV_LISTENERS.push(() => {
+    if (T.handle) loadTrack();
+    AR.listVer++; AR.tracks.key = ""; AR.dirtyInfo = dirty.card = true;
+    if (LIB.groupBy === "favourites") groupAlbums();
+    if (plman.FindPlaylist(FAV_PLAYLIST) >= 0) favPlaylist(libHandles, false);
+    window.Repaint();
+});
+onMessage("fav-playlist", () => { favPlaylist(libHandles); send("view", "playlists"); });
 
 // ----------------------------------------------------------------------------------------------- animation clock
 let lastPaint = 0, lastLeft = 0, alertShown = false, lyrBar = null, specRect = null, LEFT_SPEC = null;   // lyrBar: the karaoke rule's rect, repainted every frame
@@ -621,9 +631,11 @@ function on_mouse_move(x, y, mask) {
     // the card's RATING row: the rating its marks would give, previewed
     const n = a && a.id === "rate" ? ratingAt(x, a.x + a.data.pad, a.data.size) : 0;
     if (n !== NP_RATE.hover) { NP_RATE.hover = n; dirty.card = true; window.Repaint(); }
+    const fh = !!(a && a.id === "fav");   // and its heart
+    if (fh !== NP_FAV.hover) { NP_FAV.hover = fh; dirty.card = true; window.Repaint(); }
 }
 function on_mouse_leave() {
-    if (NP_RATE.hover) { NP_RATE.hover = 0; dirty.card = true; }
+    if (NP_RATE.hover || NP_FAV.hover) { NP_RATE.hover = 0; NP_FAV.hover = false; dirty.card = true; }
     if (STATE.view === "archive") archiveMouseLeave();
     if (STATE.view === "style") styleMouseMove(null);
     if (hover) { hover = null; if (STATE.view === "lyrics" || STATE.view === "signal") window.Repaint(); }
@@ -654,6 +666,7 @@ function on_mouse_lbtn_up(x, y) {
     if (a.id === "vis") visMenu(a.x, a.y + a.h);
     else if (a.id === "model" && a.data !== Ring.mode) { Ring.mode = a.data; setSetting("ringMode", a.data); window.Repaint(); }
     else if (a.id === "rate") setRating(T.handle, ratingAt(x, a.x + a.data.pad, a.data.size));
+    else if (a.id === "fav") setFav(T.handle);
     else if (a.id === "profile") inspectRequest();
     else if (a.id === "folder") openFolder(T.handle);
     else if (a.id === "pager") { if (a.data === 0) fb.Prev(); else if (a.data === 2) fb.Next(); }

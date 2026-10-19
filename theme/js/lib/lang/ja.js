@@ -183,6 +183,8 @@ I18N["ja"] = {
     "JSplitter database (no files written)": "JSplitter データベース（ファイルに書き込まない）",
     "Playback Statistics (foo_playcount)": "再生統計（foo_playcount）",
     "File tags (RATING)": "ファイルタグ（RATING）",
+    // favourites (lib/favourite.js)
+    "FAVOURITE": "お気に入り", "FAV": "お気に入り", "FAVOURITES": "お気に入り", "OTHERS": "その他", "Group by favourites": "お気に入りでグループ化", "Favourite track": "お気に入りの曲", "Favourite album": "お気に入りのアルバム", "Open favourites playlist": "お気に入りプレイリストを開く", "Favourites saved in": "お気に入りの保存先", "File tags (LOVED)": "ファイルタグ（LOVED）",
     // the halftone (05 STYLE, 1.7.2)
     "BOTTOM": "下端",
     "CORNER": "隅",

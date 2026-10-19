@@ -318,11 +318,11 @@ function albumTrackList(a) {
     const list = albumHandles(a), np = fb.GetNowPlaying(), own = itemTrack(a);
     let rows = [];
     if (list && list.Count) {
-        const R = getRatings(list), inst = instrumentalFlags(list);
+        const R = getRatings(list), inst = instrumentalFlags(list), F = favFlags(list);
         rows = TF_AR_LIST.EvalWithMetadbs(list).map((v, i) => {
             const [disc, no, title, len] = v.split("\u0001"), h = list[i];
             return { i, disc: disc || "", no: no ? pad(parseInt(no) || 0, 2) : pad(i + 1, 2), title, len: +len || 0, rating: R[i] || 0,
-                     playing: sameTrack(h, np), own: sameTrack(h, own), inst: inst[i] };
+                     playing: sameTrack(h, np), own: sameTrack(h, own), inst: inst[i], fav: F[i] };
         });
     }
     const rated = rows.filter(r => r.rating);
@@ -1159,6 +1159,12 @@ function drawInfoButtons(gr, x, y, isTrack) {
     gr.DrawLine(ax0 + dp(2.5), ay0 - aL, ax0 + aL, ay0 - aL, sw, C.accent);
     gr.DrawLine(ax0 + aL, ay0 - aL, ax0 + aL, ay0 - dp(2.5), sw, C.accent);
     INFO_HITS.push(["ar-open", ox2, y, ow, bh]);
+    // ♥: the album's heart (a track item's own, while SHOW TRACKS is on; lib/favourite.js)
+    const c = curAlbum(), on = !!c && (isTrack ? isFav(itemTrack(c)) : isFavAlbum(c.key)), hx = ox2 + ow + dp(14), hs = dp(16);
+    if (!LABEL_LIVE) gr.FillSolidRect(hx, y, bh, bh, C.bg);
+    box(gr, hx, y, bh, bh, AR.favHover ? C.accent : C.fg);
+    drawHeart(gr, hx + (bh - hs) / 2, y + (bh - hs) / 2 + dp(1), hs, on, on ? C.accent : C.fg);
+    INFO_HITS.push(["ar-fav", hx, y, bh, bh]);
     return bh;
 }
 
@@ -1264,9 +1270,12 @@ function drawInfoTracks(gr, a, x, y, iw, w, h) {
     gr.FillSolidRect(x, y, w - x, HEAVY, C.fg);
     y += HEAVY + dp(12);
     // column heads
+    // (a heart column before the ratings, lib/favourite.js)
     const ms = dp(9), rw = ratingWidth(ms), tx = x + dp(34), timeW = dp(52), rx = x + iw - timeW - dp(14) - rw, ks = st(AR_ST.key, C["text-muted"]);
+    const fs = dp(10), fx = rx - dp(16) - fs;
     label(gr, tr("NO."), ks, x, y);
     label(gr, tr("TITLE"), ks, tx, y);
+    drawHeart(gr, fx, y + Math.round((labelHeight(AR_ST.key) - fs) / 2), fs, false, C["text-muted"]);
     label(gr, tr("RATING"), ks, rx, y);
     label(gr, tr("TIME"), ks, x + iw, y, 2);
     y += dp(18);
@@ -1296,10 +1305,12 @@ function drawInfoTracks(gr, a, x, y, iw, w, h) {
             if (r.own || hov) gr.FillSolidRect(x - dp(8), ry, iw + dp(16), rowH, r.own ? C.panel : withAlpha(C.fg, .06));
             if (r.own) gr.FillSolidRect(x - dp(8), ry, dp(3), rowH, C.accent);
             gr.DrawText(r.playing ? "▶" : r.no, font(12, 400), r.playing ? C.accent : C["text-muted"], x, ry, dp(34), rowH, DT_SINGLE);
-            gr.DrawText(r.title, fontFor(r.title, 12, r.own ? 600 : 400), AR.skipInst && r.inst && !r.own ? C["text-muted"] : C.fg, tx, ry, rx - dp(12) - tx, rowH, DT_SINGLE | DT_ELLIPSIS);
+            gr.DrawText(r.title, fontFor(r.title, 12, r.own ? 600 : 400), AR.skipInst && r.inst && !r.own ? C["text-muted"] : C.fg, tx, ry, fx - dp(10) - tx, rowH, DT_SINGLE | DT_ELLIPSIS);
+            if (r.fav || hov) drawHeart(gr, fx, ry + (rowH - fs) / 2 + dp(1), fs, r.fav, r.fav ? C.accent : AR.favRow === r.i ? C.fg : C["line-dim"]);
             drawRating(gr, rx, ry + (rowH - ms) / 2, ms, r.rating, rh);
             gr.DrawText(fmtTime(r.len), font(12, 400), C["fg-soft"], x + iw - timeW, ry, timeW, rowH, DT_RIGHT_SINGLE);
-            INFO_HITS.push(["ar-track", x - dp(8), ry, rx - dp(6) - (x - dp(8)), rowH, r.i]);
+            INFO_HITS.push(["ar-track", x - dp(8), ry, fx - dp(6) - (x - dp(8)), rowH, r.i]);
+            INFO_HITS.push(["ar-favt", fx - dp(6), ry, fs + dp(12), rowH, r.i]);
             INFO_HITS.push(["ar-track", x + iw - timeW, ry, timeW + dp(8), rowH, r.i]);
             INFO_HITS.push(["ar-rate", rx - dp(6), ry, rw + dp(12), rowH, { i: r.i, pad: dp(6), size: ms }]);
         });
@@ -1399,10 +1410,11 @@ function inQuad(x, y, q) {   // any polygon
 function archiveMouseMove(x, y, a) {
     AR.mouseX = x;
     // the file panel's track rows highlight under the mouse; over a row's marks, the rating they would give shows
-    const th = a && a.id === "ar-track" ? a.data : a && a.id === "ar-rate" ? a.data.i : -1;
+    const th = a && (a.id === "ar-track" || a.id === "ar-favt") ? a.data : a && a.id === "ar-rate" ? a.data.i : -1;
     const rh = a && a.id === "ar-rate" ? { i: a.data.i, n: ratingAt(x, a.x + a.data.pad, a.data.size) } : null;
-    if (th !== AR.infoHover || (rh && rh.n) !== (AR.rateHover && AR.rateHover.n) || (rh && rh.i) !== (AR.rateHover && AR.rateHover.i)) {
-        AR.infoHover = th; AR.rateHover = rh; AR.dirtyInfo = true;
+    const fr = a && a.id === "ar-favt" ? a.data : -1, fb2 = !!(a && a.id === "ar-fav");   // a row's heart, the album's heart
+    if (th !== AR.infoHover || (rh && rh.n) !== (AR.rateHover && AR.rateHover.n) || (rh && rh.i) !== (AR.rateHover && AR.rateHover.i) || fr !== AR.favRow || fb2 !== AR.favHover) {
+        AR.infoHover = th; AR.rateHover = rh; AR.favRow = fr; AR.favHover = fb2; AR.dirtyInfo = true;
         window.RepaintRect(infoX() - dp(20), 0, W - infoX() + dp(20), H);
     }
     if (AR.layout === "grid") return gridMouseMove(x, y, a);
@@ -1436,6 +1448,8 @@ function archiveClick(x, y, a) {
             case "ar-page": setInfoPage(a.data); return;
             case "ar-unit": setUnit(a.data); return;
             case "ar-open": openAlbum(); return;
+            case "ar-fav": { const c = curAlbum(); if (c && c.album) setFav(itemTrack(c)); else if (c) setFavAlbum(c.key); return; }
+            case "ar-favt": { const L = AR.list, h = L && L.handles ? L.handles[a.data] : null; if (h) setFav(h); return; }
             case "ar-prev": moveAlbum(-1); return;
             case "ar-next": moveAlbum(1); return;
             case "ar-gprev": moveGroup(-1); return;
@@ -1510,9 +1524,9 @@ function archiveKey(vk) {
     return false;
 }
 function archiveMenu(x, y) {
-    const m = window.CreatePopupMenu(), by = ["genre", "decade", "artist", "none"], sorts = SORT_BY.map(([k]) => k);
-    ["Group by genre", "Group by decade", "Group by artist initial", "No groups"].forEach((t, i) => m.AppendMenuItem(0, 1 + i, tr(t)));
-    m.CheckMenuRadioItem(1, 4, 1 + Math.max(0, by.indexOf(LIB.groupBy)));
+    const m = window.CreatePopupMenu(), by = ["genre", "decade", "artist", "favourites", "none"], sorts = SORT_BY.map(([k]) => k);
+    ["Group by genre", "Group by decade", "Group by artist initial", "Group by favourites", "No groups"].forEach((t, i) => m.AppendMenuItem(0, 30 + i, tr(t)));
+    m.CheckMenuRadioItem(30, 30 + by.length - 1, 30 + Math.max(0, by.indexOf(LIB.groupBy)));
     const so = window.CreatePopupMenu();
     ["Artist", "Album title", "Year", "Date added (newest first)"].forEach((t, i) => so.AppendMenuItem(0, 400 + i, tr(t)));
     so.CheckMenuRadioItem(400, 403, 400 + Math.max(0, sorts.indexOf(LIB.sortBy)));
@@ -1535,6 +1549,10 @@ function archiveMenu(x, y) {
     m.AppendMenuItem(AR.page === "tracks" ? 0x8 : 0, 14, tr("Album file: all tracks with ratings") + "\tL");
     m.AppendMenuItem(AR.skipInst ? 0x8 : 0, 15, tr("Play albums without instrumentals"));
     ratingMenu(m, 600);
+    const c = curAlbum(), cOn = !!c && (c.album ? isFav(itemTrack(c)) : isFavAlbum(c.key));
+    m.AppendMenuItem((c ? 0 : 1) | (cOn ? 0x8 : 0), 16, tr(c && c.album ? "Favourite track" : "Favourite album"));
+    m.AppendMenuItem(0, 17, tr("Open favourites playlist"));
+    favMenu(m, 700);
     const hv = window.CreatePopupMenu();
     ["Outline it", "Show its title", "Nothing"].forEach((t, i) => hv.AppendMenuItem(0, 500 + i, tr(t)));
     hv.CheckMenuRadioItem(500, 502, 500 + HOVER_MODES.indexOf(AR.hoverMode));
@@ -1543,7 +1561,10 @@ function archiveMenu(x, y) {
     const skins = appendSkinMenu(m, 100);
     m.AppendMenuItem(0, 6, tr("Re-index library"));
     const id = m.TrackPopupMenu(x, y);
-    if (id >= 1 && id <= 4) setGroupBy(by[id - 1]);
+    if (id >= 30 && id < 30 + by.length) setGroupBy(by[id - 30]);
+    else if (id === 16) { if (c.album) setFav(itemTrack(c)); else setFavAlbum(c.key); }
+    else if (id === 17) { favPlaylist(libHandles); send("view", "playlists"); }
+    else if (id >= 700 && favMenuPick(id, 700)) { /* the listeners read the hearts again */ }
     else if (id >= 400 && sorts[id - 400]) setSortBy(sorts[id - 400]);
     else if (id === 9) playAlbum();
     else if (id === 11) randomPick();

@@ -103,7 +103,8 @@ function openFolder(h) {
 }
 
 // Keys shared by every scripted panel (the focused panel receives them): 1 – 5 views, T light/dark, P playlist preset,
-// B intro film, S shuffle the library, F the playing (else focused) track's folder, / search. A panel calls globalKey(vk) for keys it does not use itself.
+// B intro film, S shuffle the library, F the playing (else focused) track's folder, H its heart (lib/favourite.js),
+// / search. A panel calls globalKey(vk) for keys it does not use itself.
 function globalKey(vk) {
     if (vk === 0xBF) { startSearchFwd(); return true; }   // "/"
     // Ctrl+1–5: rate the playing (else focused) track; Ctrl+0: clear its rating (lib/rating.js)
@@ -114,6 +115,7 @@ function globalKey(vk) {
     else if (vk === 0x42) send("boot-play");   // B
     else if (vk === 0x53) shuffleLibrary();    // S
     else if (vk === 0x46) openFolder(fb.GetNowPlaying() || fb.GetFocusItem());   // F
+    else if (vk === 0x48) setFav(fb.GetNowPlaying() || fb.GetFocusItem());       // H
     else return false;
     return true;
 }
@@ -125,7 +127,7 @@ function globalKey(vk) {
 // allowed; Shuffle tracks / albums / folders play all of it once in a random order.)
 const SHUFFLE_NAME = "Library · Shuffle";
 // the theme's own playlists: never a source of the archive or of the shuffle
-const OWN_PLAYLISTS = new Set(["Search", "Archive · Album", SHUFFLE_NAME]);
+const OWN_PLAYLISTS = new Set(["Search", "Archive · Album", "Archive · Favourites", SHUFFLE_NAME]);
 function shuffleLibrary() {
     let items = fb.GetLibraryItems();
     if (!items || !items.Count) {

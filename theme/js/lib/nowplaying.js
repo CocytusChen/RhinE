@@ -23,6 +23,7 @@ const TF_INFO = fb.TitleFormat([
 ].join("\u0001"));
 const TF_QUEUE = fb.TitleFormat("%title%\u0001[%length%]"), TF_TITLE = fb.TitleFormat("%title%");
 const T = { handle: null, info: null, lyrics: null, no: 0, title: null, file: 0, next: "", missing: false, session0: Date.now(), rating: 0 };
+const NP_FAV = { hover: false };   // the mouse is on the card's heart (the panel sets it)
 const NP_RATE = { hover: 0 };   // the rating under the mouse on the card's RATING row (the panel sets it), previewed
 const heroClear = Spring(1, 6);      // 0 frosted → 1 clear, ≈ 0.8 s
 
@@ -30,12 +31,13 @@ function loadTrack() {
     const h = fb.GetNowPlaying() || fb.GetFocusItem();
     const same = !!(h && T.handle && h.RawPath === T.handle.RawPath && h.SubSong === T.handle.SubSong);
     T.handle = h;
-    if (!h) { T.info = null; T.file = 0; T.next = "—"; T.rating = 0; npChanged(false, null); return; }
+    if (!h) { T.info = null; T.file = 0; T.next = "—"; T.rating = 0; T.fav = false; npChanged(false, null); return; }
     const v = TF_INFO.EvalWithMetadb(h).split("\u0001");
     T.info = { title: v[0], artist: v[1], album: v[2], year: v[3], codec: v[4] || "—", bitrate: v[5], rate: +v[6] || 0, bits: +v[7] || 0,
                ch: v[8], track: v[9], total: v[10], gain: v[11], plays: v[12], profile: v[13], lossless: v[14] === "1" };
     T.no = albumNo(h);
     T.rating = getRating(h);
+    T.fav = isFav(h);
     const loc = plman.GetPlayingItemLocation();
     T.file = loc.IsValid ? loc.PlaylistItemIndex + 1 : 0;
     T.next = nextTitle();
@@ -76,13 +78,15 @@ const CARD_TOP = 14 + 16 + 6 + 250 + 18 + 10 + 32 + 12 + 18 + 90;
 const cardTitleH = iw => { const th = tagHeight(iw); return th ? th + dp(12) : dp(54 + 10); };
 function cardHeight(w = dp(328)) { return dp(CARD_TOP + 14 + 10 + 16) + cardTitleH(w - dp(32)); }
 // profile: the card from its top to the end of the profile table (a click inspects the album in the Archive)
-const CARD_HITS = { pager: [], queue: [], profile: null, folder: null, rate: null };
+const CARD_HITS = { pager: [], queue: [], profile: null, folder: null, rate: null, fav: null };
 function hitsCard(ox, oy) {
     if (CARD_HITS.profile && T.handle) { const [x, y, w, h] = CARD_HITS.profile; hits.add("profile", ox + x, oy + y, w, h); }
     // the FILE chip opens the track's folder (on top of the profile card, which inspects the album)
     if (CARD_HITS.folder && T.handle) { const [x, y, w, h] = CARD_HITS.folder; hits.add("folder", ox + x, oy + y, w, h); }
     // the RATING row's marks rate the track (on top of the profile too)
     if (CARD_HITS.rate && T.handle) { const [x, y, w, h, size, padX] = CARD_HITS.rate; hits.add("rate", ox + x, oy + y, w, h, { size, pad: padX }); }
+    // and the heart beside them gives or takes the track's (lib/favourite.js)
+    if (CARD_HITS.fav && T.handle) { const [x, y, w, h] = CARD_HITS.fav; hits.add("fav", ox + x, oy + y, w, h); }
     for (const [i, x, y, w, h] of CARD_HITS.pager) hits.add("pager", ox + x, oy + y, w, h, i);
     for (const [q, x, y, w, h] of CARD_HITS.queue) hits.add("queue", ox + x, oy + y, w, h, q);
 }
@@ -147,13 +151,21 @@ function drawCard(gr, w, h, kind = "pager", ghost = "INFO") {
         label(gr, k, npSt(NP_ST.key, C["text-muted"]), cx, cy + dp(2));
         gr.DrawText(String(v), font(11, 400), C.fg, cx + dp(64), cy - dp(2), colW - dp(70), dp(18), DT_SINGLE | DT_ELLIPSIS);
     });
-    // RATING ◆◆◆◇◇ (click a mark; the same one again clears it; Ctrl+1–5 from anywhere)
-    const ry = y + dp(40), ms = dp(9), mx = px + dp(8) + dp(64);
+    // RATING ◆◆◆◇◇ (click a mark; the same one again clears it; Ctrl+1–5 from anywhere) and, in the second column,
+    // FAVOURITE ♥ (click it, or H from anywhere)
+    const ry = y + dp(40), ms = dp(9), mx = px + dp(8) + dp(64), fx = px + dp(8) + colW;
     label(gr, tr("RATING"), npSt(NP_ST.key, C["text-muted"]), px + dp(8), ry + dp(2));
+    label(gr, tr("FAVOURITE"), npSt(NP_ST.key, C["text-muted"]), fx, ry + dp(2));
     if (I) {
-        drawRating(gr, mx, ry + Math.round((labelHeight(NP_ST.key) - ms) / 2) + dp(2), ms, T.rating, NP_RATE.hover);
+        const my = ry + Math.round((labelHeight(NP_ST.key) - ms) / 2) + dp(2), hs = dp(11);
+        drawRating(gr, mx, my, ms, T.rating, NP_RATE.hover);
         CARD_HITS.rate = [mx - dp(4), ry - dp(3), ratingWidth(ms) + dp(8), dp(20), ms, dp(4)];
-    } else { gr.DrawText("—", font(11, 400), C.fg, mx, ry - dp(2), dp(40), dp(18), DT_SINGLE); CARD_HITS.rate = null; }
+        drawHeart(gr, fx + dp(64), my - dp(1), hs, T.fav, T.fav ? C.accent : NP_FAV.hover ? C.fg : C["line-dim"]);
+        CARD_HITS.fav = [fx - dp(4), ry - dp(3), dp(64) + hs + dp(8), dp(20)];
+    } else {
+        gr.DrawText("—", font(11, 400), C.fg, mx, ry - dp(2), dp(40), dp(18), DT_SINGLE); CARD_HITS.rate = null;
+        gr.DrawText("—", font(11, 400), C.fg, fx + dp(64), ry - dp(2), dp(40), dp(18), DT_SINGLE); CARD_HITS.fav = null;
+    }
     y += dp(60) + dp(10);
     CARD_HITS.profile = [0, 0, w, y];
     hline(gr, px, y, iw);

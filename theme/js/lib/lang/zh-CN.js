@@ -182,6 +182,8 @@ I18N["zh-CN"] = {
     "JSplitter database (no files written)": "JSplitter 数据库（不写入文件）",
     "Playback Statistics (foo_playcount)": "播放统计（foo_playcount）",
     "File tags (RATING)": "文件标签（RATING）",
+    // favourites (lib/favourite.js)
+    "FAVOURITE": "收藏", "FAV": "收藏", "FAVOURITES": "收藏", "OTHERS": "其他", "Group by favourites": "按收藏分组", "Favourite track": "收藏曲目", "Favourite album": "收藏专辑", "Open favourites playlist": "打开收藏播放列表", "Favourites saved in": "收藏保存在", "File tags (LOVED)": "文件标签（LOVED）",
     // the halftone (05 STYLE, 1.7.2)
     "BOTTOM": "底部",
     "CORNER": "角落",

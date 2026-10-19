@@ -372,6 +372,7 @@ function showMenu(a) {
     theme.AppendMenuItem(STATE.boot ? 0x8 : 0, 7, tr("Intro film at start"));
     theme.AppendMenuItem(0, 8, tr("Play intro film") + "\tB");
     theme.AppendMenuItem(0, 10, tr("Shuffle entire library") + "\tS");
+    theme.AppendMenuItem(0, 15, tr("Open favourites playlist"));   // made by the stage panel, which knows the albums
     theme.AppendMenuSeparator();
     const skins = appendSkinMenu(theme, 100);
     const schemes = Object.keys(TOKENS.schemes), sch = window.CreatePopupMenu();
@@ -426,6 +427,7 @@ function showMenu(a) {
     else if (id === 431) askKeys("deepl", [["trDeeplKey", tr("DeepL API key (deepl.com › Account › API keys; a Free key ends in :fx)")]]);
     else if (id === 8) send("boot-play");
     else if (id === 10) shuffleLibrary();
+    else if (id === 15) send("fav-playlist");
     else if (id >= 340 && id < 340 + INSPECT_SCALES.length) send("inspect-scale", INSPECT_SCALES[id - 340]);
     else if (id >= 320 && id < 320 + ARRAY_SCALES.length) send("array-scale", ARRAY_SCALES[id - 320]);
     else if (id >= 360 && id < 360 + FLOORS.length) send("floor", FLOORS[id - 360][0]);
