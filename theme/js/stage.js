@@ -78,6 +78,12 @@ onMessage("lyrics-source", v => {
     if (T.handle) { T.lyrics = null; npChanged(false, T.handle); }
     clock.wake(); window.Repaint();
 });
+// AUTO's NetEase fallback switched in the MENU: apply it here too (before frame.js broadcasts it) and read the track again
+onMessage("lyrics-netease-auto", on => {
+    STATE.lyricsNeteaseAuto = !!on;
+    if (T.handle) { T.lyrics = null; npChanged(false, T.handle); }
+    clock.wake(); window.Repaint();
+});
 // the translation source changed in the MENU (lib/translate.js reads it): drop what the old one added and translate again
 onMessage("lyrics-trans", () => {
     if (T.handle) { T.lyrics = null; npChanged(false, T.handle); }

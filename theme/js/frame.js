@@ -262,6 +262,7 @@ onMessage("skin", id => { if (id && id !== STATE.skin) { STATE.skin = String(id)
 onMessage("boot", on => { STATE.boot = !!on; setSetting("bootSelfTest", STATE.boot); broadcast(); });
 onMessage("lyrics-source", v => { STATE.lyricsSource = pickLyricsSource(v); setSetting("lyricsSource", STATE.lyricsSource); broadcast(); });
 onMessage("lyrics-trans", v => { STATE.lyricsTrans = pickLyricsTrans(v); setSetting("lyricsTrans", STATE.lyricsTrans); broadcast(); });
+onMessage("lyrics-netease-auto", on => { STATE.lyricsNeteaseAuto = !!on; setSetting("lyricsNeteaseAuto", STATE.lyricsNeteaseAuto); broadcast(); });
 onMessage("text-scale", v => { STATE.textScale = pickScale(+v, TEXT_SCALES); setSetting("textScale", STATE.textScale); setTextScale(STATE.textScale); broadcast(); layout(); });
 onMessage("inspect-scale", v => { STATE.inspectScale = pickScale(+v, INSPECT_SCALES); setSetting("inspectScale", STATE.inspectScale); broadcast(); });
 onMessage("array-scale", v => { STATE.arrayScale = pickScale(+v, ARRAY_SCALES); setSetting("arrayScale", STATE.arrayScale); broadcast(); });

@@ -346,6 +346,9 @@ function showMenu(a) {
     const lsm = window.CreatePopupMenu();
     LYR_SOURCES.forEach(([, name], i) => lsm.AppendMenuItem(0, 500 + i, tr(name)));
     lsm.CheckMenuRadioItem(500, 500 + LYR_SOURCES.length - 1, 500 + Math.max(0, LYR_SOURCES.findIndex(s => s[0] === STATE.lyricsSource)));
+    // whether AUTO may fall back to NetEase (it sends the track's artist, title and length there); greyed under the others
+    lsm.AppendMenuSeparator();
+    lsm.AppendMenuItem((STATE.lyricsNeteaseAuto ? 0x8 : 0) | (STATE.lyricsSource === "auto" ? 0 : 0x1), 510, tr("AUTO: ask NetEase when LRCLIB has none"));   // MF_CHECKED, MF_GRAYED
     lsm.AppendTo(theme, 0, tr("Lyrics source"));
     const trm = window.CreatePopupMenu(), trs = trSettings();
     LYR_TRANS.forEach(([, name], i) => trm.AppendMenuItem(0, 400 + i, tr(name)));
@@ -411,6 +414,7 @@ function showMenu(a) {
     else if (id === 13) setSetting("updateCheck", getSetting("updateCheck", true) === false, true);
     else if (id >= 450 && id < 450 + UI_LANGS.length) { if (UI_LANGS[id - 450][0] !== UI_LANG) { setSetting("uiLang", UI_LANGS[id - 450][0]); send("ui-lang"); window.Reload(); } }
     else if (id >= 500 && id < 500 + LYR_SOURCES.length) send("lyrics-source", LYR_SOURCES[id - 500][0]);
+    else if (id === 510) send("lyrics-netease-auto", !STATE.lyricsNeteaseAuto);
     else if (id >= 400 && id < 400 + LYR_TRANS.length) send("lyrics-trans", LYR_TRANS[id - 400][0]);
     else if (id >= 460 && id < 460 + TR_TARGETS.length) { setSetting("lyricsTarget", TR_TARGETS[id - 460][0]); send("lyrics-translate"); }
     else if (id >= 420 && id < 420 + TR_PROVIDERS.length) { setSetting("trProvider", TR_PROVIDERS[id - 420][0]); send("lyrics-translate"); }

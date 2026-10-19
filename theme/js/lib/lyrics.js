@@ -17,7 +17,9 @@ function parseLrc(text) {
             stamps.push(+m[1] * 60 + parseFloat(m[2].replace(":", ".")));
             rest = rest.slice(m[0].length);
         }
-        rest = rest.trim();
+        // enhanced (A2) LRC times each word as well: [00:12.34]<00:12.34>Hello <00:12.56>world. The word stamps are
+        // dropped (the view follows lines), or they would be drawn as text
+        rest = rest.replace(/<\d{1,3}:\d{1,2}(?:[.:]\d{1,3})?>/g, "").replace(/\s{2,}/g, " ").trim();
         if (!stamps.length) continue;
         for (const t of stamps) {
             const key = Math.round(t * 100);
