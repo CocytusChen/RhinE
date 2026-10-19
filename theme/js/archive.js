@@ -65,37 +65,49 @@ const PICK = { steps: null, t: 0, after: false };   // RANDOM PICK's run (see ra
 try { AR.selAlbum = String(JSON.parse(getSetting("archiveSel", "{}")).key || ""); } catch (e) { /* none */ }
 
 // ------------------------------------------------------------------------------------------------------ shelves
-// The array's rows are shelves of SHELF_SLOTS slots. The groups follow one another along them: a group that fits
-// where the shelf has room goes there, right after the previous one (the shelf's name below the array and the file
-// panel say which group a case belongs to), a larger one fills the shelf and
-// continues on the next, so every shelf but the last is full.
+// The array's rows are shelves of SHELF_MIN to SHELF_MAX cases. The groups follow one another along them: a group
+// that fits beside the ones before it (SHELF_MAX in all) joins their shelf (the shelf's name below the array and the
+// file panel say which group a case belongs to). A larger one starts a shelf of its own, after topping up a shelf left
+// short of SHELF_MIN, and is shared out evenly over as few shelves as hold the rest (45: 23 + 22, rather than 20 + 20
+// + 5, which leaves a few cases alone on the last shelf). A shelf's rail is as long as its cases, SHELF_MIN slots at
+// least.
 // shelf: { name, albums, slot (each album's slot), slots, segs: [{ gi, name, from, n, slot, part, parts, total }] }
 // The grid's sections are the plain groups; both layouts share the selected album.
-const SHELF_SLOTS = 20;
-let SHELVES = [];
+const SHELF_MIN = 10, SHELF_MAX = 30;
+let SHELVES = [], SHELF_SPAN = SHELF_MIN;   // SHELF_SPAN: the longest shelf's slots (the ultrawide array's spacing)
 function buildShelves() {
     const out = [], parts = new Map();
     let cur = null;
-    const open = () => { cur = { albums: [], slot: [], slots: SHELF_SLOTS, segs: [], used: 0 }; out.push(cur); };
+    const open = () => { cur = { albums: [], slot: [], slots: 0, segs: [], used: 0 }; out.push(cur); };
+    // n cases of group g, from its case `from` on, onto the current shelf
+    const put = (g, gi, from, n) => {
+        const seg = { gi, name: g.name, from: cur.albums.length, n, slot: cur.used, total: g.albums.length };
+        for (let k = 0; k < n; k++) { cur.albums.push(g.albums[from + k]); cur.slot.push(seg.slot + k); }
+        cur.used += n;
+        cur.segs.push(seg);
+        if (!parts.has(gi)) parts.set(gi, []);
+        parts.get(gi).push(seg);
+    };
     LIB.groups.forEach((g, gi) => {
-        for (let i = 0; i < g.albums.length;) {
-            if (!cur || cur.used >= SHELF_SLOTS) open();
-            const room = SHELF_SLOTS - cur.used, left = g.albums.length - i, n = Math.min(left, room);
-            const seg = { gi, name: g.name, from: cur.albums.length, n, slot: cur.used, total: g.albums.length };
-            for (let k = 0; k < n; k++) { cur.albums.push(g.albums[i + k]); cur.slot.push(seg.slot + k); }
-            cur.used = seg.slot + n;
-            cur.segs.push(seg);
-            if (!parts.has(gi)) parts.set(gi, []);
-            parts.get(gi).push(seg);
-            i += n;
+        const N = g.albums.length;
+        let i = 0;
+        if (cur) {
+            if (cur.used + N <= SHELF_MAX) { put(g, gi, 0, N); return; }   // beside the groups before it
+            // a short shelf is topped up (the rest is then more than SHELF_MIN: N > SHELF_MAX - used)
+            if (cur.used < SHELF_MIN) { i = SHELF_MIN - cur.used; put(g, gi, 0, i); }
         }
+        // the rest on shelves of its own, shared out evenly
+        const left = N - i, k = Math.ceil(left / SHELF_MAX);
+        for (let s = 0; s < k; s++) { const n = Math.floor(left / k) + (s < left % k ? 1 : 0); open(); put(g, gi, i, n); i += n; }
     });
     for (const list of parts.values()) list.forEach((s, k) => { s.part = k + 1; s.parts = list.length; });
     out.forEach(s => {
+        s.slots = Math.max(SHELF_MIN, s.used);
         const one = s.segs[0];
         s.name = s.segs.length > 1 ? s.segs.map(g => g.name).join("  ·  ") : one ? one.name + (one.parts > 1 ? `  ${one.part} / ${one.parts}` : "") : "";
     });
     SHELVES = out;
+    SHELF_SPAN = Math.max(SHELF_MIN, ...out.map(s => s.slots));
 }
 // the rows of the layout in use: shelves (array) or groups (grid)
 const arRows = () => AR.layout === "grid" ? LIB.groups : SHELVES;
@@ -433,12 +445,12 @@ const arrayW = () => Math.max(dp(300), infoX() - dp(24));
 let ARRAY_GEOM = null;
 function arrayGeom() {
     const aw = arrayW(), total = arRows().length;
-    const key = [W, H, CASE_DIR, STATE.arrayScale, total].join("|");
+    const key = [W, H, CASE_DIR, STATE.arrayScale, total, SHELF_SPAN].join("|");
     if (ARRAY_GEOM && ARRAY_GEOM.key === key) return ARRAY_GEOM;
     const g = { key, wide: aw > H * 2, count: 4, x: Math.round(aw * .37), y: H - dp(87), sx: 1, sy: 1 };
     if (g.wide) {
         const k = arK(), ax = CASE_META.axes, meta = CASE_META.array, sz = CASE_META.array_res[0];
-        const pad = dp(48), along = (SHELF_SLOTS - 1) * PITCH;
+        const pad = dp(48), along = (SHELF_SPAN - 1) * PITCH;
         const span = (along * ax.y[0] + sz) * k, pitch = ROWP * ax.x[0] * k;
         const capacity = clamp(Math.floor((aw - pad * 2 - span) / pitch) + 1, 4, 24);
         g.count = Math.max(1, Math.min(total || 1, capacity));
