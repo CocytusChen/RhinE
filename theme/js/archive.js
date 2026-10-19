@@ -1221,7 +1221,7 @@ function drawInfoFile(gr, a, x, y, iw, w, h) {
     y += Math.max(1, TL.rows.length) * rowH;
     const more = TL.total - TL.first - TL.rows.length;
     if (more > 0 && TL.rows.length) {
-        const mw = label(gr, tr("+ {0} MORE  ·  ALL TRACKS"), st(AR_ST.more, C["text-muted"]), x + dp(34), y + dp(6));
+        const mw = label(gr, tr("+ {0} MORE  ·  ALL TRACKS", more), st(AR_ST.more, C["text-muted"]), x + dp(34), y + dp(6));
         INFO_HITS.push(["ar-page", x + dp(30), y, mw + dp(8), rowH, "tracks"]);
     }
     y += dp(24 + 18);
