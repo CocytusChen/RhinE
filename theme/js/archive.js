@@ -159,7 +159,9 @@ function rowState(gi) {
     let r = AR.rows.get(gi);
     if (!r) {
         const sel = selIndexOf(gi);
-        r = { sel, scroll: Spring(scrollTarget(sel, arRows()[gi]), 9), pos: Spring(gi - arrayStart(), 9), cases: new Map() };
+        // a row and a slot are large on screen: they stop much nearer their end than other springs, so the last step is
+        // not seen as a jump
+        r = { sel, scroll: Spring(scrollTarget(sel, arRows()[gi]), 9, .002), pos: Spring(gi - arrayStart(), 9, .0005), cases: new Map() };
         // The rows move as one strip: a new row joins it where the strip is now, one row on from its nearest
         // neighbour (and at its speed), so it slides in with the others rather than standing at its place while they
         // are still on their way there (a RANDOM PICK crosses several shelves at a time).
@@ -603,7 +605,15 @@ function arrayImages() {
     return ARIMG;
 }
 // the frost sprite tinted towards the background by f (0.1 steps), alpha kept: Direct2D colour matrix, made once
-const fadedSprite = f => tinted(arrayImages().frost, f, "case" + CASE_DIR);
+// src tinted towards the background by f, drawn at (x, y, w, h): src as it is, then its silhouette in the background
+// colour (tinted once, at 1) over it at f, so the tint follows f smoothly as a row moves. Opaque parts come out exactly
+// as src tinted by f; half-clear ones (the frosted glass) a touch denser, by the same amount at every f. (A tinted copy
+// for each f would be an image for every step of it: in 0.1 steps the rows' tint jumped as they moved.)
+function drawTinted(gr, src, name, f, x, y, w, h, alpha) {
+    gr.DrawImage(src, x, y, w, h, 0, 0, src.Width, src.Height, 0, alpha);
+    const a = Math.round(alpha * f);
+    if (a > 0) { const t = tinted(src, 1, name); gr.DrawImage(t, x, y, w, h, 0, 0, t.Width, t.Height, 0, a); }
+}
 function tinted(src, f, name) {
     const key = MODE + f + name;
     let img = ARIMG.faded.get(key);
@@ -675,17 +685,17 @@ function drawRailSlot(gr, it, sx, sy, k, aw) {
     const img = accentShift(ARIMG.rail[it.rail]), [rw, rh] = RAIL_META.res, ox = sx - RAIL_META.origin[0] * k, oy = sy - RAIL_META.origin[1] * k;
     if (ox > aw || ox + rw * k < 0 || oy > H || oy + rh * k < 0) return;
     const alpha = rowAlpha(it.pos), f = rowTint(it.pos);
-    const im = f > 0 ? tinted(img, f, "rail-" + it.rail) : img;
-    gr.DrawImage(im, ox, oy, rw * k, rh * k, 0, 0, im.Width, im.Height, 0, alpha);
-    // the row's number on the front end's label plate
-    if (it.rail === "front" && f < .5) {
+    drawTinted(gr, img, "rail-" + it.rail, f, ox, oy, rw * k, rh * k, alpha);
+    // the row's number on the front end's label plate, fading out as the row is tinted past readable
+    const la = Math.round(alpha * readable(f));
+    if (it.rail === "front" && la > 0) {
         const q = RAIL_META.label;
         QM[0] = (q[1][0] - q[0][0]) * k / 100; QM[1] = (q[1][1] - q[0][1]) * k / 100;
         QM[2] = (q[3][0] - q[0][0]) * k / 20; QM[3] = (q[3][1] - q[0][1]) * k / 20;
         QM[4] = ox + q[0][0] * k; QM[5] = oy + q[0][1] * k;
         if (!LABEL_FONTS.row) LABEL_FONTS.row = d2d.Font("Geist Mono SemiBold", 12, 0);
         gr.SetTransform(QM);
-        gr.DrawText(`ROW ${pad(it.gi + 1, 2)}`, LABEL_FONTS.row, withAlpha(0xFF1B1C18, alpha / 255), 6, 1, 94, 18, DT_SINGLE);
+        gr.DrawText(`ROW ${pad(it.gi + 1, 2)}`, LABEL_FONTS.row, withAlpha(0xFF1B1C18, la / 255), 6, 1, 94, 18, DT_SINGLE);
         gr.ResetTransform();
     }
 }
@@ -825,22 +835,22 @@ function drawArrayCase(gr, it, sx, sy, k, aw, I) {
     let selItem = null;
     if (it.isSel) { AR.from = [ox + meta.center[0] * k, oy + meta.center[1] * k]; selItem = { ox, oy }; }
     if (it.isSel && inspTurn() > 0) return selItem;                   // drawn by the inspection
-    const alpha = rowAlpha(it.pos), f = rowTint(it.pos), t = thumbOf(it.a);
-    // cover, under the case
+    const alpha = rowAlpha(it.pos), f = rowTint(it.pos), t = thumbOf(it.a), cl = clamp(it.c.clear.x, 0, 1);
+    // One way of drawing a case at every place, so a row moving between places changes smoothly (a tinted row was drawn
+    // frosted whatever its cases' clearing, so a case went frosted or clear at once as its row left or reached the
+    // front). The cover under the case, the sharp one over the blurred as the case clears; tinted like the row.
     if (t) quadImage(gr, t.blur, meta.cover, ox, oy, k, alpha);
     else gr.FillPolygon(withAlpha(C.well, alpha / 255), 0, quadPts(meta.cover, ox, oy, k));
-    if (f > 0) {
-        gr.FillPolygon(withAlpha(fadeBg(), f * alpha / 255), 0, quadPts(meta.cover, ox, oy, k));
-        const fs = fadedSprite(f);
-        gr.DrawImage(fs, ox, oy, S, S, 0, 0, fs.Width, fs.Height, 0, alpha);
-    } else {
-        const cl = clamp(it.c.clear.x, 0, 1);
-        if (t && cl > .01) quadImage(gr, t.img, meta.cover, ox, oy, k, Math.round(alpha * cl));
-        if (cl < .99) gr.DrawImage(I.frost, ox, oy, S, S, 0, 0, I.frost.Width, I.frost.Height, 0, Math.round(alpha * (1 - cl)));
-        if (cl > .01) gr.DrawImage(I.clear, ox, oy, S, S, 0, 0, I.clear.Width, I.clear.Height, 0, Math.round(alpha * cl));
-        if (it.active) drawSpineLabel(gr, meta.label, ox, oy, k, it.a.no, alpha);
-    }
-    if (AR.topTitles && f < .5) drawTopTitle(gr, it.a, ox, oy, k, alpha, f);
+    if (t && cl > .01) quadImage(gr, t.img, meta.cover, ox, oy, k, Math.round(alpha * cl));
+    if (f > 0) gr.FillPolygon(withAlpha(fadeBg(), f * alpha / 255), 0, quadPts(meta.cover, ox, oy, k));
+    // the case: frosted, clear as it is selected
+    if (cl < .99) drawTinted(gr, I.frost, "case" + CASE_DIR, f, ox, oy, S, S, Math.round(alpha * (1 - cl)));
+    if (cl > .01) drawTinted(gr, I.clear, "case-clear" + CASE_DIR, f, ox, oy, S, S, Math.round(alpha * cl));
+    // the spine labels belong to the selected shelf: they fade with its place as a shelf moves into it or out of it
+    const la = Math.round(alpha * selness(it.pos));
+    if (la > 0) drawSpineLabel(gr, meta.label, ox, oy, k, it.a.no, la);
+    const ta = Math.round(alpha * readable(f));
+    if (AR.topTitles && ta > 0) drawTopTitle(gr, it.a, ox, oy, k, ta, f);
     // the whole case (front face and top edge) at its resting place answers the mouse; the one under it is outlined
     if (it.active) {
         const P = casePoly(), rx = it.rest[0] - meta.origin[0] * k, ry = it.rest[1] - meta.origin[1] * k;
@@ -879,14 +889,19 @@ function casePoly() {
 
 // rows fade out towards the viewer and in at the back; rows behind are tinted towards the page (0.1 steps)
 const rowAlpha = pos => Math.round(255 * clamp(1 + pos, 0, 1) * clamp((arrayGeom().count - pos) / .8, 0, 1));
-// how far a row is tinted towards the background (0.1 steps): by its place behind the front row, or on an ultrawide
-// array by its distance from the selected row; the floor may fade them less (floor.json "tint")
+// how far a row is tinted towards the background: by its place behind the front row, or on an ultrawide array by its
+// distance from the selected row; the floor may fade them less (floor.json "tint"). It follows a moving row smoothly.
 const rowTint = pos => {
     const g = arrayGeom(), floor = FLOOR.meta && FLOOR.meta.tint != null ? FLOOR.meta.tint : 1;
-    if (!g.wide) return Math.round(clamp(.38 * clamp(pos, 0, 1) + .14 * Math.max(0, pos), 0, .8) * floor * 10) / 10;
+    if (!g.wide) return clamp(.38 * clamp(pos, 0, 1) + .14 * Math.max(0, pos), 0, .8) * floor;
     const distance = Math.abs(pos - (AR.group - arrayStart()));
-    return Math.round(clamp(.32 * Math.min(distance, 1) + .24 * distance / Math.max(1, g.count - 1), 0, .6) * floor * 10) / 10;
+    return clamp(.32 * Math.min(distance, 1) + .24 * distance / Math.max(1, g.count - 1), 0, .6) * floor;
 };
+// how much of a row's print (top titles, row number, lip) shows at tint f: all of it up to 0.4, none from 0.5 (it went
+// at 0.5 at once, mid-move)
+const readable = f => clamp((.5 - f) / .1, 0, 1);
+// how near a row is to the selected row's place (1 there, 0 a row away): the selected shelf's spine labels fade with it
+const selness = pos => clamp(1 - Math.abs(pos - (AR.group - arrayStart())), 0, 1);
 
 // The shelf's front lip, an optional look (lip-*.png, described by rail.json → lip; the shipped rail has none, so this
 // draws nothing), drawn after everything standing on the shelf, then its print on the pale face panel, mapped like the spine label (100 units per world unit along the row,
@@ -904,9 +919,9 @@ function drawLip(gr, row, gi, r, x, toScreen, k) {
         const [sx, sy] = toScreen({ x, y, z: 0 });
         drawRailSlot(gr, { rail: sl < 0 ? "lip-front" : sl >= n ? "lip-back" : "lip-mid", gi, pos }, sx, sy, k, aw);
     }
-    const f = rowTint(pos);
-    if (f >= .5) return;   // too far back to read
-    const tone = c => withAlpha(mix(c, fadeBg(), f), alpha / 255);
+    const f = rowTint(pos), lr = readable(f);
+    if (lr <= 0) return;   // too far back to read
+    const tone = c => withAlpha(mix(c, fadeBg(), f), alpha * lr / 255);
     const y0 = -.5 - r.scroll.x, lx = x + L.x, o = toScreen({ x: lx, y: y0, z: L.z1 }), u = toScreen({ x: lx, y: y0 + 1, z: L.z1 }), v = toScreen({ x: lx, y: y0, z: L.z1 - 1 });
     QM[0] = (u[0] - o[0]) / 100; QM[1] = (u[1] - o[1]) / 100; QM[2] = (v[0] - o[0]) / 100; QM[3] = (v[1] - o[1]) / 100; QM[4] = o[0]; QM[5] = o[1];
     const ph = (L.z1 - L.z0) * 100;   // panel height in units
