@@ -71,7 +71,7 @@ tickClock();
 onMessage("state", () => { movePlate(plate.placed); window.Repaint(); });
 // asked a moment after the script has run: a panel that reloads itself (a new language) misses an answer that comes
 // back while its own script is still running
-window.SetTimeout(() => send("hello"), 50);
+helloFrame();   // lib/bus.js
 
 function movePlate(animate) {
     const r = navRects[STATE.view];

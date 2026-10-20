@@ -72,6 +72,18 @@ const pickScale = (v, list) => list.reduce((a, b) => Math.abs(b - v) < Math.abs(
 
 function send(type, data = null) { window.NotifyOthers(BUS, JSON.stringify({ type, data })); }
 function onMessage(type, fn) { (BUS_HANDLERS[type] = BUS_HANDLERS[type] || []).push(fn); }
+// A panel asks frame.js for the state when it loads ("hello"). Not straight away: frame.js answers at once, and a panel
+// that reloads on its own (a new interface language) could lose an answer that arrives while its script is still
+// running, and then stay on the defaults (the stage drew an empty view). So it asks a moment later, and again every half
+// second until a state has arrived (at start frame.js is not ready yet and sends it itself when it is).
+let STATE_SEEN = false;
+function helloFrame(tries = 10) {
+    window.SetTimeout(() => {
+        if (STATE_SEEN) return;
+        send("hello");
+        if (tries > 1) window.SetTimeout(() => helloFrame(tries - 1), 450);
+    }, 50);
+}
 // a new interface language (lib/i18n.js): each panel reloads its script, which reads the language again. The root
 // panel (frame.js) has no text of its own on screen and stays, so the layout and the intro are not restarted.
 let RELOAD_ON_LANG = true;
@@ -86,6 +98,7 @@ function on_notify_data(name, info) {
     let m;
     try { m = JSON.parse(info); } catch (e) { return; }
     if (m.type === "state") {
+        STATE_SEEN = true;
         Object.assign(STATE, m.data);
         REDUCE_MOTION = !!STATE.reduce;
         // a new text size or font: caches that hold drawn text are dropped like after a colour change

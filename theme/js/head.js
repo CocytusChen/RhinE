@@ -205,5 +205,5 @@ function on_playback_pause() { window.Repaint(); }
 function on_playback_stop(reason) { if (reason !== 2) window.Repaint(); }
 function on_colours_changed() { refreshTokens(); window.Repaint(); }
 onMessage("state", () => { SORT.title = ""; window.Repaint(); });
-send("hello");
+helloFrame();   // lib/bus.js
 load(false);

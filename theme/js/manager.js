@@ -298,4 +298,4 @@ function on_playback_stop(reason) { if (reason !== 2) refresh(); }
 function on_colours_changed() { refreshTokens(); window.Repaint(); }
 onMessage("state", () => { if (STATE.view !== "playlists" && railHover >= 0) { railHover = -1; sendTip(null); } window.Repaint(); });
 window.DlgCode = 0x0004;   // arrows, F2 and Delete reach the panel
-send("hello");
+helloFrame();   // lib/bus.js

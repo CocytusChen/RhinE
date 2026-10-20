@@ -78,5 +78,5 @@ function on_colours_changed() { refreshTokens(); window.Repaint(); }
 onMessage("rating-store", () => { if (T.handle) loadTrack(); });
 FAV_LISTENERS.push(() => { if (T.handle) loadTrack(); window.Repaint(); });
 onMessage("state", () => { if (STATE.skin !== CASE_SKIN) loadSkin(STATE.skin); window.Repaint(); });
-send("hello");
+helloFrame();   // lib/bus.js
 window.SetTimeout(loadTrack, 0);

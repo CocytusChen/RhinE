@@ -269,7 +269,7 @@ onMessage("state", () => {
 onMessage("inspect", () => inspectRequest());
 onMessage("library?", () => { if (LIB.live) send("library", { files: LIB.tracks, albums: LIB.albums.length }); });
 window.DlgCode = 0x0004;   // DLGC_WANTALLKEYS: Enter and Esc reach the archive
-send("hello");
+helloFrame();   // lib/bus.js
 window.SetTimeout(loadTrack, 0);
 window.SetTimeout(libStart, 0);
 

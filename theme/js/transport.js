@@ -115,7 +115,7 @@ function updateSection(animate) {
 onMessage("state", () => { updateSection(true); window.Repaint(); });
 function on_playlist_switch() { updateSection(true); }
 function on_playlists_changed() { updateSection(false); }
-send("hello");
+helloFrame();   // lib/bus.js
 
 // ------------------------------------------------------------------------------------------------------- paint
 function on_size(w, h) { W = w; H = h; togRects = {}; tog.placed = false; }
