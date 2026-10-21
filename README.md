@@ -67,3 +67,9 @@ lyrics from [LRCLIB](https://lrclib.net). The 3D art was rendered in [Blender](h
 - 路北路陈 (LuBeiLuChen) https://space.bilibili.com/40238601 | RhineLabUI project: https://github.com/LBEILC/RhineLabUI
 - Ronald没有魔杖 (Ronald Has No Wand) https://space.bilibili.com/171289190 | RhineLabUI-Music-Demo project: https://github.com/RonaldDeng/Rhine-Music-Demo
 - Original Arknights PV: 《明日方舟》特别映像 [莱茵生命：访问]: bilibili.com/video/BV1rr4y1b7sz/
+
+#### Contributors
+
+- [CocytusChen](https://github.com/CocytusChen): albums kept together when sorted ([#32](https://github.com/ericzhang12111-cell/RhinE/pull/32)), shelves of 10 to 30 cases ([#33](https://github.com/ericzhang12111-cell/RhinE/pull/33)), the gliding playhead ([#34](https://github.com/ericzhang12111-cell/RhinE/pull/34)), shelves that no longer blink ([#36](https://github.com/ericzhang12111-cell/RhinE/pull/36)) and move without jumps ([#37](https://github.com/ericzhang12111-cell/RhinE/pull/37))
+- [Xuduxiu](https://github.com/Xuduxiu): shelves that adapt to ultrawide screens ([#2](https://github.com/ericzhang12111-cell/RhinE/pull/2))
+- [RiBunsyou](https://github.com/RiBunsyou): the lyrics source choice ([#27](https://github.com/ericzhang12111-cell/RhinE/pull/27))
