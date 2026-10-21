@@ -3,6 +3,21 @@
 Newest version first. Download any version from [Releases](https://github.com/ericzhang12111-cell/RhinE/releases).
 最新版本在最上面；各版本可在 Releases 页面下载。
 
+## 1.9.1 — 2026-10-20
+
+**Changed · 改进**
+- Archive: the shelves move without jumps. A shelf stops exactly in place instead of a few pixels short, the shelves
+  behind shade smoothly as they move, the selected case clears and frosts gradually, and the titles, row numbers and
+  spine labels fade instead of popping (#37, thanks to @CocytusChen). 档案：货架移动不再跳动。货架准确停在位置上，不再差
+  几个像素；后排货架移动时颜色平滑变化，选中的外壳逐渐变清晰或变磨砂，标题、排号和书脊标签淡入淡出，不再突然出现或消失（#37，
+  感谢 @CocytusChen）。
+
+**Fixed · 修复**
+- Archive: changing the sort, the grouping or `ALBUMS` / `TRACKS` no longer makes the shelves blink for a frame (#36,
+  thanks to @CocytusChen). 档案：切换排序、分组或专辑与曲目时，货架不再闪烁一帧（#36，感谢 @CocytusChen）。
+- A panel that reloads (after switching the interface language, for instance) could now and then miss the current
+  settings and show an empty view. 面板重新加载后（例如切换界面语言后），偶尔会收不到当前设置而显示空白视图。
+
 ## 1.9.0 — 2026-10-19
 
 **Added · 新增**
