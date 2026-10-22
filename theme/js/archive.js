@@ -57,10 +57,12 @@ const AR = {
     rulerStart: Spring(0, 14), ticks: new Map(),
     dirtyInfo: true, info: null,
     topTitles: getSetting("caseTopTitles", true) !== false,
+    frontShelves: getSetting("archiveFrontShelves", false) === true,   // the shelves in front stay in view (the context menu)
     skipInst: getSetting("skipInstrumentals", false) === true,   // play albums without their instrumentals (lib/playlists.js)   // the titles on the cases' top edges (the context menu)
     hoverMode: HOVER_MODES.includes(getSetting("caseHover", "outline")) ? getSetting("caseHover", "outline") : "outline",   // the case under the mouse: outlined, titled or left as is (the context menu)
     hoverPlate: null,   // the case to label this frame (hoverMode "label"): drawn after the shelf, over its neighbours
     hoverRow: -1,       // the shelf (row index) of the case under the mouse (AR.hover): the selected one or any other
+    selPlate: null,     // the selected case's plate to draw this frame: after every shelf, over the ones in front
 };
 let ARCHIVE_ON = false;
 const PICK = { steps: null, t: 0, after: false };   // RANDOM PICK's run (see randomPick)
@@ -369,14 +371,14 @@ function archiveUpdate(dt) {
     let more = stepInspection(dt);
     more = pickUpdate(dt) || more;
     // Keep a full viewport near the end of the library, plus a row at each edge for animation.
-    const start = arrayStart(), count = arrayGeom().count;
-    for (let gi = start - 1; gi <= start + count; gi++) if (gi >= 0 && gi < G.length) rowState(gi).pos.to = gi - start;
+    const start = arrayStart(), count = arrayGeom().count, F = frontRows();
+    for (let gi = start - 1 - F; gi <= start + count; gi++) if (gi >= 0 && gi < G.length) rowState(gi).pos.to = gi - start;
     // a row out of that range goes on with the strip and is let go once it has left the view (not while it is still
     // on its way out, where it would vanish)
     for (const [gi, r] of [...AR.rows]) {
-        if (gi >= start - 1 && gi <= start + count) continue;
+        if (gi >= start - 1 - F && gi <= start + count) continue;
         r.pos.to = gi - start;
-        if (r.pos.x <= -1 || r.pos.x >= count) AR.rows.delete(gi);
+        if (r.pos.x <= -1 - F || r.pos.x >= count) AR.rows.delete(gi);
     }
     for (const [gi, r] of AR.rows) {
         more = stepSpring(r.pos, dt) || more;
@@ -594,7 +596,9 @@ function drawFloor(gr, rows, G, Ox, Oy, k, toScreen) {
     // "glow": false in floor.json: shade only (no reflections of the cases and strips in the floor)
     for (const layer of F.meta.glow === false ? ["shade-"] : ["shade-", "glow-"]) for (const [gi, r] of rows) for (const part of ["", "-far"]) {
         const row = G[gi], pos = r.pos.x, x = -pos * ROWP, n = slotCount(row);
-        const alpha = Math.round(rowAlpha(pos) * (1 - rowTint(pos)) * (part ? clamp(1 - pos, 0, 1) : 1));
+        // the floor in front of a row shows as far as no row stands there: as the row in front fades out, it appears
+        const far = gi > 0 ? 1 - rowAlpha(pos - 1) / 255 : 1;
+        const alpha = Math.round(rowAlpha(pos) * (1 - rowTint(pos)) * (part ? far : 1));
         if (alpha <= 0) continue;
         for (const end of ["front", "back"]) {
             const [sx, sy] = toScreen({ x, y: ((end === "front" ? -1 : n) - r.scroll.x) * PITCH, z: 0 });
@@ -670,7 +674,7 @@ function requestVisibleThumbs() {
     if (AR.layout === "grid") { gridThumbs(); return; }
     const G = arRows(), list = [];
     const start = arrayStart(), count = arrayGeom().count;
-    const order = Array.from({ length: Math.min(count, G.length - start) }, (_, i) => start + i);
+    const first = Math.max(0, start - frontRows()), order = Array.from({ length: Math.min(count, G.length - start) + start - first }, (_, i) => first + i);
     order.sort((a, b) => Math.abs(a - AR.group) - Math.abs(b - AR.group));
     for (const gi of order) {
         const r = rowState(gi), albums = G[gi].albums, [i0, i1] = caseWindow(r, G[gi], gi - start, r.scroll.to);
@@ -784,7 +788,7 @@ function drawArchive(gr) {
     gr.PushClip(0, 0, aw, H);
     // Shelf by shelf, back to front: a shelf stands wholly behind the shelves in front of it (the camera looks along
     // +x), so each is drawn as one layer: its rail slots and cases back to front, then its front lip if the rail has one.
-    const R = railImages(), rows = [...AR.rows].filter(([, r]) => r.pos.x > -1 && r.pos.x < g.count).sort((p, q) => q[1].pos.x - p[1].pos.x);
+    const R = railImages(), rows = [...AR.rows].filter(([, r]) => r.pos.x > -1 - frontRows() && r.pos.x < g.count).sort((p, q) => q[1].pos.x - p[1].pos.x);
     AR.hits = [];
     let selItem = null;
     if (!LABEL_LIVE) drawFloor(gr, rows, G, Ox, Oy, k, toScreen);   // the wallpaper takes the floor's place
@@ -822,6 +826,11 @@ function drawArchive(gr) {
     if (AR.hover >= 0) {
         const c = AR.inspOn ? null : caseUnder(AR.mouseX, AR.mouseY), h = c ? c.i : -1, hg = c ? c.gi : -1;
         if (h !== AR.hover || hg !== AR.hoverRow) { AR.hover = h; AR.hoverRow = hg; clock.wake(); }
+    }
+    if (AR.selPlate) {
+        const p = AR.selPlate;
+        drawCasePlate(gr, p.a, p.ox, p.oy, p.k);
+        AR.selPlate = null;
     }
     if (AR.hoverPlate) {
         const h = AR.hoverPlate, t = [...(h.a.title || tr("UNTITLED"))];
@@ -885,9 +894,11 @@ function drawArrayCase(gr, it, sx, sy, k, aw, I) {
         if (hovered && AR.hoverMode === "label") AR.hoverPlate = { a: it.a, ox, oy, k, alpha };
         if (hovered && AR.hoverMode === "outline") gr.DrawPolygon(withAlpha(C.accent, alpha / 255), Math.max(HAIR, dp(1.5)), P.flatMap(([px, py]) => [ox + px * k, oy + py * k]));
     }
+    // the selected case's corner marks, on its cover (a see-through shelf in front covers them, as it covers the case),
+    // and its plate, a label beside it: drawn after every shelf (drawArchive), over the see-through ones in front
     if (it.isSel && it.c.clear.x > .6 && AR.insp === 0) {
-        drawCasePlate(gr, it.a, ox, oy, k);
         for (const [px, py] of meta.cover) gr.FillSolidRect(Math.round(ox + px * k - dp(3)), Math.round(oy + py * k - dp(3)), dp(6), dp(6), C.accent);
+        AR.selPlate = { a: it.a, ox, oy, k };
     }
     return selItem;
 }
@@ -913,13 +924,22 @@ function casePoly() {
     return CASE_POLY;
 }
 
-// rows fade out towards the viewer and in at the back; rows behind are tinted towards the page (0.1 steps)
-const rowAlpha = pos => Math.round(255 * clamp(1 + pos, 0, 1) * clamp((arrayGeom().count - pos) / .8, 0, 1));
-// how far a row is tinted towards the background: by its place behind the front row, or on an ultrawide array by its
-// distance from the selected row; the floor may fade them less (floor.json "tint"). It follows a moving row smoothly.
+// With "Show the shelves in front" (the context menu; off by default) FRONT_ROWS shelves in front of the selected one
+// stay in view, see-through (FRONT_OPACITY), so a shelf just left is still there to go back to (with the mouse, see
+// archiveMouseMove); not on an ultrawide array, whose shelves stand side by side
+const FRONT_ROWS = 2, FRONT_OPACITY = .6;
+const frontRows = () => AR.frontShelves && !arrayGeom().wide ? FRONT_ROWS : 0;
+// rows fade in at the back; in front they turn see-through, then fade out beyond the last one shown
+const rowAlpha = pos => {
+    const n = frontRows(), front = pos >= 0 ? 1 : !n ? clamp(1 + pos, 0, 1) : lerp(1, FRONT_OPACITY, clamp(-pos, 0, 1)) * clamp(n + 1 + pos, 0, 1);
+    return Math.round(255 * front * clamp((arrayGeom().count - pos) / .8, 0, 1));
+};
+// how far a row is tinted towards the background: by its distance from the selected row's place, behind (and in front,
+// with the shelves in front shown; on an ultrawide array, from the selected row); the floor may fade them less
+// (floor.json "tint"). It follows a moving row smoothly.
 const rowTint = pos => {
     const g = arrayGeom(), floor = FLOOR.meta && FLOOR.meta.tint != null ? FLOOR.meta.tint : 1;
-    if (!g.wide) return clamp(.38 * clamp(pos, 0, 1) + .14 * Math.max(0, pos), 0, .8) * floor;
+    if (!g.wide) { const d = frontRows() ? Math.abs(pos) : Math.max(0, pos); return clamp(.38 * Math.min(d, 1) + .14 * d, 0, .8) * floor; }
     const distance = Math.abs(pos - (AR.group - arrayStart()));
     return clamp(.32 * Math.min(distance, 1) + .24 * distance / Math.max(1, g.count - 1), 0, .6) * floor;
 };
@@ -1448,9 +1468,13 @@ function inQuad(x, y, q) {   // any polygon
     }
     return inside;
 }
-// the case at (x, y), on any shelf: the shelves are drawn back to front, so the nearest one's is found first
+// the case at (x, y), on any shelf: the selected shelf's first (a see-through shelf in front, drawn over it, does not
+// take its cases), then the other shelves', the nearest (drawn last) first
 function caseUnder(x, y) {
-    for (let j = AR.hits.length - 1; j >= 0; j--) if (inQuad(x, y, AR.hits[j].quad)) return AR.hits[j];
+    for (const own of [true, false]) for (let j = AR.hits.length - 1; j >= 0; j--) {
+        const c = AR.hits[j];
+        if ((c.gi === AR.group) === own && inQuad(x, y, c.quad)) return c;
+    }
     return null;
 }
 function archiveMouseMove(x, y, a) {
@@ -1592,6 +1616,7 @@ function archiveMenu(x, y) {
     m.AppendMenuItem(curAlbum() ? 0 : 1, 13, tr("Open containing folder") + "\tF");
     m.AppendMenuItem(curAlbum() ? 0 : 1, 11, tr("Random pick") + "	R");
     m.AppendMenuItem(AR.topTitles ? 0x8 : 0, 12, tr("Titles on the cases' top edges"));
+    m.AppendMenuItem(AR.frontShelves ? 0x8 : 0, 18, tr("Show the shelves in front (see-through)"));
     m.AppendMenuItem(AR.page === "tracks" ? 0x8 : 0, 14, tr("Album file: all tracks with ratings") + "\tL");
     m.AppendMenuItem(AR.skipInst ? 0x8 : 0, 15, tr("Play albums without instrumentals"));
     ratingMenu(m, 600);
@@ -1617,6 +1642,7 @@ function archiveMenu(x, y) {
     else if (id === 13) openFolder(itemTrack(curAlbum()) || albumFirst(curAlbum()));
     else if (id >= 500 && HOVER_MODES[id - 500]) { AR.hoverMode = HOVER_MODES[id - 500]; setSetting("caseHover", AR.hoverMode); window.Repaint(); }
     else if (id === 12) { AR.topTitles = !AR.topTitles; setSetting("caseTopTitles", AR.topTitles); window.Repaint(); }
+    else if (id === 18) { AR.frontShelves = !AR.frontShelves; setSetting("archiveFrontShelves", AR.frontShelves); requestVisibleThumbs(); clock.wake(); window.Repaint(); }
     else if (id === 14) setInfoPage(AR.page === "tracks" ? "file" : "tracks");
     else if (id === 15) { AR.skipInst = !AR.skipInst; setSetting("skipInstrumentals", AR.skipInst); AR.dirtyInfo = true; window.Repaint(); }
     else if (id >= 600 && ratingMenuPick(id, 600)) { AR.listVer++; AR.dirtyInfo = true; window.Repaint(); }

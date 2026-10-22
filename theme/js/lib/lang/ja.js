@@ -106,7 +106,7 @@ I18N["ja"] = {
     "CUSTOM CASE": "カスタムケース", "A base colour, an accent and a pattern, in matte plastics.": "ベース色・アクセント色・柄を選びます（マットな樹脂）。", "BASE": "ベース", "PATTERN": "柄", "/// STRIPES": "/// ストライプ", "BLOCKS": "ブロック", "EDGE BAND": "エッジ", "MAKE THIS CASE": "このケースを作る", "MAKING THE CASE …  {0} / {1}": "ケースを作成中 …  {0} / {1}",
     "Your own: pick the page, the text and the accent": "カスタム：背景・文字・アクセントを自分で選ぶ", "CUSTOM SCHEME": "カスタム配色", "Pick the page, the text and the accent; the rest follows.": "背景・文字・アクセントを選ぶと、残りの色は自動で決まります。", "PAGE": "背景", "ACCENT": "アクセント", "GOOD": "良好", "READABLE": "読める", "HARD TO READ": "読みにくい", "TEXT ON PAGE": "文字のコントラスト", "ACCENT ON PAGE": "アクセントのコントラスト", "RESET TO ARCHIVE COLOURS": "ARCHIVE の配色に戻す",
     "Black anodised aluminium, black-on-black etching, topographic lines, one white light": "黒いアルマイト仕上げのアルミ、黒の刻印、等高線の模様、白いランプがひとつ",
-    "RANDOM PICK": "ランダムピック", "PICKING …": "選んでいます …", "Random pick": "ランダムピック", "Titles on the cases' top edges": "ケースの上端にタイトルを表示",
+    "RANDOM PICK": "ランダムピック", "PICKING …": "選んでいます …", "Random pick": "ランダムピック", "Titles on the cases' top edges": "ケースの上端にタイトルを表示", "Show the shelves in front (see-through)": "手前の棚を表示（半透明）",
     "Case under the mouse": "マウスの下のケース", "Outline it": "枠線を表示", "Show its title": "タイトルを表示", "Nothing": "表示しない",
     "White marble specimen case, frosted polymer edges, orange index tab": "白い大理石の標本ケース、すりガラス調の縁、オレンジのインデックスタブ",
     "Carbon body, black rubber edges, yellow-and-black stripe band, signal yellow tab": "カーボンのボディ、黒いラバーの縁、黄と黒のストライプ、シグナルイエローのタブ",

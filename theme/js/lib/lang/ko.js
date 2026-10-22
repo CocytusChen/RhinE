@@ -105,7 +105,7 @@ I18N["ko"] = {
     "CUSTOM CASE": "사용자 케이스", "A base colour, an accent and a pattern, in matte plastics.": "바탕색, 포인트 색, 패턴을 고르세요 (무광 플라스틱).", "BASE": "바탕", "PATTERN": "패턴", "/// STRIPES": "/// 줄무늬", "BLOCKS": "블록", "EDGE BAND": "가장자리 띠", "MAKE THIS CASE": "이 케이스 만들기", "MAKING THE CASE …  {0} / {1}": "케이스 만드는 중 …  {0} / {1}",
     "Your own: pick the page, the text and the accent": "직접 설정: 배경, 글자, 포인트 색 선택", "CUSTOM SCHEME": "사용자 색 구성표", "Pick the page, the text and the accent; the rest follows.": "배경, 글자, 포인트 색을 고르면 나머지는 자동으로 맞춰집니다.", "PAGE": "배경", "ACCENT": "포인트", "GOOD": "좋음", "READABLE": "읽을 수 있음", "HARD TO READ": "읽기 어려움", "TEXT ON PAGE": "배경 위 글자", "ACCENT ON PAGE": "배경 위 포인트", "RESET TO ARCHIVE COLOURS": "ARCHIVE 색으로 되돌리기",
     "Black anodised aluminium, black-on-black etching, topographic lines, one white light": "검은 아노다이징 알루미늄, 검은 에칭, 등고선 무늬, 흰 표시등 하나",
-    "RANDOM PICK": "랜덤 선택", "PICKING …": "고르는 중 …", "Random pick": "랜덤 선택", "Titles on the cases' top edges": "케이스 윗면에 제목 표시",
+    "RANDOM PICK": "랜덤 선택", "PICKING …": "고르는 중 …", "Random pick": "랜덤 선택", "Titles on the cases' top edges": "케이스 윗면에 제목 표시", "Show the shelves in front (see-through)": "앞쪽 선반 표시 (반투명)",
     "Case under the mouse": "마우스 아래 케이스", "Outline it": "윤곽선 표시", "Show its title": "제목 표시", "Nothing": "표시 안 함",
     "White marble specimen case, frosted polymer edges, orange index tab": "흰 대리석 표본 케이스, 반투명 폴리머 테두리, 주황색 인덱스 탭",
     "Carbon body, black rubber edges, yellow-and-black stripe band, signal yellow tab": "카본 바디, 검은 고무 테두리, 노랑·검정 줄무늬 띠, 시그널 옐로 탭",

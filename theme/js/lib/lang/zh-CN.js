@@ -105,7 +105,7 @@ I18N["zh-CN"] = {
     "CUSTOM CASE": "自定义外壳", "A base colour, an accent and a pattern, in matte plastics.": "选择底色、点缀色与花纹（哑光塑料）。", "BASE": "底色", "PATTERN": "花纹", "/// STRIPES": "/// 斜纹", "BLOCKS": "色块", "EDGE BAND": "边条", "MAKE THIS CASE": "生成这款外壳", "MAKING THE CASE …  {0} / {1}": "正在生成外壳 …  {0} / {1}",
     "Your own: pick the page, the text and the accent": "自定义：自选背景、文字与强调色", "CUSTOM SCHEME": "自定义配色", "Pick the page, the text and the accent; the rest follows.": "选好背景、文字与强调色，其余颜色自动推算。", "PAGE": "背景", "ACCENT": "强调色", "GOOD": "良好", "READABLE": "可读", "HARD TO READ": "难以阅读", "TEXT ON PAGE": "文字对比度", "ACCENT ON PAGE": "强调色对比度", "RESET TO ARCHIVE COLOURS": "恢复为 ARCHIVE 配色",
     "Black anodised aluminium, black-on-black etching, topographic lines, one white light": "黑色阳极氧化铝、黑色蚀刻、等高线纹样、一盏白色指示灯",
-    "RANDOM PICK": "随机抽取", "PICKING …": "抽取中 …", "Random pick": "随机抽取", "Titles on the cases' top edges": "在外壳顶边显示标题",
+    "RANDOM PICK": "随机抽取", "PICKING …": "抽取中 …", "Random pick": "随机抽取", "Titles on the cases' top edges": "在外壳顶边显示标题", "Show the shelves in front (see-through)": "显示前方货架（半透明）",
     "Case under the mouse": "鼠标下的外壳", "Outline it": "显示描边", "Show its title": "显示标题", "Nothing": "不显示",
     "White marble specimen case, frosted polymer edges, orange index tab": "白色大理石标本盒，磨砂聚合物边框，橙色索引标签",
     "Carbon body, black rubber edges, yellow-and-black stripe band, signal yellow tab": "碳纤维机身，黑色橡胶边框，黄黑警示条纹，信号黄标签",
