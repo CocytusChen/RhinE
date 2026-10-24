@@ -53,7 +53,7 @@ const AR = {
     title: null, tracks: { key: "", rows: [], total: 0 },
     page: getSetting("archiveInfoPage", "file") === "tracks" ? "tracks" : "file",   // the album file's page
     list: null, listVer: 0, listScroll: 0, listMax: 0, listKey: "",   // the TRACKS page: its rows, their scroll
-    rateHover: null, mouseX: 0,   // { i, n }: the rating under the mouse (previewed); the mouse's x (wheel over the file)
+    rateHover: null, mouseX: 0, mouseY: 0,   // { i, n }: the rating under the mouse (previewed); the mouse (wheel over the file)
     rulerStart: Spring(0, 14), ticks: new Map(),
     dirtyInfo: true, info: null,
     topTitles: getSetting("caseTopTitles", true) !== false,
@@ -816,6 +816,13 @@ function drawArchive(gr) {
         }
         drawLip(gr, row, gi, r, x, toScreen, k);
     }
+    // The case under the mouse was found when the mouse last moved; the shelves may have moved under it since (a shelf
+    // switched with the keys, or one gone from view), so it is looked for again where the mouse stands, in this frame's
+    // click areas: a click then takes the case shown under it, not one that was there.
+    if (AR.hover >= 0) {
+        const c = AR.inspOn ? null : caseUnder(AR.mouseX, AR.mouseY), h = c ? c.i : -1, hg = c ? c.gi : -1;
+        if (h !== AR.hover || hg !== AR.hoverRow) { AR.hover = h; AR.hoverRow = hg; clock.wake(); }
+    }
     if (AR.hoverPlate) {
         const h = AR.hoverPlate, t = [...(h.a.title || tr("UNTITLED"))];
         drawCasePlate(gr, h.a, h.ox, h.oy, h.k, h.alpha, t.length > 40 ? t.slice(0, 39).join("") + "…" : t.join(""));
@@ -1441,8 +1448,13 @@ function inQuad(x, y, q) {   // any polygon
     }
     return inside;
 }
+// the case at (x, y), on any shelf: the shelves are drawn back to front, so the nearest one's is found first
+function caseUnder(x, y) {
+    for (let j = AR.hits.length - 1; j >= 0; j--) if (inQuad(x, y, AR.hits[j].quad)) return AR.hits[j];
+    return null;
+}
 function archiveMouseMove(x, y, a) {
-    AR.mouseX = x;
+    AR.mouseX = x; AR.mouseY = y;
     // the file panel's track rows highlight under the mouse; over a row's marks, the rating they would give shows
     const th = a && (a.id === "ar-track" || a.id === "ar-favt") ? a.data : a && a.id === "ar-rate" ? a.data.i : -1;
     const rh = a && a.id === "ar-rate" ? { i: a.data.i, n: ratingAt(x, a.x + a.data.pad, a.data.size) } : null;
@@ -1452,9 +1464,7 @@ function archiveMouseMove(x, y, a) {
         window.RepaintRect(infoX() - dp(20), 0, W - infoX() + dp(20), H);
     }
     if (AR.layout === "grid") return gridMouseMove(x, y, a);
-    // the case under the mouse, on any shelf: the shelves are drawn back to front, so the nearest one's is found first
-    let h = -1, hg = -1;
-    if (!AR.inspOn && x < arrayW() && !a) for (let j = AR.hits.length - 1; j >= 0; j--) if (inQuad(x, y, AR.hits[j].quad)) { h = AR.hits[j].i; hg = AR.hits[j].gi; break; }
+    const c = !AR.inspOn && x < arrayW() && !a ? caseUnder(x, y) : null, h = c ? c.i : -1, hg = c ? c.gi : -1;
     let ht = -1;
     if (a && a.id === "ar-ruler" && AR.rulerGeom) { const R = AR.rulerGeom; ht = clamp(Math.round((x - R.x0) / R.step + R.s0), 0, R.n - 1); }
     if (h !== AR.hover || hg !== AR.hoverRow || ht !== AR.hoverTick) { AR.hover = h; AR.hoverRow = hg; AR.hoverTick = ht; clock.wake(); }
